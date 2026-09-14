@@ -473,6 +473,37 @@ The following identifiers provide stable references for the verifier's scope not
 
 Infrastructure security, payment processing, withdrawals, custody and promotional systems outside the audited game calculation are excluded. The capture does not support conclusions about those systems. Any untested cap or promotional adjustment that changes a payout would require separate assessment before extending the modeled RTP claim to that behavior.
 
+
+### Load-bearing premises
+
+Every premise the verdict rests on, the artifact that witnesses it, and the question that decides how much scrutiny it needs: whether the captured data could have contradicted it. A premise the data cannot contradict carries a witness from outside this repository's own pipeline, or is marked ASSUMED. Agreement between the audit's own checks is not evidence for a premise the data cannot see.
+
+| Premise | Witness artifact | Could the captured data contradict it? |
+|---|---|---|
+| The win rule is half-open `[lower, upper)`, with the upper bound excluded | `evidence/E13-verify-endpoint-boundary-probes.json` — two of its seven probes discriminate the half-open rule from an inclusive-both-ends rule; the remaining five return the same verdict under either reading and are controls. Asserted in `tests/dice/rngTests.ts` | **No power.** Both candidate rules reproduce all 6,700 served win flags with 0 disagreements (`outputs/report-figures.json`, `boundary.betsWhereBoundaryModelsDisagree`). Only 4,106 bets have a reachable upper bound, an expectation of 0.4106 landings, and 0 occurred. The two observed lower-bound landings witness nothing here, the lower bound being inclusive under both readings |
+| The lower bound is inclusive | `data/dice-master-6700bets.json` | Yes. Two settled bets landed exactly on a lower bound and were paid |
+| The commitment convention is SHA-256 over the UTF-8 server-seed hex string | `data/dice-master-6700bets.json` | Yes. 134 of 134 revealed seeds hash to their recorded commitments; a different convention fails all 134 |
+| The RNG is HMAC-SHA256 with a hex-decoded key over `clientSeed:nonce:cursor`. The modulo-bias rejection guard is ASSUMED and listed as a separate premise below | `data/dice-master-6700bets.json` | Yes. All 6,700 recorded rolls reproduce bit for bit; a single wrong constant breaks every row at once |
+| The served multiplier is the quotient `9900 / basisPoints` | `data/dice-master-6700bets.json` | Yes. All 2,807 winning multipliers match the quotient under strict equality, while the float closed form matches only a subset — which is the evidence identifying the quotient as the operator's form |
+| The verifier endpoint and the settlement engine implement the same rule | `evidence/E13-verify-endpoint-boundary-probes.json` | Partial. E13 reproduces one settled bet exactly — roll, win flag and credited multiplier — and all 6,700 settlements are mutually consistent, but no settled bet exercises an upper bound (**L14**) |
+| The enforced odds ceiling is 9900×, not the 99 carried in the settings field | `evidence/E14-maxodds-live-record.json` | Not from the capture. No captured bet exceeds 99×, so the dataset could not have contradicted the configured 99. Only the E14 record has power over this, and it witnesses acceptance at 9900× on a losing bet, not rejection above it (**L7**) |
+| Stage-1 settlement rounds the multiplier half-up | ASSUMED — exact eight-decimal ties in `9900 / basisPoints` exist at `basisPoints` 2048 and 6144, both inside the reachable range, and at 6144 the two modes credit different amounts. No captured bet lands on either band, asserted in `tests/dice/settlementTests.ts`. Stage 2 is half-even and is witnessed | **No** (**L6**) |
+| The operator applies a modulo-bias rejection guard equivalent to the reference implementation | ASSUMED — unexercised by this dataset; the rejection branch is reached with probability of order 1.7e-6 per draw, so no captured roll distinguishes a guarded server from an unguarded one | **No** (**L11**) |
+| The `qa` build is the production build | ASSUMED — nothing in this package establishes it, and nothing is claimed about production | **No** (**L12**) |
+| Each server-seed commitment existed before the bets it covers | ASSUMED — the auditor's capture record: each epoch's commitment was received and logged before that epoch's bets were placed, and every `at` field is the capture client's own clock. The pre-capture chain link shows epoch 0's commitment was already fixed by an earlier link, which orders the records without dating them | **No.** A SHA-256 digest carries no time, so the 6,700 rows are equally consistent with commitments published beforehand and with commitments composed afterwards. No offline computation on this dataset can separate the two (**L18**) |
+
+### Model anchors
+
+Every modelled headline number and the independent anchor that guards it. The reference value comes from outside the engine's own method, which is what makes it an anchor rather than the suite agreeing with itself.
+
+| Modelled figure | Anchor method | Tolerance | Enforcing step |
+|---|---|---|---|
+| Roll recomputation — the basis of everything downstream | Bit-for-bit re-derivation of all 6,700 money-settled rolls under an intact commitment chain. Corroborated during the recon session against the operator's own verify endpoint, with the vectors fixed as unit-test constants in `tests/dice/rngTests.ts`; the raw responses were not retained | Exact equality, finiteness-guarded | `tests/steps/determinism.ts` (Step 5 — Roll Recomputation) |
+| Effective edge per band | A discrete tally of winning integer outcomes over the whole 10,000-point grid, compared against the closed form. No operator odds or win-chance field is read | Exact integers, grid arithmetic only | `tests/steps/anti-circularity.ts` (Step 13), `tests/steps/boundary.ts` (Step 15) |
+| The served multiplier against `9900 / basisPoints` | Direct measurement of the difference between the served value and the quotient across every winning bet | 0, bit-exact under strict `===` | `tests/steps/payouts.ts` (Step 7 — Multiplier Derivation) |
+
+**Residual, declared.** The oracle and the engine share one reading of the rules — a band on `[0.00, 99.99]`, the half-open interval, continuous-win-chance pricing — so a misreading of the rules themselves would move both together, and the anchors above cannot see it. Two things narrow it. The boundary semantics are anchored outside the model by the E13 operator-verifier probes rather than by the engine. And the Step 13 tally is a literal enumeration that shares no arithmetic with the closed form, so an arithmetic error in the closed form is inexpressible in it. A second residual, smaller but named: there is no published third-party RTP for this operator, so the anchor class here is grid enumeration plus settled-roll reproduction rather than comparison against an external reference table. Certification remains provisional pending the production capture (**L12**).
+
 ## 12. Findings
 
 **F-LIMITS — odds configuration discrepancy.** The retained settings value is `maxOdds: 99`. The follow-up session record E14 documents a $0.10 bet on `[0, 0.01)`, corresponding to 9900× under the model, accepted and settled on 1 September 2026. Its reported roll is 84.00, producing a loss.
