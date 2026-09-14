@@ -1,0 +1,287 @@
+[
+  {
+    "name": "roll range off-by-one",
+    "file": "src/config.ts",
+    "find": "export const RANGE = 10000;",
+    "replace": "export const RANGE = 10001;",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 5 (Roll Recomputation) must reject a wrong draw domain — every recomputed roll would diverge from the served roll"
+  },
+  {
+    "name": "HMAC cursor moved off 0",
+    "file": "src/config.ts",
+    "find": "export const CURSOR = 0;",
+    "replace": "export const CURSOR = 1;",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 5 (Roll Recomputation) must reject a wrong HMAC cursor — the salt changes and no served roll recomputes"
+  },
+  {
+    "name": "house edge doubled",
+    "file": "src/config.ts",
+    "find": "export const HOUSE_EDGE = 0.01;",
+    "replace": "export const HOUSE_EDGE = 0.02;",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 7 (Multiplier Derivation) must reject a doubled edge. Step 7 DERIVES the served multiplier's numerator as (1 - HOUSE_EDGE) * 10000, so the pin becomes 9800/basisPoints and no captured winning multiplier matches. QA 2026-09-09 P1-6: round 1 hardcoded 9900 here, at which point this declared guard stopped guarding — the run still flipped, but via Steps 10/16/20/21, and the registry named a step that no longer fired."
+  },
+  {
+    "name": "lower bound flipped to exclusive",
+    "file": "src/config.ts",
+    "find": "  const inBand = roll >= p.lower && roll < p.upper;",
+    "replace": "  const inBand = roll > p.lower && roll < p.upper;",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 6 (Win-Rule Reproduction) must reject an exclusive lower bound — the settled boundary bets (roll 0.00 winning under [0, 94.69]; roll 99.00 winning over [99, 100]) no longer reproduce"
+  },
+  {
+    "name": "upper bound inclusive, win rule only (one-line)",
+    "file": "src/config.ts",
+    "find": "  const inBand = roll >= p.lower && roll < p.upper;",
+    "replace": "  const inBand = roll >= p.lower && roll <= p.upper;",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 13 (Anti-Circularity) must reject an inclusive upper bound in diceWin ALONE: the 10,000-point tally calls diceWin and now counts the upper-bound grid point, so it disagrees with the unchanged half-open closed-form discreteWinCount (first band {0, 92.37}: tally 9238 vs closed form 9237). No settled bet lands on an upper bound, so Steps 6/15 do NOT see this — the tally cross-check is what catches the one-line change."
+  },
+  {
+    "name": "upper bound inclusive, CONSISTENT model",
+    "file": "src/config.ts",
+    "find": "  const inBand = roll >= p.lower && roll < p.upper;",
+    "replace": "  const inBand = roll >= p.lower && roll <= p.upper;",
+    "find2": "  const inBand = Math.max(0, Math.min(RANGE, hi) - Math.max(0, lo));",
+    "replace2": "  const inBand = Math.max(0, Math.min(RANGE, hi + 1) - Math.max(0, lo));",
+    "runner": "mocha",
+    "expect": "failing",
+    "guard": "Step 15 checks the half-open model with the exact integer effective-edge identity. An inclusive upper bound breaks that identity, although it reproduces every captured outcome because none lands on an upper bound. The registered mocha run also fails the E13 boundary vectors. These checks enforce the documented model; operator boundary evidence remains auditor-attested."
+  },
+  {
+    "name": "settlement rounding switched from half-EVEN to half-up",
+    "file": "src/config.ts",
+    "find": "  if (r > HALF_UNIT) q += 1n;\n  else if (r === HALF_UNIT && (q % 2n) === 1n) q += 1n;     // exact tie → round to even",
+    "replace": "  if (r >= HALF_UNIT) q += 1n;",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 8 (Credit Arithmetic) must reject half-up settlement. The capture contains 274 exact 8-dp ties; under half-up every one of them rounds up, so the rule stops reproducing the operator's credits. This is the mutation that proves the two-stage rule's ROUNDING MODE is evidence and not decoration."
+  },
+  {
+    "name": "settlement stage-1 multiplier rounding removed",
+    "file": "src/config.ts",
+    "find": "  const multUnits = BigInt(Math.round(multiplier * 1e8));   // stage 1: ROUND_8(multiplier)",
+    "replace": "  const multUnits = BigInt(Math.floor(multiplier * 1e8));   // stage 1: ROUND_8(multiplier)",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 8 (Credit Arithmetic) must reject a settlement that does not round the served multiplier to 8 dp first. The two-stage rule is the finding; truncating stage 1 changes credits across the capture."
+  },
+  {
+    "name": "commitment convention changed to hash the raw seed bytes",
+    "file": "src/rng.ts",
+    "find": "  return createHash('sha256').update(serverSeedHexString, 'utf8').digest('hex');",
+    "replace": "  return createHash('sha256').update(Buffer.from(serverSeedHexString, 'hex')).digest('hex');",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 1 (Seed Hash Integrity) must reject the wrong commitment convention — LIQD commits SHA-256 of the seed's HEX STRING, not of its bytes, and all 134 commitments would stop matching"
+  },
+  {
+    "name": "published maxOdds ceiling shrunk below the captured tail",
+    "file": "src/config.ts",
+    "find": "export const MAX_ODDS = 9900;",
+    "replace": "export const MAX_ODDS = 50;",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 10 (Wallet Credit & Odds Bounds) must reject a ceiling below the captured multiplier span — the Phase-B 99x bets sit outside [minOdds, 50]"
+  },
+  {
+    "name": "effective-edge simulation depth pin loosened",
+    "file": "src/config.ts",
+    "find": "export const SIM_EDGE_BETS = 2_000_000;",
+    "replace": "export const SIM_EDGE_BETS = 1_000_000;",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 (Simulation Pass 1) must reject an artifact whose per-band depth is not the pinned one — the depth comes from src/config.ts, never from the artifact's own n, so a cheap simulation cannot be presented as the deep one"
+  },
+  {
+    "name": "serial-screen depth pin loosened",
+    "file": "src/config.ts",
+    "find": "export const SIM_SERIAL_DRAWS = 200_000;",
+    "replace": "export const SIM_SERIAL_DRAWS = 100_000;",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 (Simulation Pass 1) must reject a serial block computed at a different depth — serial.n is pinned AND lag1Z is re-derived as lag1 * sqrt(SIM_SERIAL_DRAWS), so both halves of the screen move"
+  },
+  {
+    "name": "RTP-convergence depth pin loosened",
+    "file": "src/config.ts",
+    "find": "export const SIM_RTP_BETS = 20_000_000;",
+    "replace": "export const SIM_RTP_BETS = 1_000_000;",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 (Simulation Pass 1) must reject a convergence series that does not END at the pinned depth. QA 2026-09-09 P1-5: the step used to accept any final n >= 1,000,000, where the 5*SE tolerance is four times wider, so a series truncated to a single cheap point passed."
+  },
+  {
+    "name": "cherry-pick window shortened",
+    "file": "src/config.ts",
+    "find": "export const SIM_CHERRY_WINDOW = 50;",
+    "replace": "export const SIM_CHERRY_WINDOW = 40;",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 17 (Simulation Pass 2) must reject a Pass-2 window that is not the served epoch depth — the step re-derives all 134 early/late statistics at SIM_CHERRY_WINDOW draws and compares them to the artifact exactly"
+  },
+  {
+    "name": "cherry-pick null changed to the nominal alpha instead of the achieved rate",
+    "file": "src/exact-chi2.ts",
+    "find": "  for (let i = 0; i < support.length; i++) if (upperTail[i] < SIM_CHERRY_SEED_ALPHA) return upperTail[i];",
+    "replace": "  for (let i = 0; i < support.length; i++) if (upperTail[i] < SIM_CHERRY_SEED_ALPHA) return SIM_CHERRY_SEED_ALPHA;",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 17 (Simulation Pass 2) must reject a null that ignores the statistic's discreteness — the achieved per-window rejection is 0.0459237601, not the nominal 0.05, and the flag rate follows it. This is the exact defect class of QA 2026-09-09 P0-1: the producer used 0.05*0.95 = 0.0475 while the verifier used 0.0438147684, and neither side could see the disagreement. Both now import one derivation, so a change to it moves both and the artifact stops reconciling."
+  },
+  {
+    "name": "chi-squared reconstruction constant corrupted",
+    "file": "src/exact-chi2.ts",
+    "find": "  return (s - (WINDOW * WINDOW) / BINS) / e;",
+    "replace": "  return (s - (WINDOW * WINDOW) / BINS) / (e * 2);",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 17 (Simulation Pass 2) must reject a corrupted statistic map — the step recomputes each row's earlyChi2/lateChi2 from the square sum and requires exact equality with the artifact"
+  },
+  {
+    "name": "simulation artifact model field forged (pass flag left true)",
+    "file": "outputs/simulation-results.json",
+    "find": "\"houseEdge\": 0.01",
+    "replace": "\"houseEdge\": 0.02",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 (Simulation Pass 1) RECOMPUTES its pass predicates from the artifact's stored statistics and src/config.ts (never the artifact's own `pass: true` boolean). A sim artifact whose model/statistics are forged but whose self-report is left `pass: true` is rejected by recomputation, and the disagreement is reported explicitly."
+  },
+  {
+    "name": "Pass-1 sample size shrunk in the artifact (pass1.draws = 1)",
+    "file": "outputs/simulation-results.json",
+    "find": "\"draws\": 2000000,",
+    "replace": "\"draws\": 1,",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 (Simulation Pass 1) must reconcile pass1.draws against SIM_UNIFORMITY_DRAWS. QA 2026-09-09 P1-3: the field was never read, so an artifact claiming a 2,000,000-draw uniformity result computed from one draw passed."
+  },
+  {
+    "name": "Pass-2 null method downgraded in the artifact",
+    "file": "outputs/simulation-results.json",
+    "find": "\"nullMethod\": \"exact-discrete-tail\"",
+    "replace": "\"nullMethod\": \"bootstrap\"",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 17 (Simulation Pass 2) must reject an artifact produced against a different null. The whole P0-1 fix is that Pass 2 is deterministic; an artifact that says it was scored against a resampled null is not the artifact this step scores."
+  },
+  {
+    "name": "one cherry-pick flag cleared in the artifact",
+    "file": "outputs/simulation-results.json",
+    "find": "\"flag\": true",
+    "replace": "\"flag\": false",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 17 (Simulation Pass 2) must reject a forged flag. QA 2026-09-09 P1-1: the step counted `flag === true` and checked only perSeed.length, so setting every flag to false — or shipping 134 copies of one unflagged row — returned a Full Pass. Every row is now re-derived from the dataset's own revealed seeds and compared exactly."
+  },
+  {
+    "name": "one per-seed statistic forged in the artifact",
+    "file": "outputs/simulation-results.json",
+    "find": "\"earlySq\": 172,",
+    "replace": "\"earlySq\": 202,",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 17 (Simulation Pass 2) must reject a per-seed statistic that the dataset does not produce — epoch 0's early window has square sum 172 (chi2 18.8), and 202 is the value that would have made it a rejection"
+  },
+  {
+    "name": "per-seed row detached from its epoch",
+    "file": "outputs/simulation-results.json",
+    "find": "\"epoch\": 0,",
+    "replace": "\"epoch\": 500,",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 17 (Simulation Pass 2) must bind each artifact row to a real dataset epoch (G-BIND). A row count is not a population identity: the 134 rows must carry the dataset's own 134 distinct epochs."
+  },
+  {
+    "name": "effective-edge band list collapsed to a duplicate",
+    "file": "outputs/simulation-results.json",
+    "find": "          \"inverted\": true",
+    "replace": "          \"inverted\": false",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 (Simulation Pass 1) must require the nine rows to BE the nine canonical SIM_EDGE_BANDS, distinct. QA 2026-09-09 P1-2: the step checked `length === 9` and each row's n, so nine copies of the easiest band passed. Turning the `outside 25-75` band into a second `inside 25-75` leaves nine rows, all individually within tolerance, and must still be rejected."
+  },
+  {
+    "name": "convergence identity field removed from the artifact",
+    "file": "outputs/simulation-results.json",
+    "find": "\"finalRTPRunning\"",
+    "replace": "\"finalRTPRunningX\"",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 (Simulation Pass 1) must require finalRTP to BE the last plotted point (and the running total to agree with it). QA 2026-09-09 P1-5: finalRTP was never reconciled with the series, so zeroing the last plotted point while leaving finalRTP untouched passed."
+  },
+  {
+    "name": "pooled real-roll uniformity forged in the artifact",
+    "file": "outputs/simulation-results.json",
+    "find": "\"chi2\": 92.20895522388065",
+    "replace": "\"chi2\": 82.20895522388065",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 17 (Simulation Pass 2) must recompute the pooled statistic from the dataset's own 6,700 rolls rather than reading it — a forged pooled chi2 is a claim about data the verifier holds"
+  },
+  {
+    "name": "upper bound inclusive in the CLOSED FORM only (discreteWinCount)",
+    "file": "src/config.ts",
+    "find": "  const inBand = Math.max(0, Math.min(RANGE, hi) - Math.max(0, lo));",
+    "replace": "  const inBand = Math.max(0, Math.min(RANGE, hi + 1) - Math.max(0, lo));",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 15 (Odds Boundary & Effective Edge) must reject a winning-region count that is not 100*W. The mirror image of the diceWin-only mutation: here the win RULE is untouched (so every settled bet still reproduces) and only the grid tally moves to 100*W+1. The integer identity 100*winCount*9900 === 99*RANGE*basisPoints breaks immediately. This is the mutation that demonstrates the identity is doing work rather than being algebraically vacuous — the algebra holds only while winCount == 100*W, which is exactly the claim E13 licenses."
+  },
+  {
+    "name": "Pass-1 uniformity forged to a PERFECT fit (chi2 = 0, p = 1.0)",
+    "file": "outputs/simulation-results.json",
+    "find": "\"chi2\": 91.82790000000004,",
+    "replace": "\"chi2\": 0,",
+    "find2": "\"pValue\": 0.6825575180982062,",
+    "replace2": "\"pValue\": 1,",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 must reject a lower-tail uniformity statistic. With chi2 = 0 and pValue = 1, the derived p-value still reconciles, but the two-sided chi-squared screen rejects at ALPHA_SCREEN/2 in the lower tail. This screen has the nominal allowance identified as S1; an exact-theory RTP alone is not rejected."
+  },
+  {
+    "name": "convergence standard error forged",
+    "file": "outputs/simulation-results.json",
+    "find": "\"se\": 0.03127046289391956",
+    "replace": "\"se\": 123456",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 must reject the forged convergence standard error of 123456. It recomputes SE from sample size, RTP, integer wins and multiplier and requires exact agreement, even when chart clipping would hide the visual difference."
+  },
+  {
+    "name": "convergence RTP moved off any integer win count",
+    "file": "outputs/simulation-results.json",
+    "find": "\"rtp\": 1.0375200000000067,",
+    "replace": "\"rtp\": 1.0380200000000067,",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 must reject a convergence RTP that no integer win count produces. At n=1000 and multiplier 1.98, RTP 1.03802 implies 524.2525 wins. The candidate 524 wins reconstructs RTP 1.0375200000000067, which differs beyond the arithmetic tolerance."
+  },
+  {
+    "name": "convergence RTP off an integer win count by 0.1 — INSIDE the reconstruction cap, with the SE recomputed to match",
+    "file": "outputs/simulation-results.json",
+    "find": "\"rtp\": 1.0375200000000067,",
+    "replace": "\"rtp\": 1.0377180000000001,",
+    "find2": "\"se\": 0.03127046289391956",
+    "replace2": "\"se\": 0.03127046352077308",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 must reject RTP 1.0377180000000001 at n=1000 and multiplier 1.98: it implies 524.1 wins. The forged standard error is recomputed consistently, so SE reconciliation alone does not detect it. Forward reconstruction of 524 wins yields RTP 1.0375200000000067, outside the derived tolerance. See also the fractional-win-count structural forgery."
+  },
+  {
+    "name": "artifact claims schema 2 without carrying schema-2 fields",
+    "file": "outputs/simulation-results.json",
+    "find": "  \"generatedAt\": \"2026-09-09T17:56:13.338Z\",",
+    "replace": "  \"generatedAt\": \"2026-09-09T17:56:13.338Z\",\n  \"schemaVersion\": 2,",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 must validate the artifact against its declared schema. Schema 2 requires runs-test cell counts and a stored critical value matching the applied threshold. Relabeling the supplied schema-1 artifact without supplying those fields fails."
+  }
+]

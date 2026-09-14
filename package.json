@@ -1,0 +1,30 @@
+{
+  "name": "dice-audit",
+  "version": "1.0.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Provably fair audit \u2014 LIQD.com Dice",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "test": "npm run check:standalone && mocha && npm run verify",
+    "test:full": "mocha && npm run simulate && SIM_FRESH=1 npm run verify",
+    "verify": "ts-node tests/verify.ts",
+    "report": "PF_EMIT=1 ts-node tests/verify.ts",
+    "simulate": "ts-node src/simulate.ts",
+    "mutate": "ts-node tests/mutate.ts",
+    "typecheck": "tsc --noEmit",
+    "build:standalone": "node tools/build-standalone.mjs",
+    "check:standalone": "node tools/build-standalone.mjs --check",
+    "verify:standalone": "node verify.js",
+    "test:standalone": "node test.js && node verify.js"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10",
+    "@types/node": "^22",
+    "mocha": "^11",
+    "ts-node": "^10",
+    "typescript": "^5"
+  }
+}

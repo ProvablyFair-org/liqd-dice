@@ -1,0 +1,159 @@
+{
+  "purpose": "Boundary semantics of the LIQD Dice win rule, probed against the operator's own verifier. Decides whether the band is inclusive-both-ends [lower, upper] (the model this audit originally used) or half-open [lower, upper). No bet was placed; the endpoint is read-only and was called with an already-revealed server seed from the dataset at an unused nonce.",
+  "capturedAt": "2026-08-31",
+  "capturedVia": "browser session, logged in on qa.liqd.com",
+  "endpoint": "POST https://qa.liqd.com/api/v1/originals/dice/verify",
+  "inputs": {
+    "serverSeed": "015307d5a3f62db476210c3797bac8b7",
+    "serverSeedProvenance": "epoch 0 of data/dice-master-6700bets.json, revealed on rotation during the 2026-08-27 capture",
+    "clientSeed": "auditf2456fc140ac",
+    "nonce": 1000,
+    "nonceNote": "outside the settled range 0..49 for this epoch, so the probe roll is not a settled bet",
+    "roll": 3.61
+  },
+  "probes": [
+    {
+      "params": {
+        "lower": 0,
+        "upper": 3.61,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 3.61,
+        "win": false,
+        "multiplier": 0
+      },
+      "meaning": "roll == upper, non-inverted: LOSS -> upper bound EXCLUSIVE"
+    },
+    {
+      "params": {
+        "lower": 0,
+        "upper": 3.62,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 3.61,
+        "win": true,
+        "multiplier": 27.34806629834254
+      },
+      "meaning": "roll just inside: WIN (control)"
+    },
+    {
+      "params": {
+        "lower": 3.61,
+        "upper": 10,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 3.61,
+        "win": true,
+        "multiplier": 15.492957746478874
+      },
+      "meaning": "roll == lower, non-inverted: WIN -> lower bound INCLUSIVE"
+    },
+    {
+      "params": {
+        "lower": 3.62,
+        "upper": 10,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 3.61,
+        "win": false,
+        "multiplier": 0
+      },
+      "meaning": "roll just below lower: LOSS (control)"
+    },
+    {
+      "params": {
+        "lower": 0.5,
+        "upper": 3.61,
+        "inverted": true
+      },
+      "outcome": {
+        "roll": 3.61,
+        "win": true,
+        "multiplier": 1.0217772731964083
+      },
+      "meaning": "roll == upper, inverted: WIN -> the complement gains the excluded upper point"
+    },
+    {
+      "params": {
+        "lower": 3.61,
+        "upper": 10,
+        "inverted": true
+      },
+      "outcome": {
+        "roll": 3.61,
+        "win": false,
+        "multiplier": 0
+      },
+      "meaning": "roll == lower, inverted: LOSS -> the complement loses the included lower point"
+    },
+    {
+      "params": {
+        "lower": 3.61,
+        "upper": 100,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 3.61,
+        "win": true,
+        "multiplier": 1.0270774976657329
+      },
+      "meaning": "over band, roll == lower: WIN (lower inclusive holds for over)"
+    }
+  ],
+  "settledBetCrossCheck": {
+    "purpose": "ties the verifier to the settlement engine on real money",
+    "bet": {
+      "serverSeed": "015307d5a3f62db476210c3797bac8b7",
+      "clientSeed": "auditf2456fc140ac",
+      "nonce": 0,
+      "params": {
+        "lower": 0,
+        "upper": 92.37,
+        "inverted": false
+      }
+    },
+    "verifier": {
+      "roll": 24.01,
+      "win": true,
+      "multiplier": 1.071776550828191
+    },
+    "settled": {
+      "roll": 24.01,
+      "win": true
+    },
+    "match": true,
+    "note": "the verifier's multiplier equals the credited multiplier of the settled bet at full precision"
+  },
+  "conclusion": "The win rule is half-open: win iff roll >= lower AND roll < upper; inverted takes the exact complement. ALL SEVEN PROBES ARE CONSISTENT WITH IT, BUT ONLY PROBES 1 AND 5 DISTINGUISH IT FROM INCLUSIVE-BOTH-ENDS. Probes 2, 3, 4, 6 and 7 return the same outcome under either rule, so they are controls, not discriminators: probe 1 (roll == upper, non-inverted, LOSS) and probe 5 (roll == upper, inverted, WIN) are the whole of the discriminating evidence, and both turn on the same single event, a roll landing exactly on an upper bound. The half-open rule also reproduces all 6,700 settled win flags in the dataset, including the two bets that landed exactly on a LOWER bound (roll 0.00 winning under [0, 94.69]; roll 99.00 winning over [99, 100]) - but so does inclusive-both-ends, so those two settle nothing either. NO SETTLED BET EVER LANDED ON AN UPPER BOUND (P = 1/10,000 per bet; 4,106 of 6,700 bets had a reachable upper bound, expectation 0.41 hits, 0 observed), which is why the inclusive model survived settlement-level verification. Under the half-open rule every mode's winning region holds exactly 100W grid points, so the effective house edge is exactly 1.00% on every bet - the effective-edge variation this report previously stated as a finding does not exist.",
+  "multiplierNote": "probe multipliers equal 99 / continuousWinChance% exactly (e.g. 99/3.62 = 27.34806629834254), confirming pricing on the continuous width is unchanged",
+  "corrections": [
+    {
+      "at": "2026-09-10",
+      "source": "client QA review (D8 in the reviewer's consolidated list)",
+      "field": "conclusion",
+      "was": "The win rule is half-open: win iff roll >= lower AND roll < upper; inverted takes the exact complement. All seven probes are consistent with it and inconsistent with inclusive-both-ends. The half-open rule also reproduces all 6,700 settled win flags in the dataset, including the two bets that landed exactly on a lower bound (roll 0.00 winning under [0, 94.69]; roll 99.00 winning over [99, 100]). No settled bet ever landed on an upper bound (P = 1/10,000 per bet), which is why the inclusive model survived settlement-level verification. Under the half-open rule every mode's winning region holds exactly 100W grid points, so the effective house edge is exactly 1.00% on every bet - the effective-edge variation this report previously stated as a finding does not exist.",
+      "why": "The previous wording said all seven probes were 'inconsistent with inclusive-both-ends'. Five of them are not: they return the same outcome under either rule. The probe record itself is unchanged - every params/outcome pair below is exactly as recorded on 2026-08-31. Only the strength claimed for it is corrected. The original text is preserved above rather than overwritten.",
+      "effect": "None on the verdict. The half-open rule stands; the evidence for it is two probes rather than seven, which is what limitation L2 already said."
+    }
+  ],
+  "discrimination": {
+    "note": "Which probes actually separate the two candidate rules. Recomputed, not asserted: for each probe, evaluate win under half-open [lower, upper) and under inclusive [lower, upper], honouring `inverted`, and compare. Re-asserted as mocha vectors in tests/dice/rngTests.ts ('E13 discriminates half-open from inclusive-both-ends on exactly 2 of its 7 probes').",
+    "discriminating": [
+      1,
+      5
+    ],
+    "controls": [
+      2,
+      3,
+      4,
+      6,
+      7
+    ],
+    "singleUnderlyingEvent": "both discriminating probes turn on a roll landing exactly on an UPPER bound",
+    "rawHttpRetained": false
+  }
+}

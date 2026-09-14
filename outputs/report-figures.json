@@ -1,0 +1,58 @@
+{
+  "generatedAt": "2026-09-12T14:25:33.136Z",
+  "datasetSha256": "ca1a181a9b4c89a1823e15fe71603b7a5e2267382c134873d80cba536d3aef34",
+  "bets": 6700,
+  "wins": 2807,
+  "settledRtp": {
+    "belowNominal": 2742,
+    "aboveNominal": 2687,
+    "exactlyNominal": 1271,
+    "minPct": 98.999994912,
+    "maxPct": 99.000005204,
+    "nominalPct": 99,
+    "anyAtOrAbove100": false
+  },
+  "settlementResidual": {
+    "roundedDown": 1341,
+    "roundedUp": 1316,
+    "exactlyOnProduct": 150,
+    "maxAbsUsdc": 5.49818341957503e-9,
+    "netUsdc": 4.9077862406754466e-8,
+    "exactTies": 274
+  },
+  "boundary": {
+    "betsWithReachableUpperBound": 4106,
+    "betsWithUnreachableUpperBound": 2594,
+    "expectedUpperBoundHits": 0.4106,
+    "observedUpperBoundHits": 0,
+    "observedLowerBoundHits": 2,
+    "betsWhereBoundaryModelsDisagree": 0,
+    "winFlagsReproducedHalfOpen": 6700,
+    "winFlagsReproducedInclusiveBothEnds": 6700
+  },
+  "cherryPickPower": {
+    "seeds": 134,
+    "nullFlagRate": 0.04381476839059315,
+    "expectedFlags": 5.8711789643394825,
+    "minRejectableFlags": 13,
+    "pAtMinRejectable": 0.006184317372720253,
+    "alpha": 0.01,
+    "seedAlphaNominal": 0.05
+  },
+  "phaseD": {
+    "firstEpoch": 124,
+    "lastEpoch": 133,
+    "epochs": 10,
+    "bets": 500,
+    "stakedUsdc": 50.00000000000044,
+    "paidUsdc": 48.932393480000016,
+    "expectedUsdc": 49.49999999999947,
+    "z": -0.13962285582048553
+  },
+  "live": {
+    "wageredUsdc": 2650.0000000000223,
+    "returnedUsdc": 2744.362367300002,
+    "realizedRtpPct": 103.56084404905582,
+    "meanRoll": 49.79604776119394
+  }
+}

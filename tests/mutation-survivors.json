@@ -1,0 +1,29 @@
+[
+  {
+    "name": "SURVIVOR — settlement stage-1 rounding switched from half-UP to half-EVEN",
+    "file": "src/config.ts",
+    "find": "  const multUnits = BigInt(Math.round(multiplier * 1e8));   // stage 1: ROUND_8(multiplier)",
+    "replace": "  const _u1 = multiplier * 1e8, _f1 = Math.floor(_u1), _r1 = _u1 - _f1;\n  const multUnits = BigInt(_r1 > 0.5 || (_r1 === 0.5 && _f1 % 2 === 1) ? _f1 + 1 : _f1);   // stage 1: HALF-EVEN variant",
+    "runner": "verify",
+    "expect": "PROVABLY FAIR",
+    "guard": "DECLARED SURVIVOR of `npm run verify` (limitation L6). Settlement is two-stage; stage 2's half-EVEN mode is witnessed by 274 exact 8-dp ties in the capture and is killed by the half-up mutation in tests/mutations.json. Stage 1's mode is NOT witnessed. Exact 8-dp ties in 9900/basisPoints exist at only two basis points, 2048 (multiplier 4.833984375) and 6144 (1.611328125) — and only 6144 DISCRIMINATES: at 2048 the quotient before the tie digit is odd, so half-up and half-even both resolve to 4.83398438 and the two modes agree. At 6144 half-up gives 1.61132813 and half-even 1.61132812, and even there the difference survives only at a stake that preserves it — $1 does, $0.10 erases it in the stage-2 rounding. So the single discriminating case is a settled win on basisPoints 6144 at a stake of $1 or more. No captured bet lands on either band, so switching stage 1 to half-even changes no credit in the dataset and no scored step can see it. The audit models stage 1 as half-up (Math.round) and states that as an ASSUMED premise rather than a finding; the shipped 9,800-case sweep in tests/dice/settlementTests.ts compares Math.round against exact half-up, so it is tie-safe by its own definition and would pass under either operator mode. Only a live capture can produce the discriminating evidence."
+  },
+  {
+    "name": "SURVIVOR (verify-only) — reference rejection guard removed",
+    "file": "src/rng.ts",
+    "find": "    if (chunk < maxFair) return chunk % range;",
+    "replace": "    return chunk % range;",
+    "runner": "verify",
+    "expect": "PROVABLY FAIR",
+    "guard": "DECLARED SURVIVOR of npm run verify only. The 6,700 recorded draws do not exercise first-chunk rejection, so removing the rejection guard leaves every recorded roll unchanged. The RNG unit vector exercises that branch and makes npm test fail. The unit vector establishes behavior of the reference implementation; operator-side rejection remains an unobserved premise (AUDIT_CONTEXT.md §11, L11)."
+  },
+  {
+    "name": "SURVIVOR — audit odds bound raised above the captured tail",
+    "file": "src/config.ts",
+    "find": "export const MAX_ODDS = 9900;",
+    "replace": "export const MAX_ODDS = 100000;",
+    "runner": "verify",
+    "expect": "PROVABLY FAIR",
+    "guard": "DECLARED SURVIVOR. Raising MAX_ODDS cannot be detected by this sample: every captured multiplier is at most 99×. The value 9900 is an audit bound informed by the auditor-attested acceptance record E14; that losing bet does not establish maximum enforcement or a winning payment. Shrinking the bound below the captured span fails Step 10. See AUDIT_CONTEXT.md §11, L7 and §12, F-LIMITS."
+  }
+]

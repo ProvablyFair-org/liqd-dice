@@ -1,0 +1,19 @@
+# Derived or reference values; evidence and calculations are mapped in AUDIT_CONTEXT.md.
+# 0.0475: comparison value for the naive seed flag rate; exact-null tests.
+# 2.9352: displayed inverseCriticalZ(ALPHA_SCREEN), src/stats.ts and Step 16.
+# 1.0398: convergence departure in standard errors, Step 16.
+# 4.833984375 and 1.611328125: 9900/2048 and 9900/6144, stage-1 tie vectors.
+# 93.22: operator-verifier reference vector, tests/dice/rngTests.ts.
+# 1.071776 and 0.1071776550828191: multiplier example and its unrounded product.
+# 0.0100057: Step-16 combined nominal statistical allowance, src/sim-checks.ts.
+# 0.99000495: deliberately invalid fractional-win-count forgery; not an audit result.
+0.0475
+2.9352
+1.0398
+4.833984375
+1.611328125
+93.22
+1.071776
+0.1071776550828191
+0.0100057
+0.99000495

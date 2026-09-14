@@ -1,0 +1,72 @@
+{
+  "id": "E14",
+  "title": "maxOdds acceptance probe — live, qa.liqd.com, 2026-09-01",
+  "evidentiaryStatus": "AUDITOR-ATTESTED SESSION RECORD. This file is a structured transcription of the auditor's session notes for a live probe. Raw HTTP request/response pairs were NOT retained. Reformatting the note as JSON does not upgrade its evidentiary status: it is testimony, not a machine-checkable artifact, and no verification step reads it. It was previously carried as evidence/E14-maxodds-live-probe.md; the content is preserved verbatim in meaning, and this is the only copy.",
+  "purpose": "Establish that a 9900x bet is ACCEPTED and SETTLED for `originals-dice`, i.e. that the operator's own config field `maxOdds 99` is not the settlement ceiling — after the config field and the game UI were found to disagree. Read-only inspection plus one live bet.",
+  "scopeWarning": "This probes ACCEPTANCE AT 9900x. It does NOT establish (a) server REJECTION above 9900x — the above-9900x clamp observed was client-side in the UI; (b) a WINNING credit at 9900x — the probe bet lost; (c) the existence or shape of a maximum-exposure cap.",
+  "configField": {
+    "endpoint": "GET /api/v1/fast-games/system/get-game-settings",
+    "source": "the operator's own settings API",
+    "pulledAt": "2026-09-01",
+    "row": "originals-dice (id 34)",
+    "values": {
+      "minOdds": 1.0102,
+      "maxOdds": 99,
+      "houseEdge": 1,
+      "maxBet": 9898,
+      "currency": "USDC",
+      "maxExposureUsdc": null
+    },
+    "note": "Only one dice row exists. The `fast-games-17 maxOdds 10000` row seen at recon (2026-08-27) is no longer present."
+  },
+  "ui": {
+    "observation": "Entering a multiplier above 9900 clamps to exactly 9900.00x at win chance 0.01%; 'Payout On Win' tracks stake x 9900. Entering 9999999 clamped straight back to 9900.00x.",
+    "conclusion": "The UI offers up to 9900x — 100x the config field's 99.",
+    "limit": "The clamp is CLIENT-SIDE. It says nothing about what the server would do with a higher multiplier."
+  },
+  "liveBet": {
+    "description": "The decisive test — one real bet, $0.10, at multiplier 9900x.",
+    "band": {
+      "lower": 0,
+      "upper": 0.01,
+      "inverted": false,
+      "notation": "under 0.01 = [0, 0.01)"
+    },
+    "winChancePct": 0.01,
+    "stakeUsdc": 0.1,
+    "request": "POST /api/v1/originals/dice/place-bet",
+    "httpStatus": 200,
+    "serverBehaviour": "accepted and settled",
+    "roll": 84.0,
+    "outcome": "loss — as a 0.01% win-chance bet does 9,999 times in 10,000; the $0.10 stake was lost",
+    "uiPayoutOnWin": "990.00000000 = 0.10 x 9900 — this is what the CLIENT displayed before the bet. The backend's WINNING payout at 9900x was not observed, because the probe bet lost.",
+    "conclusion": "The settlement backend accepts and settles 9900x, so the config field's 99 is not the real ceiling. This is not a UI-only display bug — the backend priced and settled 9900x.",
+    "notRetained": "the raw place-bet response (bet id, server seed id, nonce) and a subsequent rotated-seed reveal. Named as recapture item A1/10."
+  },
+  "notAnExploit": {
+    "argument": "At 9900x the winning band is a single grid point. Under the verified half-open rule (roll < upper, band-width-independent — see E13 and finding F6) `under 0.01` wins only on roll 0.00 = 1/10,000 = exactly 99% RTP. No player-favourable bet.",
+    "counterfactual": "Inclusive-both-ends would have won on 2/10,000 = 198% RTP. That rule was retracted, which is why the boundary correction was load-bearing.",
+    "reproducibleArithmetic": "Independent of the live settlement, the ARITHMETIC of the 9900x extreme is pinned as unit vectors in tests/dice/rngTests.ts: quotedMultiplier of a width-0.01 band ([0, 0.01)) is exactly 9900x, discreteWinCount of that band is exactly 1 grid point, and its effectiveEdge is exactly 1.00% (99% RTP). The 'single grid point -> 99% RTP, not 198%' argument is therefore reproducible from the committed code without a settled bet at the extreme."
+  },
+  "notVerified": [
+    {
+      "item": "The boundary at the 0.01 extreme was not witnessed in settlement.",
+      "detail": "A settled win at exactly roll 0.00 — or the decisive roll 0.01, which must LOSE — on an `under 0.01` band is a 1/10,000 event. The fairness of the extreme rests on the half-open proof (E13, at a mid-range boundary) plus the band-independent comparator, not on a settled bet at the extreme.",
+      "remedy": "targeted probe in the production-parity recapture"
+    },
+    {
+      "item": "The max-payout / exposure cap is uncharacterised.",
+      "detail": "9,898 max bet x 9900x is about $98M theoretical; `maxExposureUsdc` was null in the config row. Whether a cap exists at all, and whether it would clip the payout or reject the bet, was NOT tested. This matters for RTP, not just operations: a cap that clips rather than rejects would reduce the realised RTP at capped stakes below the 99% this report verifies at the stakes actually captured.",
+      "remedy": "characterise the cap in the recapture"
+    },
+    {
+      "item": "The verify-endpoint confirmation at the extreme was not completed.",
+      "detail": "The session was rate-limited (an earlier scan tripped the limiter). The boundary rule is nonetheless established by E13 plus the comparator.",
+      "remedy": "re-probe with rate-limit headroom"
+    }
+  ],
+  "declaredLimitation": "L7 — the 9900x ceiling and the input contract rest on this single live probe. Registered as an executed mutation survivor in tests/mutation-survivors.json ('published maxOdds ceiling raised far above the captured tail'): because no captured bet exceeds 99x, raising MAX_ODDS above the captured tail is invisible to every scored step. Shrinking it below the captured span IS caught (tests/mutations.json, 'published maxOdds ceiling shrunk below the captured tail', Step 10).",
+  "relatedFinding": "F-LIMITS — a disclosure finding, not an exploit: the operator's config API misstates enforced behaviour, which is itself a trust-surface fact.",
+  "renamedFrom": "E14-maxodds-live-probe.json",
+  "renameReason": "Renamed 2026-09-11. This record is a session narrative — a config pull, a UI observation and one live bet — not a machine-checkable probe record. Under the previous name it matched the framework contract for evidence/*probe*.json (gate-premises P3), which requires a probes[] array with params and outcome per entry, and it has none. The honest fix is for the filename to stop claiming to be a probe record. The alternative — restructuring testimony into a probes[] array so the parser accepts it — would dress a session note as machine-checked evidence, which is exactly what this record's own evidentiaryStatus warns against."
+}

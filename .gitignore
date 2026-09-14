@@ -1,0 +1,8 @@
+node_modules/
+dist/
+outputs/*.json
+outputs/run/
+!outputs/.gitkeep
+!outputs/verification-results.json
+!outputs/simulation-results.json
+!outputs/report-figures.json

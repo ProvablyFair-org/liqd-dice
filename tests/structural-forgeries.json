@@ -1,0 +1,40 @@
+[
+  {
+    "name": "fabricated Pass 1 — every raw statistic forged PERFECT, artifact re-pinned",
+    "script": "tests/forgeries/fabricated-pass1.mjs",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 must reject this coordinated fabricated Pass-1 artifact after it is re-pinned. Its zero chi-squared lies in the two-sided uniformity screen's lower tail; its modified convergence RTP values also disagree with the retained standard errors. Exact-theory RTP values and zero runs Z are individually permitted when structural checks and statistical screens pass. Rejection is a defined test result, not proof of how the artifact was produced."
+  },
+  {
+    "name": "fractional win count — an `over 98` RTP of 0.99000495 (40,000.2 wins), derived fields recomputed, artifact re-pinned",
+    "script": "tests/forgeries/fractional-win-count.mjs",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 must reject the over(98) RTP of 0.99000495: 0.99000495 × 2,000,000 / 49.5 implies 40,000.2 wins. Derived SE and departure fields are recomputed and the artifact is re-pinned. Forward reconstruction from integer wins still disagrees with the published RTP, so the semantic guard must fail.",
+    "note": "The suite rejects the IMPOSSIBLE (a fractional count), never the merely surprising (an exact fit). Both directions are unit-tested."
+  },
+  {
+    "name": "coherent population shrink — nonces 30-49 deleted, header doctored, dataset re-pinned",
+    "script": "tests/forgeries/coherent-population-shrink.mjs",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 11 (Dataset Integrity) must reject a dataset that is not the audited population (G-BIND). EXECUTED COUNTEREXAMPLE, external review round 3 (2026-09-09, P0-3): delete nonces 30-49 from every epoch (6,700 -> 4,020 bets), set meta.epochSize = 30, meta.plannedTotal = 4020, meta.phases to the new counts and every seeds[].nonceEnd = 29, then re-pin DATASET_SHA256 — and the suite returned 21/21 PROVABLY FAIR on a 4,020-bet dataset. Every count it checked (plannedTotal, epochSize, phases, nonceEnd) came from INSIDE the file being scored, so the population plan was self-referential; the SHA pin proves only that the file has not changed since WE pinned it. The expected cardinality now comes from EXPECTED_BETS / EXPECTED_SEEDS / EXPECTED_EPOCH_SIZE / EXPECTED_PHASE_BETS in src/config.ts. Steps 4, 11, 12 and 17 all fire."
+  },
+  {
+    "name": "absent artifact of record — outputs/report-figures.json deleted",
+    "script": "tests/forgeries/absent-report-figures.mjs",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 19 (Artifact Hash Integrity) must reject the absence of an artifact of record. EXECUTED COUNTEREXAMPLE, framework gate-forgery F11 (2026-09-09): delete outputs/report-figures.json — the file carrying every derived figure the report quotes (settled-RTP span, settlement-residual direction, Phase-D exposure, boundary-hit expectation, cherry-pick power) — and the suite returned 21/21 PROVABLY FAIR — Full Pass. Step 19 read 'absent — this run writes it' and stayed green: an existsSync fall-through that could not tell a missing artifact of record from nothing-to-compare-against. The tempting defence, that the file regenerates byte-identically so deletion loses nothing, is TRUE and was rejected: it proves only that the figures are a deterministic function of the pinned dataset, and a repo with a genuine absent-artifact defect regenerates identically too, so the bytes cannot separate the two cases. The repo declares instead — .gitignore un-ignores the file, evidence.md lists it as E15, and the chapters cite it by name — that it is an ARTIFACT OF RECORD whose absence FAILS. Declared limitation L16.",
+    "note": "Consequence: outputs/report-figures.json MUST be committed. A clone without it fails Step 19 on its first run, by design."
+  },
+  {
+    "name": "malformed / mismatched report artifact — the five malformed-data cases, each run to a nonzero result",
+    "script": "tests/forgeries/malformed-report-figures.mjs",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 19 must reject malformed JSON, JSON null, JSON arrays, a missing required field and a mismatched dataset hash. The script checks every case, repeats the malformed case and asserts that verification preserves the committed report bytes on every run.",
+    "note": "Regeneration of a committed artifact is now `npm run report` (PF_EMIT=1) and nothing else. A parse failure or a missing dataset hash is not permission to regenerate."
+  }
+]

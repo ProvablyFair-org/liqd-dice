@@ -1,0 +1,213 @@
+{
+  "generatedAt": "2026-09-12T14:25:33.135Z",
+  "runtime": "22.23.1",
+  "totalBets": 6700,
+  "totalSeeds": 134,
+  "datasetSha256": "ca1a181a9b4c89a1823e15fe71603b7a5e2267382c134873d80cba536d3aef34",
+  "assessment": {
+    "environment": "pre-production",
+    "host": "qa.liqd.com",
+    "captureDate": "2026-08-27",
+    "scope": "Recorded sample and documented game model; see AUDIT_CONTEXT.md",
+    "certificationStatus": "provisional",
+    "productionValidation": "pending",
+    "finalCertificationCondition": "Anonymous production capture completed, reviewed and published with passing verification for its stated scope"
+  },
+  "artifactHashes": {
+    "dataset": {
+      "file": "data/dice-master-6700bets.json",
+      "expected": "ca1a181a9b4c89a1823e15fe71603b7a5e2267382c134873d80cba536d3aef34",
+      "actual": "ca1a181a9b4c89a1823e15fe71603b7a5e2267382c134873d80cba536d3aef34",
+      "match": true,
+      "sha256": "ca1a181a9b4c89a1823e15fe71603b7a5e2267382c134873d80cba536d3aef34"
+    },
+    "simulation": {
+      "file": "outputs/simulation-results.json",
+      "sha256": "3da35d94342153d4f5345f5e8bdbc3cdfef5139bd752d3680898b35ffcbceebd",
+      "generatedAt": "2026-09-09T17:56:13.338Z",
+      "expected": "3da35d94342153d4f5345f5e8bdbc3cdfef5139bd752d3680898b35ffcbceebd",
+      "match": true,
+      "pinEnforced": true
+    },
+    "simulationChart": {
+      "file": "outputs/rtp-convergence.html",
+      "expected": "dadbd1859cff586eb42b96212d8d4271d578f9235d2a0bdbfe27d1dcf978f9be"
+    }
+  },
+  "steps": [
+    {
+      "step": 1,
+      "name": "Seed Hash Integrity",
+      "status": "PASS",
+      "detail": "134/134 revealed seeds checked; SHA-256(utf8(serverSeed)) == hashedServerSeed; 0 mismatches"
+    },
+    {
+      "step": 2,
+      "name": "Next-Seed Pre-Commitment Chain",
+      "status": "PASS",
+      "detail": "133/133 transitions: nextHashedServerSeed == next epoch's hashedServerSeed (chain INTACT); pre-capture seed hash and link to epoch zero verified; pre-bet timing is conditional on auditor-attested chronology (AUDIT_CONTEXT.md §11, L18)"
+    },
+    {
+      "step": 3,
+      "name": "Hash Consistency Within Epoch",
+      "status": "PASS",
+      "detail": "134/134 epochs: all bets within each epoch share the same hashedServerSeed; 0 violations"
+    },
+    {
+      "step": 4,
+      "name": "Nonce Audit",
+      "status": "PASS",
+      "detail": "134 epochs: single client seed each, 50 distinct contiguous nonces 0..49 (no interior gaps, no reuse); first nonce == nonceStart (capture default 0 — not operator-witnessed in this capture) in 134/134; 50/50 bets per epoch, epoch size bound to src/config.ts not to the dataset header (G-BIND); trailing bound is auditor-recorded; no operator end counter was retained (AUDIT_CONTEXT.md §11, L13)"
+    },
+    {
+      "step": 5,
+      "name": "Roll Recomputation",
+      "status": "PASS",
+      "detail": "6700/6700 bets: diceRoll(serverSeed, clientSeed, nonce) == served roll (byte-identical)"
+    },
+    {
+      "step": 6,
+      "name": "Win-Rule Reproduction",
+      "status": "PASS",
+      "detail": "6700/6700 bets: recomputed roll ∈/∉ band reproduces the served win flag (inverted honoured)"
+    },
+    {
+      "step": 7,
+      "name": "Multiplier Derivation",
+      "status": "PASS",
+      "detail": "2807 winning bets: served multiplier == 9900/basisPoints, numerator derived as (1 − HOUSE_EDGE 0.01)·10000 (bit-exact ===); max deviation 0.00e+0; 0 mismatches. basisPoints = round(winChance%·100) is AUDITOR-DERIVED — the field does not appear in the capture; the float closed form (100/winChance%)·(1−edge) is the same rational but a different binary64, agreeing bit-for-bit on only 1719/2807 of these wins"
+    },
+    {
+      "step": 8,
+      "name": "Credit Arithmetic",
+      "status": "PASS",
+      "detail": "6700/6700 bets: winningAmount == ROUND_HALF_EVEN_8(stake × ROUND_8(multiplier)) exactly (loss ⇒ 0); 0 mismatches; two-stage residual 0.00e+0 (exact); against the raw un-rounded product (decimal stake × exact 9900/basisPoints — the operator's own number system, not binary64) the settlement rounds the player DOWN on 1341 and UP on 1316 of 2807 wins, and lands EXACTLY on the product on 150 (no rounding at all), max |credit − stake×mult| 5.50e-9, net +4.91e-8 USDC — no directional bias; 274 of the 2807 wins settle on an exact 8-dp tie, where the half-even rule decides the last unit"
+    },
+    {
+      "step": 9,
+      "name": "Loss Settlement",
+      "status": "PASS",
+      "detail": "3893 losing bets: winningAmount == 0 and multiplier == 0; 0 violations"
+    },
+    {
+      "step": 10,
+      "name": "Wallet Credit & Odds Bounds",
+      "status": "PASS",
+      "detail": "6700/6700 bets (0 missing wallet fields): winningAmountWallet == ROUND_HALF_EVEN_8(stakeWallet × ROUND_8(multiplier)) exactly (0 bad); wallet ledger == game ledger (winningAmountWallet == winningAmount, stakeWallet == betAmount) on 6700/6700 (0 divergent); all quoted multipliers within [1.0102, 9900] (0 out of range — the 9900× ceiling rests on the E14 live probe, not on this dataset: declared limitation L7); wallet BALANCE ledger present on 0/6700 bets (balanceOk null on 6700) — stakeWallet/winningAmountWallet are settle-RESPONSE fields, so this step establishes internal consistency with the formula, NOT what the wallet was credited: declared limitation L5 / R-CREDIT"
+    },
+    {
+      "step": 11,
+      "name": "Dataset Integrity",
+      "status": "PASS",
+      "detail": "SHA-256 pin match; population bound to src/config.ts, NOT to the dataset header (G-BIND): 6700/6700 bets (ok), 134/134 seeds (ok), 134 epochs × 50 bets each (ok), 0 epoch(s) missing a nonce in 0..49; dataset header reconciles with those constants (meta.plannedTotal=6700, meta.epochSize=50: ok); seed[0].serverSeed present; 134/134 seeds revealed (100% verifiable yes)"
+    },
+    {
+      "step": 12,
+      "name": "Phase & Mode Coverage",
+      "status": "PASS",
+      "detail": "phases {\"A\":5000,\"B\":1000,\"C\":200,\"D\":500} match the CODE plan {\"A\":5000,\"B\":1000,\"C\":200,\"D\":500} (true); dataset header meta.phases reconciles with it (true); all 4 modes present [under,outside,inside,over]; stake-independence phases present ($10 and $0.10: true)"
+    },
+    {
+      "step": 13,
+      "name": "Anti-Circularity (Negative Control + Enumeration Anchor)",
+      "status": "PASS",
+      "detail": "theoretical win-prob/multiplier derived from grid arithmetic only (no operator odds field read); negative control: a corrupted roll is REJECTED by the same predicate Step 5 uses (falsifiable); closed-form win count vs literal 10,000-point tally: 5304 distinct bands, 0 mismatches"
+    },
+    {
+      "step": 14,
+      "name": "Custom Client-Seed Control",
+      "status": "PASS",
+      "detail": "500/500 custom-seed (pfaudit-) bets recompute exactly (0 fail); client-seed sensitivity: a different client seed yields a different roll on 8/8 probed bets (true)"
+    },
+    {
+      "step": 15,
+      "name": "Odds Boundary & Effective Edge",
+      "status": "PASS",
+      "detail": "6700 bets scanned (coverage ok); roll ceiling ≤ 99.99 (max 99.99, ok); over(99) pays exactly 99× at edge 1.0000% (500 bets); audit odds bound 9900× (E14 records acceptance of a losing bet); max multiplier in capture 99×; captured odds within audit bound: true; winning settlement at 9900× and rejection above it remain unverified; per-bet effective edge == 1.0000% asserted in EXACT INTEGERS (100·winCount·9900 === 99·10000·basisPoints, no tolerance) on 6700/6700 bets (0 rule violations); the float form of the same quantity departs from 0.01 by up to 6.32e-15 across the capture and 5.06e-13 at the un-sampled 9900× extreme (upper 100 − lower 99.99 in binary64), which is why the assertion is integral; Conditional analytical identity under the uniform-roll and half-open win model. E13 records two discriminating endpoint probes; no captured settlement discriminates the upper-bound rules. See AUDIT_CONTEXT.md §11, L2, L3 and L7; modeled effective edge spans 1.000%–1.000%, modeled player-favourable bands 0; by mode: under 1.000% [1.000–1.000]; outside 1.000% [1.000–1.000]; inside 1.000% [1.000–1.000]; over 1.000% [1.000–1.000]"
+    },
+    {
+      "step": 16,
+      "name": "Simulation — Pass 1 (RNG + Edge)",
+      "status": "PASS",
+      "detail": "scored against the COMMITTED artifact (pinned by SIMULATION_SHA256, reconciled in Step 19) — this step is deterministic, not a fresh experiment; artifact schema v1, verifier schema v2; 3 screens Bonferroni-corrected to α_screen=3.333e-3 so THOSE THREE have a family-wise level of α=0.01. draw uniformity chi²=91.828 df=99 at n=2000000 (pinned 2000000) → recomputed p=0.6826, two-sided: rejected if p<1.67e-3 (non-uniform) or p>0.998333 (TOO uniform for a 2000000-draw sample) (ok); serial at n=200000 (pinned 200000): lag1Z=1.208 == lag1·√n (reconciled) < zCrit 2.9352 (the two-sided normal quantile at α_screen, AS 241), runsP=0.1284 (derived from runsZ=-1.520) ≥ α_screen; schema 1: runs cell counts absent, so runsZ is NOT re-derivable here — it is a raw statistic bounded only by its own two-sided screen (L1). A z of exactly 0 is an ordinary outcome and is not treated as evidence of anything; stored zCritical 2.576236081309571 is a schema-1 field at the uncorrected α and is not read; the threshold APPLIED is 2.9351994688667054 (ok); effective-edge 9/9 bands within 5·SE+1e-4 of theory at n=2000000 (recomputed), band set identical to the 9 canonical bands, 0 row(s) whose derived fields disagree with re-derivation, 9/9 row(s) whose simulatedRTP IS bit-for-bit the return their integer win count reconstructs to (the producer's own per-win accumulation, replayed) and 0 row(s) whose simulatedRTP is the return of NO integer win count; RTP convergence 7 points at the pinned marks (ok), ends at n=20000000 (pinned 20000000), finalRTP=98.977% == last plotted point (reconciled) vs 99.00%, Δ=1.0398·SE within the 5·SE band; ALL 7 plotted standard errors RECOMPUTED from (n, rtp, wins, m) and compared exactly, win counts 524/5026/50090/499725/2499794/5000313/9997675 (reconstructed) cumulatively consistent and 7/7 of them reconstructing bit-for-bit to the published RTP — reconciled (ok); model range/cursor/scale/edge ok; artifact self-report pass; OBSERVED (not scored): 0 effective-edge row(s) and 0 convergence point(s) sit exactly on theory, and runsZ is nonzero — all legitimate outcomes under the null, reported rather than rejected; SCOPE — saved Pass-1 summaries satisfy structural consistency, integer-return reconstruction and the declared statistical screens. The original random inputs were not retained; their raw statistics cannot be replayed. npm run test:full generates a new experiment. See AUDIT_CONTEXT.md §9 and §11, L1; STATISTICAL ALLOWANCES — 7 screens across Steps 16-17: S1 Pass-1 draw uniformity χ², two-sided (upper: non-uniform; lower: too uniform) [α/3 = 3.333e-3]; S2 Pass-1 lag-1 autocorrelation |z| vs the two-sided critical z [α/3 = 3.333e-3]; S3 Pass-1 Wald–Wolfowitz runs test, two-sided [α/3 = 3.333e-3]; S4 nine effective-edge bands, each |simRTP − theory| ≤ 5·SE + 1e-4 [≈5.73e-7 per band, ≈5.16e-6 over nine]; S5 RTP-convergence final point within 5·SE + 1e-4 of theory [≈5.73e-7]; S6 cherry-pick flag count, exact one-sided binomial [≤ α = 0.01 (discrete, achieved size below α)]; S7 pooled real-roll uniformity χ², one-sided upper tail [α = 0.01]. S1-S3 use Bonferroni at α=0.01; the combined nominal allowance is ≈0.0100057 for Step 16 and ≈0.0300 across both steps. Chi-squared and normal components use asymptotic reference distributions; these are not measured finite-sample failure frequencies. Deterministic reconciliation checks are separate. See AUDIT_CONTEXT.md §9"
+    },
+    {
+      "step": 17,
+      "name": "Simulation — Pass 2 (Cherry-Pick)",
+      "status": "PASS",
+      "detail": "134 casino seeds vs dataset 134 (epoch identity ok); all 134 per-seed χ² windows RE-DERIVED from the revealed seeds (50+50 draws each), 0 row mismatches; null = exact discrete tail of the n=50/20-bin χ² (832 attainable values, 181274 partitions; geometry ok); achieved per-window rejection 0.0459237601 at nominal α_seed 0.05 → flag rate p0=0.0438147684 (derived, not read); cherry-pick flags 10 (recomputed) vs 5.87 expected; exact binomial P(X≥10)=0.0708 vs α=0.01 → consistent with chance; pooled real-roll uniformity over 6700 captured rolls: chi²=92.209 df=99 → p=0.6724 (recomputed from the dataset; artifact reconciled) (ok); artifact self-report pass; SCOPE — rejection requires 13 flags at α=0.01 (P(X≥13)=0.0062). This tests the defined early-window uniformity pattern; it does not rule out every seed-selection strategy. Client-seed control and predictability are assessed separately in AUDIT_CONTEXT.md §9 and §11, L4 and L12"
+    },
+    {
+      "step": 18,
+      "name": "Bet-Size Invariance",
+      "status": "PASS",
+      "detail": "200/200 Phase C bets at $10.00 recompute their roll identically to the $0.10 phases — 0 mismatch. diceRoll takes no wager argument; effective edge for the band is 1.0000% at every stake (stakes present: $0.1, $10)"
+    },
+    {
+      "step": 19,
+      "name": "Artifact Hash Integrity",
+      "status": "PASS",
+      "detail": "SHA-256 of data/dice-master-6700bets.json = ca1a181a9b4c89a1… matches the pin ca1a181a9b4c89a1… (loader aborts on mismatch before any step runs); simulation-results.json sha256 3da35d94342153d4… matches its pin; rtp-convergence.html sha256 dadbd1859cff586e… matches its pin — the pin proves the scored simulation is the committed one, NOT that its statistics are real (that is Step 16's two-sided uniformity screen plus its structural validation of the win counts and standard errors); outputs/report-figures.json reconciles with a fresh recomputation from the pinned dataset, field for field (10/10 required fields present, dataset hash matches)"
+    },
+    {
+      "step": 20,
+      "name": "Settlement Determinism",
+      "status": "PASS",
+      "detail": "6700/6700 bets: outcome (win/loss) and credited amount are fully determined by (roll, band, stake) — credit == ROUND_HALF_EVEN_8(stake × ROUND_8(PAYOUT_NUMERATOR/basisPoints)), the integer-basis-point quotient, with zero tolerance — and match the served settlement — 0 mismatch; coverage: modes [under,outside,inside,over], 2807 wins / 3893 losses"
+    },
+    {
+      "step": 21,
+      "name": "Multiplier Monotonicity & Range",
+      "status": "PASS",
+      "detail": "4176 distinct win-chance points; multiplier = 99/winChance strictly decreasing in win chance (0 inversions); observed multipliers span 1.0105×–99.0000× within [1.0102, 9900] (in range)"
+    }
+  ],
+  "info": [
+    {
+      "label": "Realized RTP (variance)",
+      "detail": "103.56% ($2650.00 wagered, $2744.36 returned over 6700 bets — informational; authoritative edge is the deterministic effective edge, Step 15)."
+    },
+    {
+      "label": "Mean effective edge",
+      "detail": "1.0000% (target 1.00%; exact under the half-open grid rule)"
+    },
+    {
+      "label": "Effective edge — under",
+      "detail": "mean 1.000%, range 1.000–1.000% (n=1362)"
+    },
+    {
+      "label": "Effective edge — outside",
+      "detail": "mean 1.000%, range 1.000–1.000% (n=1386)"
+    },
+    {
+      "label": "Effective edge — inside",
+      "detail": "mean 1.000%, range 1.000–1.000% (n=1360)"
+    },
+    {
+      "label": "Effective edge — over",
+      "detail": "mean 1.000%, range 1.000–1.000% (n=2592)"
+    },
+    {
+      "label": "Roll range",
+      "detail": "min 0.00, max 99.99 (ceiling 99.99), mean 49.796"
+    },
+    {
+      "label": "Live win rate",
+      "detail": "2807/6700 = 41.90% (mixed win chances — informational)"
+    },
+    {
+      "label": "Odds settings and recorded acceptance",
+      "detail": "recorded settings (meta.limits): minOdds 1.0102, maxOdds 99; E14 records acceptance at 9900× (auditor attestation, F-LIMITS); captured multiplier span 1.0105×–99.0000×; maximum enforcement is outside scope"
+    },
+    {
+      "label": "Capture-side self-check fields",
+      "detail": "meta.edgeScan and local self-check fields are capture annotations. Scored verification independently derives results from recorded inputs; see AUDIT_CONTEXT.md §3."
+    }
+  ],
+  "summary": {
+    "passed": 21,
+    "flags": 0,
+    "hardFail": 0,
+    "verdict": "PROVABLY FAIR — Full Pass"
+  }
+}
