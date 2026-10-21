@@ -1,0 +1,62 @@
+[
+  {
+    "name": "fabricated Pass 1 — every raw statistic forged PERFECT, artifact re-pinned",
+    "script": "tests/forgeries/fabricated-pass1.mjs",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 (Simulation Pass 1) must reject an artifact whose RAW statistics were written rather than measured. EXECUTED COUNTEREXAMPLE, external review round 3 (2026-09-09, P0-2): rewrite pass1 with uniformity.chi2 = 0 (p = 1.0), lag1 = 0, runsZ = 0, all nine bands' simulatedRTP set exactly equal to theory and all seven convergence points exactly on theory, recomputing every DERIVED field with the audit's own formulas so the per-field reconciliation still passes — and the suite returned 21/21 Full Pass. The forgery script ALSO re-pins SIMULATION_SHA256, exactly as a fabricating auditor would in the same commit, so Step 19 PASSES and the rejection cannot come from the hash. WHAT REJECTS IT NOW (revised, client QA 2026-09-10): the round-3 fix rejected it via a 'plausibility floor' — simulatedRTP === theory, deltaSE === 0, runsZ === 0 — and that rule was WRONG, because those are events with positive probability under the null (D4). It has been removed. Two principled screens catch this artifact instead. (a) The Pass-1 uniformity chi-squared is judged TWO-SIDED at ALPHA_SCREEN, and chi2 = 0 at n = 2,000,000 sits in the lower tail: an ordinary statistical test with an ordinary size, not an inference about intent. (b) The forgery rewrites every convergence point's rtp and leaves its `se` untouched, so the standard errors no longer follow from (n, rtp, wins, m) and every one of the seven fails the exact recomputation added for D3. The artifact is rejected twice over, and neither rejection would fire on an honest simulation that merely happened to land on its expectation."
+  },
+  {
+    "name": "fractional win count — an `over 98` RTP of 0.99000495 (40,000.2 wins), derived fields recomputed, artifact re-pinned",
+    "script": "tests/forgeries/fractional-win-count.mjs",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 (Simulation Pass 1) must reject a published RTP that no INTEGER win count produces. EXECUTED COUNTEREXAMPLE, client QA round 5 (2026-09-11, blocker 1): set the `over 98` band's simulatedRTP to 0.99000495 — which is 0.99000495 × 2,000,000 / 49.5 = 40,000.2 wins, a FRACTIONAL count — recompute se, deltaSE and withinTol with the audit's own formulas, re-pin SIMULATION_SHA256 in the same edit, and `npm test` returned 97 passing, 21/21, exit 0. The round-4 check recovered the count with `Math.round` and accepted any residual under RECONSTRUCTION_MAX_RESIDUAL = 0.25, so it ROUNDED 40,000.2 to 40,000 and passed the row: the cap was doing the opposite of its job. WHAT REJECTS IT NOW: the rounded quotient is only a CANDIDATE. `src/sim-checks.ts` reconstructs the producer's return for exactly that integer count — `reconstructReturn`, the same `won += m` accumulation `src/simulate.ts` performs — and requires the published RTP to BE that return over n. 40,000 wins at 49.5× over 2,000,000 bets is 0.99, the published value is 0.99000495, and the row fails. NOT A 'TOO GOOD TO BE TRUE' RULE (G-VALID): the honest artifact's own nine bands and seven convergence points all reconstruct EXACTLY, and a genuine 40,000-win run landing on exactly 0.99 — the theoretical value, probability 0.0020149586 — still passes, which is asserted in tests/dice/simChecksTests.ts. The forgery script also writes the rounded integer into `wins` when the row carries one, so a schema-2 stored count cannot be what saves it either.",
+    "note": "The suite rejects the IMPOSSIBLE (a fractional count), never the merely surprising (an exact fit). Both directions are unit-tested."
+  },
+  {
+    "name": "coherent population shrink — nonces 30-49 deleted, header doctored, dataset re-pinned",
+    "script": "tests/forgeries/coherent-population-shrink.mjs",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 11 (Dataset Integrity) must reject a dataset that is not the audited population (G-BIND). EXECUTED COUNTEREXAMPLE, external review round 3 (2026-09-09, P0-3): delete nonces 30-49 from every epoch (6,700 -> 4,020 bets), set meta.epochSize = 30, meta.plannedTotal = 4020, meta.phases to the new counts and every seeds[].nonceEnd = 29, then re-pin DATASET_SHA256 — and the suite returned 21/21 PROVABLY FAIR on a 4,020-bet dataset. Every count it checked (plannedTotal, epochSize, phases, nonceEnd) came from INSIDE the file being scored, so the population plan was self-referential; the SHA pin proves only that the file has not changed since WE pinned it. The expected cardinality now comes from EXPECTED_BETS / EXPECTED_SEEDS / EXPECTED_EPOCH_SIZE / EXPECTED_PHASE_BETS in src/config.ts. Steps 4, 11, 12 and 17 all fire."
+  },
+  {
+    "name": "absent artifact of record — outputs/report-figures.json deleted",
+    "script": "tests/forgeries/absent-report-figures.mjs",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 19 (Artifact Hash + Value-Domain Integrity) must reject the absence of an artifact of record. EXECUTED COUNTEREXAMPLE, framework gate-forgery F11 (2026-09-09): delete outputs/report-figures.json — the file carrying every derived figure the report quotes (settled-RTP span, settlement-residual direction, Phase-D exposure, boundary-hit expectation, cherry-pick power) — and the suite returned 21/21 PROVABLY FAIR — Full Pass. Step 19 read 'absent — this run writes it' and stayed green: an existsSync fall-through that could not tell a missing artifact of record from nothing-to-compare-against. The tempting defence, that the file regenerates byte-identically so deletion loses nothing, is TRUE and was rejected: it proves only that the figures are a deterministic function of the pinned dataset, and a repo with a genuine absent-artifact defect regenerates identically too, so the bytes cannot separate the two cases. The repo declares instead — .gitignore un-ignores the file, MANIFEST.md#evidence lists it as E15, and the overview cites it by name — that it is an ARTIFACT OF RECORD whose absence FAILS. Declared limitation L16.",
+    "note": "Consequence: outputs/report-figures.json MUST be committed. A clone without it fails Step 19 on its first run, by design."
+  },
+  {
+    "name": "malformed / mismatched report artifact — the five D2 cases, each run to a nonzero result",
+    "script": "tests/forgeries/malformed-report-figures.mjs",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 19 (Artifact Hash + Value-Domain Integrity) must separate ABSENT, PARSE-ERROR, SCHEMA-ERROR, DATASET-MISMATCH and FIELD-MISMATCH, and fail on every one. EXECUTED COUNTEREXAMPLE, client QA 2026-09-10 (D2): outputs/report-figures.json containing the literal bytes `{not JSON` passed all 21 steps. The JSON.parse throw was swallowed, the stored dataset hash was left empty, the empty hash fell into the 'computed from a different dataset' branch, and that branch was classified as STALE — benign, 'regenerated by this run'. So the verifier approved an artifact it could not read and then overwrote it. The script runs all five failure modes, asserts each exits nonzero at Step 19, runs the malformed case TWICE to show the outcome is stable, and asserts after every run that outputs/report-figures.json and outputs/verification-results.json are byte-identical — which is the D1 fix (verification writes only to outputs/run/). It leaves the malformed case in place, so the battery's own run is a third failure of the same input.",
+    "note": "Regeneration of a committed artifact is now `npm run report` (PF_EMIT=1) and nothing else. A parse failure or a missing dataset hash is not permission to regenerate."
+  },
+  {
+    "name": "forged served-band early return — one epoch's early return zeroed, aggregate kept coherent, artifact re-pinned",
+    "script": "tests/forgeries/forged-served-band-return.mjs",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 17 (Simulation Pass 2) must reject a forged served-band early-window return — the DICE-21 load-bearing statistic. EXECUTED COUNTEREXAMPLE: set pass2.servedBand.perEpoch[0].earlyReturn to 0 (a maximally player-unfavourable early window, the exact shape a cherry-picking operator would leave) and reduce the stored servedBand.totalEarlyReturn by the same delta so the AGGREGATE self-reconciles, then re-pin SIMULATION_SHA256 so Step 19 passes and the rejection cannot come from the hash. Step 17 replays that epoch's revealed seed for 10,000 nonces, re-derives its early return with EXACT equality, finds the forged row does not equal its re-derivation, and HARD-FAILS on a per-epoch mismatch — even though the doctored aggregate reconciled, which is the point: the load-bearing guard is the per-epoch re-derivation, not a self-consistent aggregate. The aggregate cherry-pick z the step tests is itself re-derived from the revealed seeds, so no artifact edit can move it.",
+    "note": "The served-band return is the load-bearing return-based DICE-21 realization (exact per-bet mean/variance + one-sided normal CLT lower tail); the exact-lattice CDF is intractable for this multi-band capture and is disclosed as a load-bearing premise / L4."
+  },
+  {
+    "name": "relabelled commitment hash — one epoch-0 bet carries another period's hashedServerSeed, dataset re-pinned",
+    "script": "tests/forgeries/relabelled-commitment-hash.mjs",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 3 (Hash Consistency Within Epoch) must reject an epoch whose bets do not all carry the same hashedServerSeed. The script relabels one epoch-0 bet with another period's commitment hash and re-pins DATASET_SHA256, so the rejection cannot come from the dataset pin. Step 3 groups the bets by epoch and finds two distinct hashes in epoch 0. Other steps that read the relabelled row (the nonce audit, the roll recomputation, the report-figures dataset hash in Step 19) fail as well; the entry asserts that Step 3 is among them. Added 2026-10-02 (pre-publish QA, C7): before it, no registry entry failed Step 3. What Step 3 checks is a consistency property of the file — the capture writes the period's hash onto each bet row (F3) — not a server-returned field."
+  },
+  {
+    "name": "credited loss — one losing bet credited 0.00000001, dataset re-pinned",
+    "script": "tests/forgeries/credited-loss.mjs",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 9 (Loss Settlement) must reject a losing row whose recorded credit is not zero. The script credits the first losing bet with 0.00000001 (one settlement unit) and re-pins DATASET_SHA256, so the rejection cannot come from the dataset pin. Steps 8 and 20 also see the extra unit; the entry asserts that Step 9 is among the failing steps. Added 2026-10-02 (pre-publish QA, C7): before it, no registry entry failed Step 9. Scope: Step 9 reads the recorded zero, and the capture wrote 0 when the field was absent from a response, so the step cannot tell an explicit operator zero from a missing field (AUDIT_CONTEXT, Field origins)."
+  }
+]

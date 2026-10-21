@@ -1,0 +1,520 @@
+{
+  "auditId": "PF-2026-LQ04",
+  "verdictQualifier": "provisional",
+  "totalBets": 6700,
+  "totalSeeds": 134,
+  "datasetSha256": "ca1a181a9b4c89a1823e15fe71603b7a5e2267382c134873d80cba536d3aef34",
+  "artifactHashes": {
+    "dataset": {
+      "file": "data/dice-master-6700bets.json",
+      "expected": "ca1a181a9b4c89a1823e15fe71603b7a5e2267382c134873d80cba536d3aef34",
+      "actual": "ca1a181a9b4c89a1823e15fe71603b7a5e2267382c134873d80cba536d3aef34",
+      "match": true,
+      "sha256": "ca1a181a9b4c89a1823e15fe71603b7a5e2267382c134873d80cba536d3aef34"
+    },
+    "simulation": {
+      "file": "outputs/simulation-results.json",
+      "sha256": "8576e0a88526da4a0131afbc4e2de9bf0b52380432ee8b08f7863552b9ad3bbc",
+      "expected": "8576e0a88526da4a0131afbc4e2de9bf0b52380432ee8b08f7863552b9ad3bbc",
+      "match": true
+    },
+    "simulationChart": {
+      "file": "outputs/rtp-convergence.html",
+      "expected": "5cbdf7027ad7132b858c6a9e47b2f80354689fae63370d641973fba7e277e67d"
+    }
+  },
+  "steps": [
+    {
+      "step": 1,
+      "name": "Seed Hash Integrity",
+      "status": "PASS",
+      "detail": "134/134 revealed seeds checked; SHA-256(utf8(serverSeed)) == hashedServerSeed; 0 mismatches",
+      "profileIds": [
+        "DICE-01"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-01",
+          "coverage": "full",
+          "note": "SHA-256(utf8(serverSeed)) == hashedServerSeed for every revealed seed; the count checked is bound to the EXPECTED_SEEDS code constant (not the dataset count) by Step 11 / DICE-05 (G-BIND), which the profile asserts as part of this check"
+        }
+      ]
+    },
+    {
+      "step": 2,
+      "name": "Next-Seed Pre-Commitment Chain",
+      "status": "PASS",
+      "detail": "133/133 transitions: nextHashedServerSeed == next epoch's hashedServerSeed (chain INTACT); pre-capture link verified: the pair the capture recorded before the first bet reveals a seed that hashes to its own commitment, and its nextHashedServerSeed IS epoch 0's commitment — so epoch 0's commitment was already fixed by an EARLIER LINK IN THE CHAIN. A hash chain orders records, it does not date them: that this link predates the first bet is the auditor's capture record — an ASSUMED premise, not independently authenticated timing (declared limitation L18), so the no-post-hoc-choice reading of it is CONDITIONAL on that attested chronology",
+      "profileIds": [
+        "DICE-02"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-02",
+          "coverage": "full"
+        }
+      ]
+    },
+    {
+      "step": 3,
+      "name": "Hash Consistency Within Epoch",
+      "status": "PASS",
+      "detail": "134/134 epochs: all bets within each epoch share the same hashedServerSeed; 0 violations",
+      "profileIds": [
+        "DICE-03"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-03",
+          "coverage": "full"
+        }
+      ]
+    },
+    {
+      "step": 4,
+      "name": "Nonce Audit",
+      "status": "PASS",
+      "detail": "134 epochs: single client seed each, 50 distinct contiguous nonces 0..49 (no interior gaps, no reuse); first nonce == nonceStart (capture default 0 — not operator-witnessed in this capture) in 134/134; 50/50 bets per epoch, epoch size bound to src/config.ts not to the dataset header (G-BIND); trailing bound is auditor-recorded (no operator end counter in this capture); trailing withholding is not observable client-side, see R-ORPHAN and declared limitation L13 in MANIFEST.md",
+      "profileIds": [
+        "DICE-04"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-04",
+          "coverage": "full",
+          "note": "nonce contiguity, no-reuse and leading/trailing/short-epoch withholding are asserted, and the epoch size is bound to src/config.ts not the dataset header (G-BIND); on THIS capture every epoch is fully contiguous 0..49 with zero gaps. The capture-origin FLAG rule the profile requires (decided 2026-09-17) is now implemented: a nonce gap that the revealed seed reconstructs is returned as a FLAG with origin = capture plus a limitation-row detail — never a PASS — and verify.ts treats a capture-origin flag as verdict-neutral (Full Pass, exit 0) while an operator-side gap or repeat is a HARD FAIL. The branch does not fire on this gap-free capture but the mechanism is present, so DICE-04's assertion — a retry gap is disclosed, an operator gap fails — is decided by the step"
+        }
+      ]
+    },
+    {
+      "step": 5,
+      "name": "Roll Recomputation & Draw Bias Bound",
+      "status": "PASS",
+      "detail": "6700/6700 bets: diceRoll(serverSeed, clientSeed, nonce) / 100 == served roll (byte-identical). Draw uniformity (DICE-08): rejection sampling over the 4,294,967,296-value uint32 domain accepts MAX_FAIR = 10000 × 429496 = 4,294,960,000, an exact whole number of ranges, so each of the 10,000 residues receives exactly 429,496 of the accepted values and the worst-case modulo bias is 0, inside the 2^-32 ceiling (2.3283064365386963e-10). Rejection census: 7,296 of 4,294,967,296 chunk values fall in the discarded tail [MAX_FAIR, 2^32) — a per-chunk rejection probability of 1.699e-6",
+      "profileIds": [
+        "DICE-07",
+        "DICE-08"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-07",
+          "coverage": "full",
+          "note": "diceRoll(serverSeed, clientSeed, nonce) / 100 reproduces the served roll byte-identically for every bet with no tolerance; coverage == bets.length, itself bound to EXPECTED_BETS in Step 11 / DICE-05"
+        },
+        {
+          "id": "DICE-08",
+          "coverage": "full",
+          "note": "the draw-bias bound is computed from the same maxFairFor(RANGE) the live draw applies (src/bias.ts drawBiasBound, on src/rng.ts maxFairFor) and the step ASSERTS it: MAX_FAIR = 10000 × 429496 = 4,294,960,000 is a whole number of ranges (a HARD FAIL otherwise) and the worst-case modulo bias is 0, inside the 2^-32 ceiling, with the rejection census printed (7,296 of 2^32 chunk values in the discarded tail). This is the complement to the recomputation half: without it every exact recompute in this step could be an exact recompute of a biased draw. It is an arithmetic property of the audit module's constants for all seeds; the operator-side reject branch remains unexercised by the capture (L11, unchanged) — the profile asks for the computed bound, which this prints, not for a live rejection witness"
+        }
+      ]
+    },
+    {
+      "step": 6,
+      "name": "Win-Rule Reproduction",
+      "status": "PASS",
+      "detail": "6700/6700 bets: recomputed roll ∈/∉ band reproduces the served win flag (inverted honoured)",
+      "profileIds": [
+        "DICE-10"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-10",
+          "coverage": "full",
+          "note": "the recomputed roll under the half-open band rule reproduces the served win flag for all 6,700 bets, inverted honoured (the win-flag half); the roll-range/ceiling half is Step 15"
+        }
+      ]
+    },
+    {
+      "step": 7,
+      "name": "Multiplier Derivation",
+      "status": "PASS",
+      "detail": "2807 winning bets: served multiplier == 9900/basisPoints, numerator derived as (1 − HOUSE_EDGE 0.01)·10000 (bit-exact ===); max deviation 0.00e+0; 0 mismatches. basisPoints = round(winChance%·100) is AUDITOR-DERIVED — the field does not appear in the capture; the float closed form (100/winChance%)·(1−edge) is the same rational but a different binary64, agreeing bit-for-bit on only 1719/2807 of these wins",
+      "profileIds": [
+        "DICE-13"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-13",
+          "coverage": "full"
+        }
+      ]
+    },
+    {
+      "step": 8,
+      "name": "Credit Arithmetic",
+      "status": "PASS",
+      "detail": "6700/6700 bets: winningAmount == ROUND_HALF_EVEN_8(stake × ROUND_8(multiplier)) exactly (loss ⇒ 0); 0 mismatches; two-stage residual 0.00e+0 (exact); against the raw un-rounded product (decimal stake × exact 9900/basisPoints — the operator's own number system, not binary64) the settlement rounds the player DOWN on 1341 and UP on 1316 of 2807 wins, and lands EXACTLY on the product on 150 (no rounding at all), max |credit − stake×mult| 5.50e-9, net +4.91e-8 USDC — no directional bias; 274 of the 2807 wins settle on an exact 8-dp tie, where the half-even rule decides the last unit",
+      "profileIds": [
+        "DICE-11"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-11",
+          "coverage": "full",
+          "note": "winning credit == ROUND_HALF_EVEN_8(stake × ROUND_8(multiplier)) asserted exactly on the 1e-8 integer grid (the winning half); the loss-⇒-0 half is Step 9"
+        }
+      ]
+    },
+    {
+      "step": 9,
+      "name": "Loss Settlement",
+      "status": "PASS",
+      "detail": "3893 losing bets: winningAmount == 0 and multiplier == 0; 0 violations",
+      "profileIds": [
+        "DICE-11"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-11",
+          "coverage": "full",
+          "note": "every losing bet pays exactly 0 with multiplier 0 (the loss half); the winning-credit half is Step 8"
+        }
+      ]
+    },
+    {
+      "step": 10,
+      "name": "Wallet Credit & Odds Bounds",
+      "status": "PASS",
+      "detail": "6700/6700 bets (0 missing wallet fields): winningAmountWallet == ROUND_HALF_EVEN_8(stakeWallet × ROUND_8(multiplier)) exactly (0 bad); wallet ledger == game ledger (winningAmountWallet == winningAmount, stakeWallet == betAmount) on 6700/6700 (0 divergent); all quoted multipliers within [1.0102, 9900] (0 out of range — the 9900× ceiling rests on the E14 live probe, not on this dataset: declared limitation L7); wallet BALANCE ledger present on 0/6700 bets (balanceOk null on 6700) — stakeWallet/winningAmountWallet are settle-RESPONSE fields, so this step establishes internal consistency with the formula, NOT what the wallet was credited: declared limitation L5 / R-CREDIT",
+      "profileIds": [
+        "DICE-14"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-14",
+          "coverage": "full",
+          "note": "every quoted multiplier lies within [MIN_ODDS, MAX_ODDS] with exact bounds (the odds-bounds half); the strict-monotonicity half is Step 21"
+        }
+      ]
+    },
+    {
+      "step": 11,
+      "name": "Dataset Integrity",
+      "status": "PASS",
+      "detail": "SHA-256 pin match; population bound to src/config.ts, NOT to the dataset header (G-BIND): 6700/6700 bets (ok), 134/134 seeds (ok), 134 epochs × 50 bets each (ok), 0 epoch(s) missing a nonce in 0..49; dataset header reconciles with those constants (meta.plannedTotal=6700, meta.epochSize=50: ok); seed[0].serverSeed present; 134/134 seeds revealed (100% verifiable yes)",
+      "profileIds": [
+        "DICE-05",
+        "DICE-26"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-05",
+          "coverage": "full",
+          "note": "bets, seeds, epoch count and per-epoch size bound to EXPECTED_BETS / EXPECTED_SEEDS / EXPECTED_EPOCH_SIZE in src/config.ts; meta counts reconciled against them, never used as the denominator (G-BIND); per-phase counts are Step 12"
+        },
+        {
+          "id": "DICE-26",
+          "coverage": "full",
+          "note": "the live SHA-256 of the dataset equals the pin in src/config.ts and loadDataset aborts the run before any step on a mismatch; the simulation-artifact pins are Step 19"
+        }
+      ]
+    },
+    {
+      "step": 12,
+      "name": "Phase & Mode Coverage",
+      "status": "PASS",
+      "detail": "phases {\"A\":5000,\"B\":1000,\"C\":200,\"D\":500} match the CODE plan {\"A\":5000,\"B\":1000,\"C\":200,\"D\":500} (true); dataset header meta.phases reconciles with it (true); all 4 modes present [under,outside,inside,over]; stake-independence phases present ($10 and $0.10: true)",
+      "profileIds": [
+        "DICE-05",
+        "DICE-15"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-05",
+          "coverage": "full",
+          "note": "per-phase bet counts asserted against the EXPECTED_PHASE_BETS code plan both ways (no undeclared phase, every declared phase at its count); the population/epoch half is Step 11"
+        },
+        {
+          "id": "DICE-15",
+          "coverage": "full",
+          "note": "all four band modes present, both stake tiers ($10 and $0.10), and the phase counts asserted against the EXPECTED_PHASE_BETS code plan (which carries the Phase-B 98%/99% tail); target-range endpoint exercise rests on that plan plus Step 15's over(99) band"
+        }
+      ]
+    },
+    {
+      "step": 13,
+      "name": "Anti-Circularity (Negative Control + Enumeration Anchor)",
+      "status": "PASS",
+      "detail": "theoretical win-prob/multiplier derived from grid arithmetic only (no operator odds field read); negative control: a corrupted roll is REJECTED by the same predicate Step 5 uses (falsifiable); closed-form win count vs literal 10,000-point tally: 5304 distinct bands, 0 mismatches",
+      "profileIds": [
+        "DICE-18"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-18",
+          "coverage": "full"
+        }
+      ]
+    },
+    {
+      "step": 14,
+      "name": "Custom Client-Seed Control",
+      "status": "PASS",
+      "detail": "500/500 custom-seed (pfaudit-) bets recompute exactly (0 fail); client-seed sensitivity: a different client seed yields a different roll on 8/8 probed bets (true)",
+      "profileIds": [
+        "DICE-06"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-06",
+          "coverage": "full",
+          "note": "500/500 auditor-set (pfaudit-) Phase-D bets recompute exactly and client-seed sensitivity is shown (a different client seed changes the roll, 8/8 probes); the A–C client-seed generator is disclosed as a node:crypto CSPRNG in the declaration/capture (capture.clientSeed.generatorPhasesABC, generatorCsprng=true). The predictable Phase-D seed pattern is now DISCLOSED with its exposed epochs enumerated: pfaudit-<stamp>-<epoch> with the stamp fixed at capture start (capture/client-seed.reference.mjs), so all ten Phase-D epochs 124–133 (500 bets) were derivable in advance — enumerated in outputs/report-figures.json phaseD (firstEpoch 124, lastEpoch 133, epochs 10, bets 500, $50.00 staked, $48.93 paid, z=−0.14) and registered as declared limitation L19 (declaration capture.clientSeed.phaseDDisclosed cites it); the recompute (this step) plus that disclosure together satisfy the profile assert. Those epochs' cherry-pick containment rests on Steps 5/16/17, not on client-seed unpredictability"
+        }
+      ]
+    },
+    {
+      "step": 15,
+      "name": "Odds Boundary & Effective Edge",
+      "status": "PASS",
+      "detail": "6700 bets scanned (coverage ok); roll ceiling ≤ 99.99 (max 99.99, ok); over(99) pays exactly 99× at edge 1.0000% (500 bets); live-witnessed maxOdds 9900× (win chance 0.01%); max multiplier in capture 99× — the 99×–9900× tail was not sampled live; all captured within ceiling: true; per-bet effective edge == 1.0000% asserted in EXACT INTEGERS (100·winCount·9900 === 99·10000·basisPoints, no tolerance) on 6700/6700 bets (0 rule violations); the float form of the same quantity departs from 0.01 by up to 6.32e-15 across the capture and 5.06e-13 at the un-sampled 9900× extreme (upper 100 − lower 99.99 in binary64), which is why the assertion is integral; MODEL IDENTITY, not a measurement of the operator: this holds by algebra for every 2-dp band, so no dataset can falsify it — it enforces OUR rule set, and the operator's boundary rule rests on the E13 probes alone (2 of 7 discriminate; the settled data has zero power, see report-figures boundary.betsWhereBoundaryModelsDisagree) — declared limitations L2 (E13) and L3 (model identity) in MANIFEST.md; the un-sampled 99×–9900× tail is L7; effective edge spans 1.000%–1.000%, player-favourable bets 0 (none — not exploitable); by mode: under 1.000% [1.000–1.000]; outside 1.000% [1.000–1.000]; inside 1.000% [1.000–1.000]; over 1.000% [1.000–1.000]",
+      "profileIds": [
+        "DICE-10",
+        "DICE-17",
+        "DICE-19"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-10",
+          "coverage": "full",
+          "note": "no served roll exceeds the 99.99 grid ceiling (the outcome-range half); the win-flag half is Step 6"
+        },
+        {
+          "id": "DICE-17",
+          "coverage": "full",
+          "note": "the half-open boundary rule is witnessed by the E13 operator-verifier probes (2 of 7 discriminate; settled data has zero power, L2) and the roll ceiling is asserted; the full-coverage per-mode recompute is carried by Step 6 (DICE-10) and mode presence by Step 12 (DICE-15)"
+        },
+        {
+          "id": "DICE-19",
+          "coverage": "full",
+          "note": "the effective edge is derived per served band from grid arithmetic and the multiplier formula and asserted == 1.0000% in exact integers on every bet, compared with the claimed 1%; the settled-RTP band is stated"
+        }
+      ]
+    },
+    {
+      "step": 16,
+      "name": "Simulation — Pass 1 (RNG + Edge)",
+      "status": "PASS",
+      "detail": "scored against the COMMITTED artifact (pinned by SIMULATION_SHA256, reconciled in Step 19) — this step is deterministic, not a fresh experiment; artifact schema v2, verifier schema v2; 3 screens Bonferroni-corrected to α_screen=3.333e-3 so THOSE THREE have a family-wise level of α=0.01. draw uniformity chi²=108.885 df=99 at n=2000000 (pinned 2000000) → recomputed p=0.2335, two-sided: rejected if p<1.67e-3 (non-uniform) or p>0.998333 (TOO uniform for a 2000000-draw sample) (ok); serial at n=200000 (pinned 200000): lag1Z=0.159 == lag1·√n (reconciled) < zCrit 2.9352 (the two-sided normal quantile at α_screen, AS 241), runsP=0.6910 (derived from runsZ=-0.398) ≥ α_screen; runsZ RE-DERIVED from cell counts (runs=99912, n1=100103, n=200000; variance 5.0000e+4 > 0); stored zCritical 2.9351994688667054 IS the applied threshold (ok); effective-edge 9/9 bands within 5·SE+1e-4 of theory at n=2000000 (recomputed), band set identical to the 9 canonical bands, 0 row(s) whose derived fields disagree with re-derivation, 9/9 row(s) whose simulatedRTP IS bit-for-bit the return their integer win count reconstructs to (the producer's own per-win accumulation, replayed) and 0 row(s) whose simulatedRTP is the return of NO integer win count; RTP convergence 7 points at the pinned marks (ok), ends at n=20000000 (pinned 20000000), finalRTP=99.048% == last plotted point (reconciled) vs 99.00%, Δ=2.1493·SE within the 5·SE band; ALL 7 plotted standard errors RECOMPUTED from (n, rtp, wins, m) and compared exactly, win counts 493/5046/50371/499779/2501269/5002354/10004806 (stored) cumulatively consistent and 7/7 of them reconstructing bit-for-bit to the published RTP — reconciled (ok); model range/cursor/scale/edge ok; artifact self-report pass; OBSERVED (not scored): 0 effective-edge row(s) and 0 convergence point(s) sit exactly on theory, and runsZ is nonzero — all legitimate outcomes under the null, reported rather than rejected (client QA 2026-09-10, D4); SCOPE — the raw Pass-1 statistics (uniformity.chi2, serial.lag1, serial.runsZ, each band's simulatedRTP, and the convergence series' own RTP path) are not recomputed inside THIS fast verify (that would re-run 40M draws), but the Pass-1 producer is now DETERMINISTIC — seeded from the pinned SIM_MASTER_SEED — so they are re-derivable by replaying it: npm run test:full regenerates the artifact byte-for-byte and the field diff is empty (DICE-20). A statistic forged SUBTLY is therefore no longer invisible the way it was under fresh entropy (former L1): a re-run reproduces the EXACT committed figures, so test:full exposes any figure that is not what the declared experiment outputs; changing SIM_MASTER_SEED to hand-pick one is a visible source edit that re-rolls every Pass-1 figure at once. What the FAST path still relies on for a reader who does not re-run the producer — that the statistics are STRUCTURALLY possible (integer win counts, cumulative consistency, exact standard errors) and fall inside their screens — is unchanged; that residual is declared limitation L1; ERROR BUDGET — 7 scored statistical screens across Steps 16-17: S1 Pass-1 draw uniformity χ², two-sided (upper: non-uniform; lower: too uniform) [α/3 = 3.333e-3]; S2 Pass-1 lag-1 autocorrelation |z| vs the two-sided critical z [α/3 = 3.333e-3]; S3 Pass-1 Wald–Wolfowitz runs test, two-sided [α/3 = 3.333e-3]; S4 nine effective-edge bands, each |simRTP − theory| ≤ 5·SE + 1e-4 [≈5.73e-7 per band, ≈5.16e-6 over nine]; S5 RTP-convergence final point within 5·SE + 1e-4 of theory [≈5.73e-7]; S6 cherry-pick flag count, exact one-sided binomial [≤ α = 0.01 (discrete, achieved size below α)]; S7 served-band return, one-sided normal lower tail [α = 0.01]. The α=0.01 claim describes S1-S3 (family-wise, Bonferroni) ONLY — it is NOT this step's level: Step 16 also scores S4 and S5, so THIS STEP's own union bound is ≈0.0100057, and over all 7 screens across Steps 16-17 it is ≈0.0300. Everything else this step rejects on — derived-field reconciliation, population identity, sample-depth pins, integer win counts and their RECONSTRUCTION, cumulative consistency, exact standard errors — is a deterministic identity an honest artifact satisfies with probability 1, so it adds nothing to the budget (unlike the D4 'perfection' rules, which rejected honest outcomes and were unpriced). These sizes are NOMINAL UPPER BOUNDS from asymptotic reference distributions (χ² and normal), not measured failure frequencies, and no honest-run trip rate is claimed from them; the exact binomial S6 is conservative. Repeated fresh simulations could calibrate them and would not prove them",
+      "profileIds": [
+        "DICE-20"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-20",
+          "coverage": "full",
+          "note": "scored against the pinned simulation artifact with every DERIVED field re-derived (multiplier, theoretical RTP, SE, deltaSE), a two-sided uniformity screen over 2,000,000 draws, a serial screen, 9 effective-edge bands × 2,000,000 spanning both ends of the range, and a 20,000,000-bet convergence series whose standard errors and integer win counts are recomputed from the artifact rows. The Pass-1 experiment is now DETERMINISTIC and BYTE-REPLAYABLE (DICE-20): the seed stream is HMAC(SIM_MASTER_SEED, counter) rather than crypto.randomBytes, the artifact carries no run metadata, so `npm run simulate` writes identical bytes every time and `npm run test:full` regenerates it with an empty field diff — the raw Pass-1 statistics (uniformity.chi2, serial.lag1/runsZ, each band's simulatedRTP, the convergence path) are re-derivable by replaying the pinned producer, not merely attested by an unreproducible regeneration. Former limitation L10 (a stale zCritical field) is resolved by the regeneration — the artifact is now schema 2 and stores the correct zCritical, re-derived; L1 (a subtly forged statistic was invisible because a re-run produced different numbers) is NARROWED to the fast-verify path only: the producer is now a pure function of pinned source, so test:full reproduces the exact committed figures and exposes any forgery, though the ~1s verify still does not recompute the 40M-draw statistics. simulation.pass1.replayable = true"
+        }
+      ]
+    },
+    {
+      "step": 17,
+      "name": "Simulation — Pass 2 (Cherry-Pick)",
+      "status": "PASS",
+      "detail": "DICE-21 served-band return (load-bearing): 134 revealed epochs × 10,000 nonces, ALL windows RE-DERIVED from the revealed seeds (early 0–49 = captured range, reference 50–9999), 0 row mismatch, epoch identity ok, aggregate reconciliation ok; statistic = payout-weighted served-band return standardised by its EXACT per-bet mean and variance (a scaled Poisson-binomial across seeds, each pᵢ the served band's exact lattice win-probability) — EXACT moments, ASYMPTOTIC one-sided normal (CLT) lower tail, NOT an exact-lattice CDF (see MANIFEST.md load-bearing premise / L4): aggregate early z=0.752, one-sided lower-tail p=0.7738 vs α=0.01 → no return deficit detected at this power; the test detects a per-bet return deficit of 14.377 pp or more at 80% power, so a smaller selection effect would pass; direction split 73 below / 2 equal / 59 above expectation (exact arithmetic) (ok). SUPPLEMENTARY draw-uniformity screen: 134 casino seeds vs dataset 134 (epoch identity ok); all 134 per-seed χ² windows RE-DERIVED from the revealed seeds (50+50 draws each), 0 row mismatches; null = exact discrete tail of the n=50/20-bin χ² (832 attainable values, 181274 partitions; geometry ok); cherry-pick flags 10 (recomputed) vs 5.87 expected; exact binomial P(X≥10)=0.0708 vs α=0.01 → consistent with chance; DICE-22 pooled real-roll uniformity over 6700 captured rolls: chi²=92.209 df=99 → p=0.6724 (recomputed from the dataset; artifact reconciled) (ok); supplementary-screen self-report pass; SCOPE — the served-band return is now the load-bearing return-based DICE-21 statistic; the draw-uniformity screen is retained as a supplementary exact-discrete check needing 13 flag(s) to reject at α=0.01 (P(X≥13)=0.0062). The served-band tail is asymptotic (CLT) on exact moments, not an exact-lattice CDF — declared L4/load-bearing premise in MANIFEST.md; a single-target-per-epoch re-capture would make the exact CDF tractable. The load-bearing cherry-pick defence remains structural (client-seed-after-commitment)",
+      "profileIds": [
+        "DICE-21",
+        "DICE-22"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-21",
+          "coverage": "full",
+          "note": "the load-bearing realization is the served-band PAYOUT-WEIGHTED RETURN scan (the ProvablyFair.org standard dice realization): every revealed casino seed is replayed for SIM_PASS2_NONCES = 10,000 nonces; the early window is the captured nonce range (0..49, the served depth per epoch) and the reference window is the remainder; the statistic is the payout-weighted return of the bands the casino actually served, standardised by its EXACT per-bet mean (Σ pᵢ·multᵢ) and variance (Σ pᵢ(1−pᵢ)·multᵢ²) — a scaled Poisson-binomial across seeds, each pᵢ the served band's EXACT lattice win-probability discreteWinProbability(band) — and read against a one-sided normal (CLT) lower-tail p vs α (cherry-picking shorts the early window the player saw). The rule is fixed in code but was specified AFTER the capture (proposed by an external reviewer on 2026-09-09), not before the data were seen, and it detects only a per-bet return deficit at or above the detection power Step 17 prints (80% power); a smaller selection effect passes it. Every per-epoch row is RE-DERIVED in Step 17 from the revealed seed at 10,000 nonces/seed and compared with EXACT equality; the aggregate z, one-sided p, direction split (classified in exact rational arithmetic, so an epoch exactly on expectation counts as equal) and detection power are recomputed and printed. HONEST SCOPE — this is EXACT per-bet mean/variance + an ASYMPTOTIC one-sided normal (CLT) lower tail; it is NOT an exact-lattice CDF. The exact lower tail \"on the outcome lattice\" would be a convolution of heterogeneous distinct-multiplier scaled Binomials whose support runs to a mean of 2^25 and up to 2^39 atoms on this multi-band capture (110 of 134 epochs multi-band, up to 36 distinct multipliers per epoch) — computationally intractable at verify speed; a pruned sparse DP over the real capture aborts at >8.3M atoms and 5–8 s per worst epoch. This exact-moments + CLT-tail realization is the standard realization ProvablyFair.org dice packages ship, recorded as a load-bearing premise / limitation L4 in MANIFEST.md, ASSUMED to satisfy DICE-21 full, not yet independently confirmed; a single-target-per-epoch re-capture (one band held across an epoch's nonces) would collapse each per-seed return to m·Binomial and make the exact CDF tractable. The exact-discrete draw-uniformity cherry-pick screen (n=50/20-bin χ², src/exact-chi2.ts) is RETAINED as a supplementary check. The load-bearing cherry-pick defence remains structural (client-seed-after-commitment)"
+        },
+        {
+          "id": "DICE-22",
+          "coverage": "full",
+          "note": "the uniform-lattice-fit half — the pooled captured-roll uniformity χ² over all 6,700 rolls, recomputed from the dataset and reported here; informational (policy INFORMATIONAL, 2026-09-29): a rejection is reported, never counted and never fails the step, while a pooled record in the artifact that does not reconcile still FAILs; the serial-dependence half is Step 22"
+        }
+      ]
+    },
+    {
+      "step": 18,
+      "name": "Bet-Size Invariance",
+      "status": "PASS",
+      "detail": "200/200 Phase C bets at $10.00 recompute their roll identically to the $0.10 phases — 0 mismatch. diceRoll takes no wager argument; effective edge for the band is 1.0000% at every stake (stakes present: $0.1, $10)",
+      "profileIds": [
+        "DICE-12"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-12",
+          "coverage": "full",
+          "note": "200/200 Phase-C bets at $10.00 recompute their roll identically to the $0.10 phases (diceRoll takes no wager) and the effective edge is stake-independent; the elevated-stake payout path (~100 wins at 50% chance) is settled by the same exact rule asserted over these same rows in Steps 8 and 20"
+        }
+      ]
+    },
+    {
+      "step": 19,
+      "name": "Artifact Hash + Value-Domain Integrity",
+      "status": "PASS",
+      "detail": "SHA-256 of data/dice-master-6700bets.json = ca1a181a9b4c89a1… matches the pin ca1a181a9b4c89a1… (loader aborts on mismatch before any step runs); simulation-results.json sha256 8576e0a88526da4a… matches its pin; rtp-convergence.html sha256 5cbdf7027ad7132b… matches its pin — the pin proves the scored simulation is the committed one, NOT that its statistics are real (that is Step 16's two-sided uniformity screen plus its structural validation of the win counts and standard errors); outputs/report-figures.json reconciles with a fresh recomputation from the pinned dataset, field for field (9/9 required fields present, dataset hash matches); value domains: 2250 numeric leaf/leaves of the committed simulation-results.json and report-figures.json checked against bounds derived from src/config.ts (a leaf out of domain OR with no declared domain fails)",
+      "profileIds": [
+        "DICE-26",
+        "DICE-27"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-26",
+          "coverage": "full",
+          "note": "the dataset pin plus the simulation-results.json and rtp-convergence.html SHA-256 pins in src/config.ts are reconciled here; the abort-before-any-step on a dataset mismatch is Step 11 / loadDataset"
+        },
+        {
+          "id": "DICE-27",
+          "coverage": "full",
+          "note": "the artifacts of record are pinned in src/config.ts, un-ignored by name in .gitignore, carry no run metadata on any path (no generatedAt/runtime/pin-mode field — absent, not excluded; the field diff has no ignore list), and verify writes only to outputs/run/ (report-figures.json is reconciled field-for-field by recomputation, L16). The value-domain half the profile requires is now implemented (ported from liqd-plinko): src/domains.ts declares a physically-derived domain for every numeric leaf of the committed simulation-results.json and report-figures.json — every bound taken from src/config.ts (the audited population, the sample depths, the odds limits, the roll grid), never from the file being checked — and Step 19 validates every numeric leaf of both artifacts on every run (the step prints the count), failing if any leaf is out of domain OR has no declared domain (so a new unbounded field cannot slip in)"
+        }
+      ]
+    },
+    {
+      "step": 20,
+      "name": "Settlement Determinism",
+      "status": "PASS",
+      "detail": "6700/6700 bets: outcome (win/loss) and credited amount are fully determined by (roll, band, stake) — credit == ROUND_HALF_EVEN_8(stake × ROUND_8(PAYOUT_NUMERATOR/basisPoints)), the integer-basis-point quotient rather than the float closed form (D16), with zero tolerance — and match the served settlement — 0 mismatch; coverage: modes [under,outside,inside,over], 2807 wins / 3893 losses",
+      "profileIds": [
+        "DICE-11"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-11",
+          "coverage": "full",
+          "note": "the credited amount is asserted fully determined by (roll, band, stake) — credit == ROUND_HALF_EVEN_8(stake × ROUND_8(PAYOUT_NUMERATOR/basisPoints)) with zero tolerance, across all four modes and both wins and losses, anti-circularly (the served multiplier field is never read); reinforces the exact payout arithmetic of Steps 8 and 9"
+        }
+      ]
+    },
+    {
+      "step": 21,
+      "name": "Multiplier Monotonicity & Range",
+      "status": "PASS",
+      "detail": "4176 distinct win-chance points; quoted multiplier (formula 99/winChance, computed from each captured band; on wins Step 7 binds the served value to the same rational, 9900/basisPoints) strictly decreasing in win chance (0 inversions); quoted multipliers for the captured bands span 1.0105×–99.0000× within [1.0102, 9900] (in range)",
+      "profileIds": [
+        "DICE-14"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-14",
+          "coverage": "full",
+          "note": "the quoted multiplier (the formula value 99/winChance for each captured band; on wins Step 7 binds the served value to the same rational, 9900/basisPoints) is strictly decreasing across ≥100 distinct win-chance points with zero inversions (the monotonicity half); the odds-bounds half is Step 10"
+        }
+      ]
+    },
+    {
+      "step": 22,
+      "name": "Live-Sample Serial Independence (informational)",
+      "status": "PASS",
+      "detail": "serial independence of the 6700 captured rolls in capture order (pinned population 6700): lag-1 autocorrelation 0.012919 → z 1.057 (|z| < 3); Wald–Wolfowitz runs about roll 50.00: 3305 runs vs 3350.9 expected (n1=3334 of 6700, variance 1.6747e+3), z -1.122, p 0.2618 (≥ 0.01); no serial dependence detected. INFORMATIONAL (profile policy INFORMATIONAL): a 6700-roll serial screen has little power and NEVER bears the verdict — the authoritative serial evidence is the Pass-1 simulation over 200,000 fresh-seed rolls (Step 16). The uniform-lattice-fit half of DICE-22 is the pooled real-roll χ² in Step 17 (also informational).",
+      "profileIds": [
+        "DICE-22"
+      ],
+      "profileChecks": [
+        {
+          "id": "DICE-22",
+          "coverage": "full",
+          "note": "the serial-dependence half — lag-1 autocorrelation and a Wald–Wolfowitz runs test on the 6,700 captured rolls in capture order, judged by the framework cross-game rule |lag1 z| < 3 AND runs p ≥ 0.01; the uniform-lattice-fit half is Step 17 (also informational). A numbered step that reports INFO and CANNOT FAIL: it returns PASS or INFO, never FAIL or FLAG, so it is not scored (policy INFORMATIONAL, 2026-09-29) — verify.ts reports an INFO but never counts it and never lets it change the verdict class. tests/mutations.json M-LIVESERIAL sorts the rolls into value order, driving lag-1 → +1 and collapsing the runs test, and this step reports INFO; npm run mutate records that as an INFORMATIONAL SIGNAL, not a kill — the run goes red on other checks (the reproduction gate, and Step 19, whose recomputed report figures change when the bets are reordered), never because this step failed"
+        }
+      ]
+    }
+  ],
+  "profileCoverage": {
+    "game": "dice",
+    "profileVersion": "1.0.2",
+    "notApplicable": [
+      {
+        "id": "DICE-16",
+        "reason": "applies={path: money.balanceField, notNull: true} is false — money.balanceField is null: the capture carries no running wallet-balance ledger, so there is no consecutive-bet delta to reconcile (declared L5 / R-CREDIT). The stakeWallet / winningAmountWallet settle-response fields ARE reconciled exactly against the settlement rule in Step 10, but the profile explicitly does not count those as a balance ledger"
+      },
+      {
+        "id": "DICE-24",
+        "reason": "applies={path: rng.operatorVerifier.published, eq: true} is false — rng.operatorVerifier.published is false: LIQD ships no operator verifier, so there is no derive.js to hash-match to computeRoll. The operator-verifier probes (E13) exist but no verifier is published; the limitations register (DICE-30) carries the row"
+      }
+    ],
+    "packageChecks": [
+      {
+        "id": "DICE-09",
+        "artifact": "tests/dice/rngTests.ts",
+        "coverage": "full",
+        "note": "the mocha unit suite (npx mocha prints the count) reproduces captured bets from their revealed seeds and fixed HMAC vectors, including an operator /verify endpoint vector (93.22) pinned against the shipped adapter"
+      },
+      {
+        "id": "DICE-23",
+        "artifact": "MANIFEST.md#verification-results",
+        "coverage": "full",
+        "note": "the S5 fairness-integrity matrix now carries the full standardized framework set S5-1 … S5-8 between the <!-- S5-MATRIX:START/END --> markers, each row exactly one verdict (Pass / Flag / Hard Fail / Not tested — disclosed) tied to a scored step or the capture: S5-1 seed substitution [Step 1,2], S5-2 client-seed [Step 14], S5-3 stake-conditional [Step 18], S5-4 cherry-picking [Step 17], S5-5 seed-rotation race [Not tested — disclosed, archetype-excluded, R-RACE], S5-6 multiplier tampering [Step 7,20 — dice has no table, the multiplier is the 9900/basisPoints formula re-derived from the band], S5-7 nonce manipulation [Step 4], S5-8 modulo bias [Step 16,17 + rng rejection sampling]. The dice-specific band-hunt probe is carried as a supplementary row (S5-D1) after the markers, per the framework convention. Validated against the framework check-exploit-matrix rules"
+      },
+      {
+        "id": "DICE-25",
+        "artifact": "MANIFEST.md#verify-a-bet + evidence/E12",
+        "coverage": "full",
+        "note": "MANIFEST \"Verify a bet\" carries an ordered six-step player paste-path stating, in order and in the declaration's own field names: where the seed is revealed (the provably-fair panel after the epoch rotates, E11/E12), which fields to paste (hashedServerSeed, serverSeed, clientSeed, nonce, params{lower,upper,inverted}, betAmount), the exact commitment encoding (SHA-256(utf8(serverSeed)) — the hex string as text, not its bytes), the roll formula (HMAC-SHA256 over clientSeed:nonce:0, maxFair rejection, draw/100), the half-open win rule, the 99/continuousWinChance% multiplier and the ROUND_HALF_EVEN_8 credit; a fully worked instance follows in the same section"
+      },
+      {
+        "id": "DICE-28",
+        "artifact": "package.json (test) + .nvmrc + tests/ + src/config.ts (AUDIT_ID)",
+        "coverage": "full",
+        "note": "a fresh clone runs npm test to 22/22 Full Pass in ~8 s (standalone verify.js ~1 s) with the runtime pinned (engines 22.x, .nvmrc) and pinned artifacts untouched; the audit ID is SET — AUDIT_ID = PF-2026-LQ04 in src/config.ts, emitted into verification-results.json and printed in README.md / MANIFEST.md, with verdictQualifier \"provisional\" retained because the capture is pre-launch (production parity not established). The remaining release-gate sub-requirements hold: npm run test:full regenerates the simulation and diffs it field-by-field into outputs/run/diff.json with nothing beyond tolerance (the Pass-1 experiment is now deterministic — DICE-20 — so regeneration reproduces byte-for-byte), the scored-step count in README/MANIFEST/verify equals the suite, and the runtime is pinned"
+      },
+      {
+        "id": "DICE-29",
+        "artifact": "tests/mutations.json + tests/structural-forgeries.json + tests/mutation-survivors.json",
+        "coverage": "full",
+        "note": "step-named mutations and structural forgeries run by tests/mutate.ts in a disposable copy (npm run mutate prints the counts); every step that can fail is failed by at least one entry — Step 17 by the forged served-band early return; Step 22 cannot fail and its entry is an INFO signal, counted separately from the kills — and 2 declared survivors are tied to limitation IDs L6 / L11 (L7’s published-ceiling change is caught by the reproduction/self-consistency gate, so it is not a survivor); forgery scripts that re-pin the hash they invalidate are included"
+      },
+      {
+        "id": "DICE-30",
+        "artifact": "MANIFEST.md#limitations-and-trust + MANIFEST.md#evidence",
+        "coverage": "full",
+        "note": "MANIFEST.md carries the declared-limitations register L1–L19 with magnitudes and a load-bearing-premises table (5 ASSUMED, each with \"could the data contradict it?\"); MANIFEST Evidence numbers every exhibit from E01; declaration package.internalFoldersPresent is empty, so no internal QA material ships in the package"
+      }
+    ]
+  },
+  "info": [
+    {
+      "label": "Realized RTP (variance)",
+      "detail": "103.56% ($2650.00 wagered, $2744.36 returned over 6700 bets — informational; authoritative edge is the deterministic effective edge, Step 15)."
+    },
+    {
+      "label": "Mean effective edge",
+      "detail": "1.0000% (target 1.00%; exact under the half-open grid rule)"
+    },
+    {
+      "label": "Effective edge — under",
+      "detail": "mean 1.000%, range 1.000–1.000% (n=1362)"
+    },
+    {
+      "label": "Effective edge — outside",
+      "detail": "mean 1.000%, range 1.000–1.000% (n=1386)"
+    },
+    {
+      "label": "Effective edge — inside",
+      "detail": "mean 1.000%, range 1.000–1.000% (n=1360)"
+    },
+    {
+      "label": "Effective edge — over",
+      "detail": "mean 1.000%, range 1.000–1.000% (n=2592)"
+    },
+    {
+      "label": "Roll range",
+      "detail": "min 0.00, max 99.99 (ceiling 99.99), mean 49.796"
+    },
+    {
+      "label": "Live win rate",
+      "detail": "2807/6700 = 41.90% (mixed win chances — informational)"
+    },
+    {
+      "label": "Odds limits (config vs live-witnessed)",
+      "detail": "operator config snapshot (meta.limits) minOdds 1.0102 maxOdds 99; live-witnessed MAX_ODDS 9900 (E14, F-LIMITS — the config maxOdds 99 is NOT what the server settles); captured multiplier span 1.0105×–99.0000×"
+    },
+    {
+      "label": "Capture-side self-check fields",
+      "detail": "meta.edgeScan and per-bet/seed self-check flags (localWin, verified, modelMultiplier, commitVerified, …) are present in the dataset but IGNORED by verification — computed at capture time under the superseded inclusive-both-ends band model; every scored figure is re-derived from primitives. See MANIFEST.md#dataset-and-capture and E01 in MANIFEST.md#evidence."
+    }
+  ],
+  "summary": {
+    "passed": 22,
+    "flags": 0,
+    "operatorFlags": 0,
+    "captureFlags": 0,
+    "hardFail": 0,
+    "verdict": "PROVABLY FAIR — Full Pass"
+  }
+}

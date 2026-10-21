@@ -1,0 +1,20 @@
+[
+  {
+    "name": "SURVIVOR — settlement stage-1 rounding switched from half-UP to half-EVEN",
+    "file": "src/config.ts",
+    "find": "  const multUnits = BigInt(Math.round(multiplier * 1e8));   // stage 1: ROUND_8(multiplier)",
+    "replace": "  const _u1 = multiplier * 1e8, _f1 = Math.floor(_u1), _r1 = _u1 - _f1;\n  const multUnits = BigInt(_r1 > 0.5 || (_r1 === 0.5 && _f1 % 2 === 1) ? _f1 + 1 : _f1);   // stage 1: HALF-EVEN variant",
+    "runner": "verify",
+    "expect": "PROVABLY FAIR",
+    "guard": "DECLARED SURVIVOR of `npm run verify` (limitation L6). Settlement is two-stage; stage 2's half-EVEN mode is witnessed by 274 exact 8-dp ties in the capture and is killed by the half-up mutation in tests/mutations.json. Stage 1's mode is NOT witnessed. Exact 8-dp ties in 9900/basisPoints exist at only two basis points, 2048 (multiplier 4.833984375) and 6144 (1.611328125) — and only 6144 DISCRIMINATES: at 2048 the quotient before the tie digit is odd, so half-up and half-even both resolve to 4.83398438 and the two modes agree. At 6144 half-up gives 1.61132813 and half-even 1.61132812, and even there the difference survives only at a stake that preserves it — $1 does, $0.10 erases it in the stage-2 rounding. So the single discriminating case is a settled win on basisPoints 6144 at a stake of $1 or more. No captured bet lands on either band, so switching stage 1 to half-even changes no credit in the dataset and no scored step can see it. The audit models stage 1 as half-up (Math.round) and states that as an ASSUMED premise rather than a finding; the shipped 9,800-case sweep in tests/dice/settlementTests.ts compares Math.round against exact half-up, so it is tie-safe by its own definition and would pass under either operator mode. Only a live capture can produce the discriminating evidence."
+  },
+  {
+    "name": "SURVIVOR (verify-only) — operator-side modulo-bias rejection guard removed",
+    "file": "src/rng.ts",
+    "find": "    if (v < limit) return v % range;",
+    "replace": "    return v % range;",
+    "runner": "verify",
+    "expect": "PROVABLY FAIR",
+    "guard": "DECLARED SURVIVOR of `npm run verify` ONLY — `npm test` (mocha && verify) REJECTS it. Removing the rejection guard changes a draw only when a 32-bit digest chunk lands in the rejected tail, which happens with probability about 1.7e-6 per draw: none of the 6,700 captured bets and none of the session RNG vectors hits it, so a guardless server would have produced byte-identical data and no SCORED STEP can see the difference. The unit suite is a different matter: tests/dice/rngTests.ts force-exercises the branch with a constructed vector, so `npx mocha` fails. State it that way round — 'survives the suite' was too strong (client QA 2026-09-10). What the mocha vector proves is that the audit's src/rng.ts (rebuilt from docs/ALGORITHM.md, which takes the guard from the standard construction, O2) has the guard, not that the operator's does; that remains an ASSUMED premise (L11), scoped in the report as a bias impact of at most 1.7e-6 if absent."
+  }
+]
