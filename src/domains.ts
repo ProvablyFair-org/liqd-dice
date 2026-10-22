@@ -43,6 +43,7 @@
 import {
   RANGE, SCALE, CURSOR, HOUSE_EDGE, MIN_ODDS, MAX_ODDS,
   SIM_UNIFORMITY_DRAWS, SIM_SERIAL_DRAWS, SIM_EDGE_BETS, SIM_RTP_BETS,
+  SIM_TARGETS, SIM_TARGET_BETS, SIM_TARGET_SEED_COUNTER_BASE, SIM_TARGET_SEEDS_EACH,
   SIM_CHERRY_BINS, SIM_CHERRY_WINDOW, SIM_PASS2_NONCES, SIM_PASS2_EARLY_WINDOW,
   EXPECTED_BETS, EXPECTED_SEEDS,
 } from './config';
@@ -130,8 +131,9 @@ export function domainRules(): Record<string, Rule[]> {
   return {
     // ── outputs/simulation-results.json ──────────────────────────────────────────────────────────
     'simulation-results.json': [
-      // artifact schema version (1 = raw statistics only, 2 = also the integer counts behind them).
-      { path: /^\.schemaVersion$/, domain: intBetween(1, 2, 'artifact schema version') },
+      // artifact schema version (1 = raw statistics only, 2 = also the integer counts behind them,
+      // 3 = schema 2 plus the 98-target edge convergence and its cross-target mean).
+      { path: /^\.schemaVersion$/, domain: intBetween(1, 3, 'artifact schema version') },
       // model: config echoes — must equal the src/config.ts constants exactly.
       { path: /^\.model\.range$/, domain: exactly(RANGE, 'RANGE') },
       { path: /^\.model\.cursor$/, domain: exactly(CURSOR, 'CURSOR') },
@@ -181,6 +183,35 @@ export function domainRules(): Record<string, Rule[]> {
       { path: /^\.pass1\.effectiveEdge\[\]\.n$/, domain: exactly(SIM_EDGE_BETS, 'SIM_EDGE_BETS') },
       { path: /^\.pass1\.effectiveEdge\[\]\.wins$/, domain: intBetween(0, SIM_EDGE_BETS, 'schema-2 integer win count behind a band RTP') },
       { path: /^\.pass1\.effectiveEdge\[\]\.se$/, domain: NONNEG_REAL },
+
+      // pass1 — edge convergence on the 98 over-mode targets, each with its per-mark running series
+      { path: /^\.pass1\.targets\[\]\.params\.(lower|upper)$/, domain: BAND_BOUND },
+      { path: /^\.pass1\.targets\[\]\.seedCounterFirst$/, domain: intBetween(SIM_TARGET_SEED_COUNTER_BASE, SIM_TARGET_SEED_COUNTER_BASE + (SIM_TARGETS.length - 1) * SIM_TARGET_SEEDS_EACH, 'a target\'s first position in the pinned seed stream') },
+      { path: /^\.pass1\.targets\[\]\.seedCounterCount$/, domain: exactly(SIM_TARGET_SEEDS_EACH, 'SIM_TARGET_SEEDS_EACH') },
+      { path: /^\.pass1\.targets\[\]\.quotedMultiplier$/, domain: MULTIPLIER },
+      { path: /^\.pass1\.targets\[\]\.discreteWinPct$/, domain: PERCENT },
+      { path: /^\.pass1\.targets\[\]\.(theoreticalRTP|simulatedRTP)$/, domain: RTP },
+      { path: /^\.pass1\.targets\[\]\.theoreticalEdgePct$/, domain: EDGE_PCT },
+      { path: /^\.pass1\.targets\[\]\.deltaSE$/, domain: FINITE },
+      { path: /^\.pass1\.targets\[\]\.tolSE$/, domain: POSITIVE_REAL },
+      { path: /^\.pass1\.targets\[\]\.n$/, domain: exactly(SIM_TARGET_BETS, 'SIM_TARGET_BETS') },
+      { path: /^\.pass1\.targets\[\]\.wins$/, domain: intBetween(0, SIM_TARGET_BETS, 'integer win count behind a target RTP') },
+      { path: /^\.pass1\.targets\[\]\.se$/, domain: NONNEG_REAL },
+      { path: /^\.pass1\.targets\[\]\.marks\[\]\.n$/, domain: intBetween(1, SIM_TARGET_BETS, 'a per-target sample size') },
+      { path: /^\.pass1\.targets\[\]\.marks\[\]\.wins$/, domain: intBetween(0, SIM_TARGET_BETS, 'integer win count at a mark') },
+      { path: /^\.pass1\.targets\[\]\.marks\[\]\.rtp$/, domain: RTP },
+      { path: /^\.pass1\.targets\[\]\.marks\[\]\.se$/, domain: NONNEG_REAL },
+
+      // pass1 — the 98-target mean RTP series (the convergence chart)
+      { path: /^\.pass1\.targetConvergence\.targets$/, domain: exactly(SIM_TARGETS.length, 'SIM_TARGETS.length') },
+      { path: /^\.pass1\.targetConvergence\.perTargetBets$/, domain: exactly(SIM_TARGET_BETS, 'SIM_TARGET_BETS') },
+      { path: /^\.pass1\.targetConvergence\.totalBets$/, domain: exactly(SIM_TARGETS.length * SIM_TARGET_BETS, 'SIM_TARGETS.length × SIM_TARGET_BETS') },
+      { path: /^\.pass1\.targetConvergence\.marks\[\]$/, domain: intBetween(1, SIM_TARGET_BETS, 'a per-target sample size') },
+      { path: /^\.pass1\.targetConvergence\.(theoreticalRTP|finalRTP)$/, domain: RTP },
+      { path: /^\.pass1\.targetConvergence\.(finalSE|finalDeltaSE)$/, domain: NONNEG_REAL },
+      { path: /^\.pass1\.targetConvergence\.points\[\]\.n$/, domain: intBetween(1, SIM_TARGET_BETS, 'a per-target sample size') },
+      { path: /^\.pass1\.targetConvergence\.points\[\]\.rtp$/, domain: RTP },
+      { path: /^\.pass1\.targetConvergence\.points\[\]\.se$/, domain: NONNEG_REAL },
 
       // pass2 — cherry-pick screen + exact null
       { path: /^\.pass2\.seedsTested$/, domain: SEED_COUNT },

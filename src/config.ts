@@ -49,6 +49,21 @@ export const SIM_EDGE_BETS = 2_000_000;
 export const SIM_RTP_BETS = 20_000_000;
 /** The sample sizes the convergence series must contain, in order. */
 export const SIM_RTP_MARKS: readonly number[] = [1_000, 10_000, 100_000, 1_000_000, 5_000_000, 10_000_000, SIM_RTP_BETS];
+/**
+ * EDGE CONVERGENCE ON 98 TARGETS (DICE-20), added 22 October 2026 to standardize on the design of
+ * the Duel dice audit (`v1.0.0`): 98 targets × 1,000,000 bets each. Duel's targets are "roll over
+ * 2.00 … over 99.00"; on LIQD the same targets are the over-mode bands [X, 100) for X = 2, 3, …, 99
+ * (win chance 98% … 1%, 1.0102× … 99×; LIQD's MIN_ODDS 1.0102 is exactly `over 2.00`). Each target
+ * is scored within 5·SE + 1e-4 of its theoretical RTP, and the MEAN simulated RTP over the 98 targets
+ * at each of SIM_TARGET_MARKS (Duel's marks) is the convergence series the chart draws.
+ *
+ * Everything above is unchanged from v1.0.0 and runs first, on the same seeds: the targets are
+ * APPENDED, after the nine bands, on the continuation of the same pinned seed stream (see
+ * SIM_TARGET_SEED_COUNTER_BASE).
+ */
+export const SIM_TARGET_BETS = 1_000_000;
+/** Per-target sample sizes at which the cross-target mean RTP is recorded, in order; the last is SIM_TARGET_BETS. */
+export const SIM_TARGET_MARKS: readonly number[] = [10_000, 50_000, 100_000, 500_000, SIM_TARGET_BETS];
 /** Pass-2 cherry-pick screen geometry: one window is SIM_CHERRY_WINDOW draws over SIM_CHERRY_BINS bins. */
 export const SIM_CHERRY_BINS = 20;
 export const SIM_CHERRY_WINDOW = 50;
@@ -201,8 +216,8 @@ export const SIM_PASS2_ALPHA = ALPHA;                        // the suite's sing
  * a forged statistic and a Full Pass. Scored inside Step 19 (with the dataset pin), never allowed to
  * abort before the scored steps.
  */
-export const SIMULATION_SHA256 = '8576e0a88526da4a0131afbc4e2de9bf0b52380432ee8b08f7863552b9ad3bbc';
-export const SIMULATION_HTML_SHA256 = '5cbdf7027ad7132b858c6a9e47b2f80354689fae63370d641973fba7e277e67d';
+export const SIMULATION_SHA256 = '55873640715d1f9e38d86e10227791337c5664dca094068b2d8d148fdf9ccd97';
+export const SIMULATION_HTML_SHA256 = '6b7b6bb7c474a49b48effbd31dd69ca952e4af5ee451902dbaff4a745743e02c';
 
 /**
  * The auditor's pinned entropy source for the Pass-1 simulation (DICE-20). Every "fresh" seed the
@@ -234,6 +249,40 @@ export const SIM_EDGE_BANDS: readonly { label: string; params: DiceParams }[] = 
 
 /** The RTP-convergence strategy band — one definition, read by both the producer and Step 16. */
 export const SIM_RTP_STRATEGY: DiceParams = { lower: 0, upper: 50, inverted: false };
+
+/**
+ * The 98 edge-convergence targets: `over X` for X = 2 … 99, i.e. the band [X, 100). The order is
+ * the artifact's row order and the order in which they consume seeds. Step 16 requires the
+ * artifact's target rows to BE these bands, in this order.
+ */
+export const SIM_TARGETS: readonly { label: string; params: DiceParams }[] = Array.from(
+  { length: 98 },
+  (_, i) => ({ label: `over ${i + 2}.00`, params: { lower: i + 2, upper: 100, inverted: false } }),
+);
+
+/**
+ * WHERE THE TARGETS' SEEDS COME FROM — the pre-existing seed source, unchanged.
+ *
+ * Every Pass-1 seed is `randSeed()` in `src/simulate.ts`: HMAC-SHA256(SIM_MASTER_SEED, counter)
+ * truncated to 16 bytes (32 hex), the counter starting at 0 and rising by one per seed. That is the
+ * v1.0.0 derivation, and the v1.0.0 blocks consume it in their v1.0.0 order, so they get the same
+ * seeds and the same figures:
+ *
+ *   uniformity + serial      2 + SIM_UNIFORMITY_DRAWS/50 = 40,002 seeds   counters 0 … 40,001
+ *   under-50 convergence     2 + SIM_RTP_BETS/50         = 400,002 seeds  counters 40,002 … 440,003
+ *   nine bands               9 × (2 + SIM_EDGE_BETS/50)  = 360,018 seeds  counters 440,004 … 800,021
+ *
+ * The targets continue the SAME stream from counter 800,022, and each consumes it exactly as a band
+ * does (`src/simulate.ts`): `s = randSeed(), c = randSeed()`, then a fresh server seed `s =
+ * randSeed()` every 50 bets (nonce = bet index mod 50, like a real 50-bet epoch). Target t (0-based,
+ * `over (t+2).00`) therefore uses counters SIM_TARGET_SEED_COUNTER_BASE + t·SIM_TARGET_SEEDS_EACH …
+ * + SIM_TARGET_SEEDS_EACH − 1: its client seed at +1 and its server seeds at +2 … +20,001. No seed
+ * was chosen, searched or re-rolled: the counters are fixed by this arithmetic on the pinned depths,
+ * and Step 16 re-derives each target's first counter, client seed and first server seed from it.
+ */
+export const SIM_TARGET_SEED_COUNTER_BASE =
+  (2 + SIM_UNIFORMITY_DRAWS / 50) + (2 + SIM_RTP_BETS / 50) + SIM_EDGE_BANDS.length * (2 + SIM_EDGE_BETS / 50);
+export const SIM_TARGET_SEEDS_EACH = 2 + SIM_TARGET_BETS / 50;
 
 /** Stable key for a band, for set-identity comparisons. */
 export function bandKey(p: DiceParams): string {

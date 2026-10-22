@@ -63,8 +63,61 @@
  * experiment. `artifactSchemaVersion` reports which regime an artifact was scored under.
  */
 
-/** The schema `src/simulate.ts` emits. Artifacts without the field are schema 1 (historical). */
-export const SIM_SCHEMA_VERSION = 2;
+/**
+ * The schema `src/simulate.ts` emits. Artifacts without the field are schema 1 (historical).
+ * Schema 3 (22 October 2026) is schema 2 plus the 98-target edge convergence: `pass1.targets[]`
+ * (one row per target, with its seed-stream position and its integer win counts at every mark) and
+ * `pass1.targetConvergence`, the cross-target mean of those rows. Every schema-2 block is unchanged.
+ */
+export const SIM_SCHEMA_VERSION = 3;
+
+import { createHmac } from 'node:crypto';
+import { SIM_MASTER_SEED } from './config';
+
+/**
+ * The Pass-1 seed at a given position of the pinned stream: HMAC-SHA256(SIM_MASTER_SEED, counter)
+ * truncated to 16 bytes, 32 hex characters. The SAME expression as `randSeed()` in
+ * `src/simulate.ts` (unchanged since 19 September 2026); restated here so Step 16 can re-derive a
+ * target's seeds from its counter without running the producer.
+ */
+export function simSeedAt(counter: number): string {
+  return createHmac('sha256', Buffer.from(SIM_MASTER_SEED, 'hex')).update(String(counter)).digest().subarray(0, 16).toString('hex');
+}
+
+/**
+ * The standard error of a band or target row's simulated RTP at the band's EXACT lattice win
+ * probability `pr`: SE = sqrt(pr·(m − rtp)² + (1 − pr)·rtp²) / sqrt(n). The expression the
+ * effective-edge rows have used since v1.0.0, single-sourced for the target rows.
+ */
+export function rowSE(pr: number, m: number, rtp: number, n: number): number {
+  return Math.sqrt(pr * (m - rtp) ** 2 + (1 - pr) * rtp ** 2) / Math.sqrt(n);
+}
+
+/**
+ * One point of the cross-target convergence series: the MEAN simulated RTP over the targets at a
+ * common per-target sample size, and its standard error. The targets run on disjoint stretches of
+ * the seed stream, so they are independent and the variance of the mean is the sum of the
+ * per-target variances over T²:
+ *
+ *     rtp = Σ rtpₜ / T          se = sqrt(Σ seₜ²) / T
+ *
+ * where rtpₜ and seₜ are the target's own running RTP and standard error at that mark
+ * (`convergenceSE`, SE = σ/√n). Summed in the targets' declared order. The producer and Step 16
+ * both call this, Step 16 on values it has first re-derived from the integer win counts.
+ */
+export function crossTargetPoint(perTarget: readonly { rtp: number; se: number }[]): { rtp: number; se: number } {
+  let sr = 0, sv = 0;
+  for (const t of perTarget) { sr += t.rtp; sv += t.se ** 2; }
+  const T = perTarget.length;
+  return { rtp: sr / T, se: Math.sqrt(sv) / T };
+}
+
+/** The theoretical value of the cross-target mean: Σ theoreticalRTPₜ / T, summed in declared order. */
+export function crossTargetTheory(theo: readonly number[]): number {
+  let s = 0;
+  for (const t of theo) s += t;
+  return s / theo.length;
+}
 
 /**
  * NUMERICAL COMPARISON POLICY — stated, not assumed.
@@ -99,9 +152,9 @@ export const SIM_SCHEMA_VERSION = 2;
  *      expression (`src/simulate.ts`);
  *   3. require the published RTP to BE `reconstructedReturn / n`, bit for bit.
  *
- * All sixteen published statistics of the committed artifact — nine effective-edge rows and seven
- * convergence checkpoints — satisfy step 3 EXACTLY, so the honest artifact needs no tolerance at
- * all and none is spent on it.
+ * Every published RTP of the committed artifact satisfies step 3 EXACTLY — the nine effective-edge
+ * rows and seven under-50 checkpoints, and (since 22 October 2026) the 98 target rows and their 490
+ * per-mark checkpoints — so the honest artifact needs no tolerance at all and none is spent on it.
  *
  * A FALLBACK exists for one case and one case only: a return summed in a different ORDER (or as
  * `w · m` in one multiplication) is a legitimate producer that lands a few ulps away. That case is
@@ -384,9 +437,9 @@ export function runsStatistic(runs: number, n1: number, n: number): { expected: 
  * The three Bonferroni-corrected Pass-1 screens still have a family-wise level of EXACTLY α = 0.01
  * between them; the claim of a 1 % error rate belongs to those three and is now written that way.
  * The remaining four are listed with their own sizes so the total is visible rather than implied.
- * Union bound over all seven: ≈ 0.0300 — dominated by Pass 1 (0.01) plus the two scored Pass-2
- * screens (0.01 each: the served-band return and the flag-count binomial), with the 5·SE band
- * screens contributing about 5.7e-6 in total.
+ * Union bound over all seven: ≈ 0.0300625 — dominated by Pass 1 (0.01) plus the two scored Pass-2
+ * screens (0.01 each: the served-band return and the flag-count binomial), with the 5·SE row and
+ * final-point screens (107 rows + 2 points) contributing about 6.25e-5 in total.
  *
  * NOT IN THE LIST, ON PURPOSE: the pooled real-roll uniformity χ² (DICE-22). It is INFORMATIONAL
  * since 2026-09-29 — a rejection there prints INFO and cannot fail Step 17 (tests/steps/simulation.ts,
@@ -395,7 +448,7 @@ export function runsStatistic(runs: number, n1: number, n: number): { expected: 
  *
  * NOT A STEP LEVEL EITHER. "The step's level is α = 0.01" must not be published for STEP 16, which
  * also scores S4 and S5: α = 0.01 is the level of S1–S3, and Step 16's own union bound is
- * STEP_16_BOUND ≈ 0.0100057. Small, but the published number has to be the one the decision rule
+ * STEP_16_BOUND ≈ 0.0100625. Small, but the published number has to be the one the decision rule
  * implies, not the one a subset of it implies.
  *
  * APPROXIMATION LIMITS, and what these numbers are NOT. These are the NOMINAL sizes of the reference
@@ -416,15 +469,19 @@ export const SCORED_STATISTICAL_PREDICATES: readonly { id: string; step: number;
   { id: 'S1', step: 16, screen: 'Pass-1 draw uniformity χ², two-sided (upper: non-uniform; lower: too uniform)', size: 'α/3 = 3.333e-3' },
   { id: 'S2', step: 16, screen: 'Pass-1 lag-1 autocorrelation |z| vs the two-sided critical z', size: 'α/3 = 3.333e-3' },
   { id: 'S3', step: 16, screen: 'Pass-1 Wald–Wolfowitz runs test, two-sided', size: 'α/3 = 3.333e-3' },
-  { id: 'S4', step: 16, screen: 'nine effective-edge bands, each |simRTP − theory| ≤ 5·SE + 1e-4', size: '≈5.73e-7 per band, ≈5.16e-6 over nine' },
-  { id: 'S5', step: 16, screen: 'RTP-convergence final point within 5·SE + 1e-4 of theory', size: '≈5.73e-7' },
+  { id: 'S4', step: 16, screen: 'nine effective-edge bands and 98 over-mode targets, each |simRTP − theory| ≤ 5·SE + 1e-4', size: '≈5.73e-7 per row, ≈6.13e-5 over 107' },
+  { id: 'S5', step: 16, screen: 'the under-50 convergence final point and the 98-target mean RTP, each within 5·SE + 1e-4 of theory', size: '≈5.73e-7 each, ≈1.15e-6 for both' },
   { id: 'S6', step: 17, screen: 'cherry-pick flag count, exact one-sided binomial', size: '≤ α = 0.01 (discrete, achieved size below α)' },
   { id: 'S7', step: 17, screen: 'served-band return, one-sided normal lower tail', size: 'α = 0.01' },
 ];
 
+/** Rows scored by S4 (nine bands + 98 targets) and points scored by S5 (two series' final points). */
+export const S4_ROWS = 9 + 98;
+export const S5_POINTS = 2;
+
 /**
- * Union bound over the screens STEP 16 ALONE scores: S1–S3 family-wise at α, plus the ten 5·SE band
- * checks. It exists so that "the step's level is α = 0.01" cannot be published for a step that also
+ * Union bound over the screens STEP 16 ALONE scores: S1–S3 family-wise at α, plus the 107 5·SE row
+ * checks (S4) and the two 5·SE final-point checks (S5). It exists so that "the step's level is α = 0.01" cannot be published for a step that also
  * scores S4 and S5. α = 0.01 is the level of the THREE corrected
  * screens; Step 16's own nominal bound is this number, and it is quoted from here rather than typed.
  *
@@ -435,7 +492,7 @@ export const SCORED_STATISTICAL_PREDICATES: readonly { id: string; step: number;
  * a "perfection proves fabrication" rule, which rejects outcomes that honest runs produce with
  * positive probability and is therefore an unpriced addition to the error budget.
  */
-export const STEP_16_BOUND = 0.01 + 9 * 5.733e-7 + 5.733e-7;
+export const STEP_16_BOUND = 0.01 + S4_ROWS * 5.733e-7 + S5_POINTS * 5.733e-7;
 
 /** Family-wise upper bound over SCORED_STATISTICAL_PREDICATES, by the union bound. */
 export const FAMILY_WISE_BOUND = STEP_16_BOUND + 0.01 + 0.01;

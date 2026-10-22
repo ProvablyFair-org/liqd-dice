@@ -3,14 +3,14 @@
   "auditIdStatus": "confirmed by ProvablyFair.org",
   "game": "dice",
   "casino": "liqd",
-  "release": "v1.0.0",
+  "release": "v1.1.0",
   "framework": "1.1",
   "datasetSha256": "ca1a181a9b4c89a1823e15fe71603b7a5e2267382c134873d80cba536d3aef34",
   "artifacts": {
     "outputs/report-figures.json": "3edbc8f284454347cdf1cc77968ff0bce586a11634cbd0242082de12221c0730",
-    "outputs/rtp-convergence.html": "5cbdf7027ad7132b858c6a9e47b2f80354689fae63370d641973fba7e277e67d",
-    "outputs/simulation-results.json": "8576e0a88526da4a0131afbc4e2de9bf0b52380432ee8b08f7863552b9ad3bbc",
-    "outputs/verification-results.json": "b1fd3bcce20c3145466422f00a7d0ab660e6a80a5ec9f215134131125cf2fcb4",
+    "outputs/rtp-convergence.html": "6b7b6bb7c474a49b48effbd31dd69ca952e4af5ee451902dbaff4a745743e02c",
+    "outputs/simulation-results.json": "55873640715d1f9e38d86e10227791337c5664dca094068b2d8d148fdf9ccd97",
+    "outputs/verification-results.json": "819510fedb6d0e415dfc43bdf60a7b8725fbbe84c0f767de5be23d92d873ff51",
     "outputs/rtp-claim-table.json": "075811c734cfbf4bdf1b374d8aac719f823caad23a86a3e30b73cb02b056ee06",
     "data/dice-master-6700bets.json": "ca1a181a9b4c89a1823e15fe71603b7a5e2267382c134873d80cba536d3aef34"
   },
@@ -36,6 +36,6 @@
     "node": "22",
     "command": "npm ci && npm test"
   },
-  "supersedes": null,
+  "supersedes": "v1.0.0",
   "signature": "SHA256:gEujiJm2pRyq7lQsfYQfQ1r97H/J7GdaKHbOW8GtikY"
 }

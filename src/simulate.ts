@@ -20,6 +20,12 @@
  *   4. Effective-edge table (scored): for representative bands across all four modes, the
  *      simulated return converges to theoreticalRTP(band) = 1 − effectiveEdge(band); the max
  *      |simRTP − theoRTP| must fall inside a 5·SE + buffer tolerance.
+ *   5. Edge convergence on 98 targets (scored + chart; added 22 October 2026, the Duel dice
+ *      standard): `over 2.00` … `over 99.00` × 1,000,000 bets each, every target within 5·SE +
+ *      buffer, and the MEAN simulated RTP over the 98 targets at 10k/50k/100k/500k/1M bets per
+ *      target, SE = sqrt(Σ SEₜ²)/98, as the convergence chart. Blocks 1–4 run first and unchanged,
+ *      so they consume the same seeds as in v1.0.0; the targets continue the same seed stream
+ *      (src/config.ts SIM_TARGET_SEED_COUNTER_BASE), each consuming it exactly as a band does.
  *
  * Pass 2 — casino seeds from the captured dataset's revealed serverSeeds. TWO screens:
  *   (a) SERVED-BAND PAYOUT-WEIGHTED RETURN (DICE-21, load-bearing): every revealed seed replayed for
@@ -52,7 +58,8 @@
  * IF YOU REGENERATE, YOU MUST RE-PIN AND RE-SWEEP. `SIMULATION_SHA256` and
  * `SIMULATION_HTML_SHA256` in src/config.ts must be updated to the new files, and every Pass-1
  * figure quoted in the .md chapters (uniformity χ², serial z-scores, the nine band RTPs, the
- * convergence series and its Δ/SE) is now stale — sweep them in the same pass. Steps 16/19 will tell
+ * convergence series and its Δ/SE, the 98 target RTPs and their mean) is now stale — sweep them in
+ * the same pass. Steps 16/19 will tell
  * you the pin is wrong; nothing will tell you the prose is.
  *
  * Output: outputs/simulation-results.json, outputs/rtp-convergence.html
@@ -69,12 +76,12 @@ import {
   SIM_UNIFORMITY_DRAWS, SIM_SERIAL_DRAWS, SIM_EDGE_BETS, SIM_RTP_BETS, SIM_RTP_MARKS,
   SIM_EDGE_BANDS, SIM_RTP_STRATEGY, SIM_CHERRY_BINS, SIM_CHERRY_WINDOW, SIM_CHERRY_SEED_ALPHA,
   SIM_PASS2_NONCES, SIM_PASS2_EARLY_WINDOW, SIM_PASS2_ALPHA,
-  SIM_MASTER_SEED,
+  SIM_MASTER_SEED, SIM_TARGETS, SIM_TARGET_BETS, SIM_TARGET_MARKS, SIM_TARGET_SEED_COUNTER_BASE, SIM_TARGET_SEEDS_EACH,
   quotedMultiplier, discreteWinProbability, theoreticalRTP, diceWin, servedReturnSign,
 } from './config';
 import type { DiceParams } from './types';
 import { squareSum, upperTailBySquareSum, chi2FromSquareSum, cherryFlagRate, achievedSeedAlpha, exactNull } from './exact-chi2';
-import { SIM_SCHEMA_VERSION } from './sim-checks';
+import { SIM_SCHEMA_VERSION, rowSE, convergenceSE, crossTargetPoint, crossTargetTheory } from './sim-checks';
 import { loadDataset } from './loader';
 import { renderConvergenceChart } from './chart';
 
@@ -189,6 +196,49 @@ function pass1() {
     };
   });
 
+  // (5) Edge convergence on the 98 targets, APPENDED after everything above so blocks 1–4 keep their
+  // v1.0.0 seeds. The stream position is asserted, not assumed: if any block above consumed a
+  // different number of seeds, the targets would start somewhere else, and this refuses to run.
+  if (simSeedCounter !== SIM_TARGET_SEED_COUNTER_BASE) {
+    throw new Error(`seed stream at counter ${simSeedCounter} before the targets, expected SIM_TARGET_SEED_COUNTER_BASE ${SIM_TARGET_SEED_COUNTER_BASE}`);
+  }
+  const targetRows = SIM_TARGETS.map(({ label, params: p }) => {
+    const m = quotedMultiplier(p);
+    const seedCounterFirst = simSeedCounter;
+    // Exactly the band loop above: s = randSeed(), c = randSeed(), a fresh server seed every 50 bets.
+    let wn = 0, wi = 0, k = 0;
+    let s = randSeed(); const c = randSeed();
+    let firstServerSeed = '';
+    const marks: { n: number; wins: number; rtp: number; se: number }[] = [];
+    for (let i = 0; i < SIM_TARGET_BETS; i++) {
+      if (i % 50 === 0) { s = randSeed(); if (i === 0) firstServerSeed = s; }
+      const roll = drawFrom(s, c, i % 50) / SCALE;
+      if (diceWin(roll, p)) { wn += m; wi++; }
+      if (k < SIM_TARGET_MARKS.length && i + 1 === SIM_TARGET_MARKS[k]) {
+        const at = i + 1, r = wn / at;
+        marks.push({ n: at, wins: wi, rtp: r, se: convergenceSE(at, r, wi, m) });
+        k++;
+      }
+    }
+    if (simSeedCounter - seedCounterFirst !== SIM_TARGET_SEEDS_EACH) throw new Error(`${label}: consumed ${simSeedCounter - seedCounterFirst} seeds, expected ${SIM_TARGET_SEEDS_EACH}`);
+    const simRtp = wn / SIM_TARGET_BETS, theo = theoreticalRTP(p), pr = discreteWinProbability(p);
+    const se = rowSE(pr, m, simRtp, SIM_TARGET_BETS);
+    return {
+      label, params: p,
+      // Position in the pinned seed stream, and the two seeds Step 16 re-derives from it.
+      seedCounterFirst, seedCounterCount: SIM_TARGET_SEEDS_EACH, clientSeed: c, firstServerSeed,
+      quotedMultiplier: m, discreteWinPct: pr * 100,
+      theoreticalRTP: theo, theoreticalEdgePct: (1 - theo) * 100,
+      simulatedRTP: simRtp, deltaSE: Math.abs(simRtp - theo) / se, tolSE: 5,
+      n: SIM_TARGET_BETS, wins: wi, se,
+      withinTol: Math.abs(simRtp - theo) <= 5 * se + 1e-4,
+      marks,
+    };
+  });
+  const targetTheo = crossTargetTheory(targetRows.map((r) => r.theoreticalRTP));
+  const targetPoints = SIM_TARGET_MARKS.map((nAt, j) => ({ n: nAt, ...crossTargetPoint(targetRows.map((r) => r.marks[j])) }));
+  const lastTargetPt = targetPoints[targetPoints.length - 1];
+
   return {
     draws: P1_DRAWS,
     // Two-sided at ALPHA_SCREEN: the upper tail is the real test, the lower tail is the
@@ -227,6 +277,21 @@ function pass1() {
       points,
     },
     effectiveEdge: edgeRows,
+    targets: targetRows,
+    targetConvergence: {
+      method: 'cross-target mean',
+      targets: targetRows.length,
+      perTargetBets: SIM_TARGET_BETS,
+      totalBets: targetRows.length * SIM_TARGET_BETS,
+      marks: [...SIM_TARGET_MARKS],
+      theoreticalRTP: targetTheo,
+      // finalRTP is the LAST plotted point, bit for bit: the mean simulated RTP over the 98 targets
+      // at 1,000,000 bets each. Step 16 requires the identity.
+      finalRTP: lastTargetPt.rtp,
+      finalSE: lastTargetPt.se,
+      finalDeltaSE: Math.abs(lastTargetPt.rtp - targetTheo) / lastTargetPt.se,
+      points: targetPoints,
+    },
   };
 }
 
@@ -414,13 +479,14 @@ console.log(`  Pass 1 draw uniformity : chi2=${p1.uniformity.chi2.toFixed(3)} df
 console.log(`  Pass 1 serial          : lag1Z=${p1.serial.lag1Z.toFixed(3)} runsP=${p1.serial.runsP.toFixed(4)} ${p1.serial.pass ? '✓' : '✗'}`);
 console.log(`  Pass 1 RTP (under 50)  : sim ${(p1.rtpConvergence.finalRTP * 100).toFixed(3)}%  theo ${(p1.rtpConvergence.theoreticalRTP * 100).toFixed(3)}%`);
 console.log(`  Pass 1 effective-edge  : ${p1.effectiveEdge.filter(r => r.withinTol).length}/${p1.effectiveEdge.length} bands within 5·SE`);
+console.log(`  Pass 1 98 targets      : ${p1.targets.filter(r => r.withinTol).length}/${p1.targets.length} within 5·SE; mean simulated RTP ${(p1.targetConvergence.finalRTP * 100).toFixed(4)}% vs ${(p1.targetConvergence.theoreticalRTP * 100).toFixed(4)}%, SE ${(p1.targetConvergence.finalSE * 100).toFixed(4)} pp, Δ ${p1.targetConvergence.finalDeltaSE.toFixed(4)}·SE; seed counters ${SIM_TARGET_SEED_COUNTER_BASE} … ${simSeedCounter - 1}`);
 const p2 = pass2();
 if (p2.available) {
   console.log(`  Pass 2 casino seeds    : ${p2.seedsTested} seeds, exact null (${p2.nullSupportValues} support values from ${p2.nullPartitions} partitions), cherry-pick flags ${p2.cherryPickFlags} (expected ${p2.cherryPickExpected.toFixed(2)} at p0=${p2.cherryPickP0.toFixed(10)}, exact P(X≥${p2.cherryPickFlags})=${p2.cherryPickBinomialP.toFixed(4)} vs α=${p2.cherryPickAlpha} → ${p2.cherryPickConsistent ? 'consistent with chance ✓' : 'ELEVATED ✗'}), pooled real-roll p=${p2.pooledRealRollUniformity.pValue.toFixed(4)}`);
   const sb = p2.servedBand;
   console.log(`  Pass 2 served-band ret : ${sb.epochs} epochs × ${sb.nonces} nonces, aggregate early z=${sb.aggEarlyZ.toFixed(3)}, one-sided lower-tail p=${sb.aggEarlyP.toFixed(4)} vs α=${sb.alpha} → ${sb.aggEarlyP >= sb.alpha ? 'no return deficit detected at this power ✓' : 'RETURN DEFICIT — CHERRY-PICK SIGNAL ✗'} (${sb.directionBelow} below / ${sb.epochs - sb.directionBelow - sb.directionAbove} equal / ${sb.directionAbove} above expectation, exact arithmetic; detects a per-bet return deficit of ${sb.minDetectablePerBetPct.toFixed(3)} pp or more at 80% power)`);
 }
-writeChart(p1.rtpConvergence);
+writeChart(p1.targetConvergence);
 
 fs.writeFileSync(path.join(OUT, 'simulation-results.json'), JSON.stringify({
   // NO generatedAt / run metadata (DICE-20, DICE-27). The Pass-1 experiment is deterministic

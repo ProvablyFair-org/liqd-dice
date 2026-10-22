@@ -1,5 +1,6 @@
 /**
- * The RTP-convergence chart, as a pure function of the convergence series.
+ * The RTP-convergence chart, as a pure function of the convergence series: the mean simulated RTP
+ * of the 98 over-mode targets at each per-target sample size (`pass1.rtpConvergence`), ±5·SE.
  *
  * WHY IT IS ITS OWN MODULE. `outputs/rtp-convergence.html` is the twin output
  * of the same `npm run simulate` that writes `outputs/simulation-results.json`, and it is quoted in
@@ -38,8 +39,8 @@ export function renderConvergenceChart(rtp: ConvergenceSeries): string {
 <line x1="${ml}" y1="${theoY.toFixed(1)}" x2="${W - mr}" y2="${theoY.toFixed(1)}" stroke="#16a34a" stroke-dasharray="5,4" stroke-width="1.5"/>
 <text x="${W - mr}" y="${(theoY - 6).toFixed(1)}" font-size="11" text-anchor="end" fill="#16a34a">theoretical RTP ${(rtp.theoreticalRTP * 100).toFixed(2)}%</text>
 <path d="${line}" fill="none" stroke="#1e3a8a" stroke-width="2"/>
-<text x="${ml}" y="18" font-size="13" font-weight="600" fill="#111">Dice RTP convergence — under 50 (1.98×), ±5·SE band (SE = σ/√n)</text>
-<text x="${(ml + iw / 2).toFixed(0)}" y="${H - 8}" font-size="11" text-anchor="middle" fill="#666">bets (log scale)</text>
+<text x="${ml}" y="18" font-size="13" font-weight="600" fill="#111">Dice RTP convergence — mean of 98 targets (over 2.00 … over 99.00), ±5·SE band (SE = σ/√n)</text>
+<text x="${(ml + iw / 2).toFixed(0)}" y="${H - 8}" font-size="11" text-anchor="middle" fill="#666">bets per target (log scale)</text>
 </svg>`;
   return `<!doctype html><html><head><meta charset="utf-8"><title>Dice RTP convergence</title></head><body style="margin:24px;font-family:system-ui">${svg}</body></html>`;
 }

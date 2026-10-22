@@ -1,6 +1,6 @@
 # LIQD Dice — Provably Fair Audit
 
-**Auditor:** [ProvablyFair.org](https://www.provablyfair.org) · **Audit ID:** `PF-2026-LQ04` · **Release:** `v1.0.0` (the first public release) · **Capture:** 27 August 2026, `qa.liqd.com`
+**Auditor:** [ProvablyFair.org](https://www.provablyfair.org) · **Audit ID:** `PF-2026-LQ04` · **Release:** `v1.1.0` (supersedes `v1.0.0`, the first public release) · **Capture:** 27 August 2026, `qa.liqd.com`
 
 **Result: PROVABLY FAIR — Full Pass** *(provisional — pre-launch capture)*. 22/22 steps pass (21 scored + 1 informational), with 0 flags and 0 hard fails. All 6,700 captured rolls recompute bit-for-bit from their `(serverSeed, clientSeed, nonce)` inputs, all 134 seed epochs were revealed and hash to their commitments, and every credited payout matches the two-stage 8-dp settlement rule exactly. "Pre-launch" means the bets were placed on LIQD's pre-production host `qa.liqd.com`; that `liqd.com` production serves the same build is not established.
 
@@ -14,7 +14,7 @@
 | Seed records | 134/134 commitments match their reveals; 133/133 next-seed links; nonces 0–49 in every epoch |
 | Payouts | 2,807 wins at the bit-exact `9900/basisPoints` multiplier, credited by `ROUND_HALF_EVEN_8(stake × ROUND_8(multiplier))`; 3,893 losses pay 0; wallet credits agree row for row |
 | Edge | exactly 1.0000% on all 6,700 bets, a model identity resting on 2 discriminating verifier probes |
-| Simulation evidence | 2,000,000-draw uniformity, a 200,000-roll serial screen, 9 edge bands and a 20,000,000-draw convergence series; 134 revealed seeds × 10,000 nonces cherry-pick screen |
+| Simulation evidence | 98 targets (`over 2.00` to `over 99.00`) × 1,000,000 bets each, the design of the Duel dice audit: all 98 within 5·SE of theory, mean simulated RTP 99.0203% against 99.0000% (SE 0.0207 pp); kept from `v1.0.0` on the same seeds: 2,000,000-draw uniformity, a 200,000-roll serial screen, 9 edge bands across all four modes and a 20,000,000-draw `under 50` series; 134 revealed seeds × 10,000 nonces cherry-pick screen |
 | Observed return | 103.56% over the capture ($2,744.36 on $2,650.00), reported separately from theoretical RTP |
 
 Two operator items are open: LIQD described its payouts as rounded down to 8 decimals, while 1,316 of the 2,807 winning credits are one unit (0.00000001) higher than round-down (reply pending); and a 9900× bet was accepted although LIQD's settings field reads 99. Nineteen declared limitations are in the [overview's limitations](MANIFEST.md#limitations-and-trust).
@@ -28,7 +28,7 @@ npm ci
 npm test
 ```
 
-Expected: **118 unit tests pass; 22/22 steps pass · PROVABLY FAIR — Full Pass; REPRODUCED; release manifest OK; exit 0.** `npm test` runs the unit suite, the scored verification and `node scripts/release-manifest.mjs --check`. It replays every captured bet and scores the committed simulation; it does not regenerate it.
+Expected: **123 unit tests pass; 22/22 steps pass · PROVABLY FAIR — Full Pass; REPRODUCED; release manifest OK; exit 0.** `npm test` runs the unit suite, the scored verification and `node scripts/release-manifest.mjs --check`. It replays every captured bet and scores the committed simulation; it does not regenerate it.
 
 ```sh
 npm run test:full                 # regenerates the simulation from its pinned master seed, then verifies

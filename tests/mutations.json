@@ -361,5 +361,95 @@
     "expectVerdict": "RTP FIGURE OVERSTATED",
     "expect": "[RTP FIGURE OVERSTATED] Step 15",
     "guard": "Step 15 (DICE-19), FIXPASS2 C3(ii): the published figure raised where the verifier reads it (src/rtp-settings.ts RTP_CLAIM, the only copy of the game-page figure in this package; evidence/rtp-page-labels-2026-10-01.json is cited, not read at run time). Every one of the 9,800 settings (99 %) is then 0.25 pp below a 99.25 % claim. With the table and record regenerated the run must end RTP FIGURE OVERSTATED, exit 5, Step 15 OVERSTATED."
+  },
+  {
+    "name": "98-target depth pin loosened",
+    "file": "src/config.ts",
+    "find": "export const SIM_TARGET_BETS = 1_000_000;",
+    "replace": "export const SIM_TARGET_BETS = 500_000;",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 (Simulation Pass 1) must reject target rows that are not at the pinned per-target depth: the depth comes from src/config.ts, never from the rows' own n, so a 500,000-bet target set cannot be presented as the 1,000,000-bet one (added 22 October 2026 with the 98-target edge convergence)"
+  },
+  {
+    "name": "98-target seed-stream base moved by one seed",
+    "file": "src/config.ts",
+    "find": "(2 + SIM_UNIFORMITY_DRAWS / 50) + (2 + SIM_RTP_BETS / 50)",
+    "replace": "(3 + SIM_UNIFORMITY_DRAWS / 50) + (2 + SIM_RTP_BETS / 50)",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 (Simulation Pass 1) must bind every target to its fixed position in the pinned seed stream. The targets continue the v1.0.0 stream at SIM_TARGET_SEED_COUNTER_BASE (800,022, the first counter the v1.0.0 blocks do not consume); moving the base by one seed puts every target row off its declared position and its client and first server seeds no longer re-derive from it"
+  },
+  {
+    "name": "one target moved off its seed-stream position in the artifact",
+    "file": "outputs/simulation-results.json",
+    "find": "\"seedCounterFirst\": 1760118,",
+    "replace": "\"seedCounterFirst\": 1760119,",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 (Simulation Pass 1) must reject a target row whose seed-stream position is not SIM_TARGET_SEED_COUNTER_BASE + t × SIM_TARGET_SEEDS_EACH (`over 50.00` is t = 48, counter 1,760,118), so no target can claim seeds of its own choosing"
+  },
+  {
+    "name": "one target's client seed replaced in the artifact",
+    "file": "outputs/simulation-results.json",
+    "find": "\"clientSeed\": \"92d4974ba56cdeca4aa4383bfb98e8bd\",",
+    "replace": "\"clientSeed\": \"92d4974ba56cdeca4aa4383bfb98e8be\",",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 (Simulation Pass 1) re-derives each target's client seed as HMAC-SHA256(SIM_MASTER_SEED, counter + 1)[0..16] from its stream position and must reject a row carrying any other seed (`over 50.00`, one hex digit changed)"
+  },
+  {
+    "name": "one target's integer win count forged in the artifact",
+    "file": "outputs/simulation-results.json",
+    "find": "\"wins\": 499931,\n        \"se\": 0.0009900000094267807",
+    "replace": "\"wins\": 499932,\n        \"se\": 0.0009900000094267807",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 (Simulation Pass 1) must reject a stored target win count that disagrees with the RTP it is supposed to have produced (`over 50.00`: 499,931 wins at 1.98× is 0.9898633799937595; 499,932 is not)"
+  },
+  {
+    "name": "one target's RTP moved off any integer win count",
+    "file": "outputs/simulation-results.json",
+    "find": "\"simulatedRTP\": 0.9898633799937595,",
+    "replace": "\"simulatedRTP\": 0.98986437,",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 (Simulation Pass 1) must reject a target RTP that no integer win count produces: 0.98986437 at n = 1,000,000 and 1.98× implies 499,931.5 wins"
+  },
+  {
+    "name": "98-target mean RTP point forged in the artifact",
+    "file": "outputs/simulation-results.json",
+    "find": "\"rtp\": 0.9923759118503397,",
+    "replace": "\"rtp\": 0.99237591185034,",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 (Simulation Pass 1) recomputes every plotted point of the 98-target mean series from the targets' own per-mark counts and must reject a plotted mean that is not that mean (first point, 10,000 bets per target)"
+  },
+  {
+    "name": "98-target mean standard error forged (the D3 form)",
+    "file": "outputs/simulation-results.json",
+    "find": "\"se\": 0.0020707703843743",
+    "replace": "\"se\": 123456",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 (Simulation Pass 1) must reject a plotted standard error of the 98-target mean that is not sqrt(Σ SEₜ²)/98 recomputed from the targets' marks. The chart clamps the ±5·SE ribbon to the plot box, so the picture cannot show it (client QA D3, applied to the new series)"
+  },
+  {
+    "name": "98-target set collapsed to a duplicate",
+    "file": "outputs/simulation-results.json",
+    "find": "\"lower\": 2,",
+    "replace": "\"lower\": 3,",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 (Simulation Pass 1) must require the 98 target rows to BE the 98 canonical SIM_TARGETS in order; turning `over 2.00` into a second `over 3.00` leaves 98 rows and must still fail (G-BIND)"
+  },
+  {
+    "name": "98-target mean identity field removed from the artifact",
+    "file": "outputs/simulation-results.json",
+    "find": "\"finalDeltaSE\"",
+    "replace": "\"finalDeltaSEX\"",
+    "runner": "verify",
+    "expect": "NOT PROVABLY FAIR",
+    "guard": "Step 16 (Simulation Pass 1) must require the 98-target series' identity fields (finalRTP, finalSE, finalDeltaSE) to be present and to BE the last plotted point"
   }
 ]

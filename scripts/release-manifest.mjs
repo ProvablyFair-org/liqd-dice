@@ -32,8 +32,9 @@ const CHECK = process.argv.includes('--check');
 
 /**
  * The facts no file in this package can supply. `signature` stays null until the release is
- * signed. `auditIdStatus` records that ProvablyFair.org has confirmed the audit ID. `v1.0.0` is the
- * first public release (ProvablyFair-org/liqd-dice, one commit); it supersedes nothing. `signature`
+ * signed. `auditIdStatus` records that ProvablyFair.org has confirmed the audit ID. `v1.1.0` supersedes `v1.0.0`, the
+ * first public release (ProvablyFair-org/liqd-dice, one commit): it standardizes the simulation on
+ * 98 targets × 1,000,000 bets (the Duel dice audit's design) and adds `.gitattributes`. `signature`
  * is the fingerprint of the SSH key that signs the release commit and tag.
  */
 const DECLARED = {
@@ -41,11 +42,11 @@ const DECLARED = {
   auditIdStatus: 'confirmed by ProvablyFair.org',
   game: 'dice',
   casino: 'liqd',
-  release: 'v1.0.0',
+  release: 'v1.1.0',
   framework: '1.1',
   environmentStage: 'pre-production',
   environmentQualifier: 'provisional',
-  supersedes: null,
+  supersedes: 'v1.0.0',
   signature: 'SHA256:gEujiJm2pRyq7lQsfYQfQ1r97H/J7GdaKHbOW8GtikY',
 };
 

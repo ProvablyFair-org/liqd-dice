@@ -95,7 +95,7 @@ function drawBiasBound() {
   "src/config.js": function (module, exports, require, __filename, __dirname) {
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PAYOUT_NUMERATOR = exports.SIM_RTP_STRATEGY = exports.SIM_EDGE_BANDS = exports.SIM_MASTER_SEED = exports.SIMULATION_HTML_SHA256 = exports.SIMULATION_SHA256 = exports.SIM_PASS2_ALPHA = exports.SIM_PASS2_EARLY_WINDOW = exports.EXPECTED_PHASE_BETS = exports.EXPECTED_EPOCH_SIZE = exports.EXPECTED_SEEDS = exports.EXPECTED_BETS = exports.VERDICT_QUALIFIER = exports.AUDIT_ID = exports.DATASET_SHA256 = exports.ALPHA_SCREEN = exports.ALPHA_SCREENS = exports.ALPHA = exports.SIM_PASS2_NONCES = exports.SIM_CHERRY_SEED_ALPHA = exports.SIM_CHERRY_WINDOW = exports.SIM_CHERRY_BINS = exports.SIM_RTP_MARKS = exports.SIM_RTP_BETS = exports.SIM_EDGE_BETS = exports.SIM_SERIAL_DRAWS = exports.SIM_UNIFORMITY_DRAWS = exports.MAX_ODDS = exports.MIN_ODDS = exports.HOUSE_EDGE = exports.SCALE = exports.CURSOR = exports.RANGE = void 0;
+exports.PAYOUT_NUMERATOR = exports.SIM_TARGET_SEEDS_EACH = exports.SIM_TARGET_SEED_COUNTER_BASE = exports.SIM_TARGETS = exports.SIM_RTP_STRATEGY = exports.SIM_EDGE_BANDS = exports.SIM_MASTER_SEED = exports.SIMULATION_HTML_SHA256 = exports.SIMULATION_SHA256 = exports.SIM_PASS2_ALPHA = exports.SIM_PASS2_EARLY_WINDOW = exports.EXPECTED_PHASE_BETS = exports.EXPECTED_EPOCH_SIZE = exports.EXPECTED_SEEDS = exports.EXPECTED_BETS = exports.VERDICT_QUALIFIER = exports.AUDIT_ID = exports.DATASET_SHA256 = exports.ALPHA_SCREEN = exports.ALPHA_SCREENS = exports.ALPHA = exports.SIM_PASS2_NONCES = exports.SIM_CHERRY_SEED_ALPHA = exports.SIM_CHERRY_WINDOW = exports.SIM_CHERRY_BINS = exports.SIM_TARGET_MARKS = exports.SIM_TARGET_BETS = exports.SIM_RTP_MARKS = exports.SIM_RTP_BETS = exports.SIM_EDGE_BETS = exports.SIM_SERIAL_DRAWS = exports.SIM_UNIFORMITY_DRAWS = exports.MAX_ODDS = exports.MIN_ODDS = exports.HOUSE_EDGE = exports.SCALE = exports.CURSOR = exports.RANGE = void 0;
 exports.bandKey = bandKey;
 exports.continuousWinChancePct = continuousWinChancePct;
 exports.payoutBasisPoints = payoutBasisPoints;
@@ -165,6 +165,21 @@ exports.SIM_EDGE_BETS = 2000000;
 exports.SIM_RTP_BETS = 20000000;
 /** The sample sizes the convergence series must contain, in order. */
 exports.SIM_RTP_MARKS = [1000, 10000, 100000, 1000000, 5000000, 10000000, exports.SIM_RTP_BETS];
+/**
+ * EDGE CONVERGENCE ON 98 TARGETS (DICE-20), added 22 October 2026 to standardize on the design of
+ * the Duel dice audit (`v1.0.0`): 98 targets × 1,000,000 bets each. Duel's targets are "roll over
+ * 2.00 … over 99.00"; on LIQD the same targets are the over-mode bands [X, 100) for X = 2, 3, …, 99
+ * (win chance 98% … 1%, 1.0102× … 99×; LIQD's MIN_ODDS 1.0102 is exactly `over 2.00`). Each target
+ * is scored within 5·SE + 1e-4 of its theoretical RTP, and the MEAN simulated RTP over the 98 targets
+ * at each of SIM_TARGET_MARKS (Duel's marks) is the convergence series the chart draws.
+ *
+ * Everything above is unchanged from v1.0.0 and runs first, on the same seeds: the targets are
+ * APPENDED, after the nine bands, on the continuation of the same pinned seed stream (see
+ * SIM_TARGET_SEED_COUNTER_BASE).
+ */
+exports.SIM_TARGET_BETS = 1000000;
+/** Per-target sample sizes at which the cross-target mean RTP is recorded, in order; the last is SIM_TARGET_BETS. */
+exports.SIM_TARGET_MARKS = [10000, 50000, 100000, 500000, exports.SIM_TARGET_BETS];
 /** Pass-2 cherry-pick screen geometry: one window is SIM_CHERRY_WINDOW draws over SIM_CHERRY_BINS bins. */
 exports.SIM_CHERRY_BINS = 20;
 exports.SIM_CHERRY_WINDOW = 50;
@@ -309,8 +324,8 @@ exports.SIM_PASS2_ALPHA = exports.ALPHA; // the suite's single significance leve
  * a forged statistic and a Full Pass. Scored inside Step 19 (with the dataset pin), never allowed to
  * abort before the scored steps.
  */
-exports.SIMULATION_SHA256 = '8576e0a88526da4a0131afbc4e2de9bf0b52380432ee8b08f7863552b9ad3bbc';
-exports.SIMULATION_HTML_SHA256 = '5cbdf7027ad7132b858c6a9e47b2f80354689fae63370d641973fba7e277e67d';
+exports.SIMULATION_SHA256 = '55873640715d1f9e38d86e10227791337c5664dca094068b2d8d148fdf9ccd97';
+exports.SIMULATION_HTML_SHA256 = '6b7b6bb7c474a49b48effbd31dd69ca952e4af5ee451902dbaff4a745743e02c';
 /**
  * The auditor's pinned entropy source for the Pass-1 simulation (DICE-20). Every "fresh" seed the
  * Pass-1 experiment uses is `HMAC-SHA256(SIM_MASTER_SEED, counter)[0..16]`, consumed in a fixed
@@ -337,6 +352,34 @@ exports.SIM_EDGE_BANDS = [
 ];
 /** The RTP-convergence strategy band — one definition, read by both the producer and Step 16. */
 exports.SIM_RTP_STRATEGY = { lower: 0, upper: 50, inverted: false };
+/**
+ * The 98 edge-convergence targets: `over X` for X = 2 … 99, i.e. the band [X, 100). The order is
+ * the artifact's row order and the order in which they consume seeds. Step 16 requires the
+ * artifact's target rows to BE these bands, in this order.
+ */
+exports.SIM_TARGETS = Array.from({ length: 98 }, (_, i) => ({ label: `over ${i + 2}.00`, params: { lower: i + 2, upper: 100, inverted: false } }));
+/**
+ * WHERE THE TARGETS' SEEDS COME FROM — the pre-existing seed source, unchanged.
+ *
+ * Every Pass-1 seed is `randSeed()` in `src/simulate.ts`: HMAC-SHA256(SIM_MASTER_SEED, counter)
+ * truncated to 16 bytes (32 hex), the counter starting at 0 and rising by one per seed. That is the
+ * v1.0.0 derivation, and the v1.0.0 blocks consume it in their v1.0.0 order, so they get the same
+ * seeds and the same figures:
+ *
+ *   uniformity + serial      2 + SIM_UNIFORMITY_DRAWS/50 = 40,002 seeds   counters 0 … 40,001
+ *   under-50 convergence     2 + SIM_RTP_BETS/50         = 400,002 seeds  counters 40,002 … 440,003
+ *   nine bands               9 × (2 + SIM_EDGE_BETS/50)  = 360,018 seeds  counters 440,004 … 800,021
+ *
+ * The targets continue the SAME stream from counter 800,022, and each consumes it exactly as a band
+ * does (`src/simulate.ts`): `s = randSeed(), c = randSeed()`, then a fresh server seed `s =
+ * randSeed()` every 50 bets (nonce = bet index mod 50, like a real 50-bet epoch). Target t (0-based,
+ * `over (t+2).00`) therefore uses counters SIM_TARGET_SEED_COUNTER_BASE + t·SIM_TARGET_SEEDS_EACH …
+ * + SIM_TARGET_SEEDS_EACH − 1: its client seed at +1 and its server seeds at +2 … +20,001. No seed
+ * was chosen, searched or re-rolled: the counters are fixed by this arithmetic on the pinned depths,
+ * and Step 16 re-derives each target's first counter, client seed and first server seed from it.
+ */
+exports.SIM_TARGET_SEED_COUNTER_BASE = (2 + exports.SIM_UNIFORMITY_DRAWS / 50) + (2 + exports.SIM_RTP_BETS / 50) + exports.SIM_EDGE_BANDS.length * (2 + exports.SIM_EDGE_BETS / 50);
+exports.SIM_TARGET_SEEDS_EACH = 2 + exports.SIM_TARGET_BETS / 50;
 /** Stable key for a band, for set-identity comparisons. */
 function bandKey(p) {
     return `${p.lower}|${p.upper}|${p.inverted ? 1 : 0}`;
@@ -959,8 +1002,9 @@ function domainRules() {
     return {
         // ── outputs/simulation-results.json ──────────────────────────────────────────────────────────
         'simulation-results.json': [
-            // artifact schema version (1 = raw statistics only, 2 = also the integer counts behind them).
-            { path: /^\.schemaVersion$/, domain: (0, exports.intBetween)(1, 2, 'artifact schema version') },
+            // artifact schema version (1 = raw statistics only, 2 = also the integer counts behind them,
+            // 3 = schema 2 plus the 98-target edge convergence and its cross-target mean).
+            { path: /^\.schemaVersion$/, domain: (0, exports.intBetween)(1, 3, 'artifact schema version') },
             // model: config echoes — must equal the src/config.ts constants exactly.
             { path: /^\.model\.range$/, domain: (0, exports.exactly)(config_1.RANGE, 'RANGE') },
             { path: /^\.model\.cursor$/, domain: (0, exports.exactly)(config_1.CURSOR, 'CURSOR') },
@@ -1006,6 +1050,33 @@ function domainRules() {
             { path: /^\.pass1\.effectiveEdge\[\]\.n$/, domain: (0, exports.exactly)(config_1.SIM_EDGE_BETS, 'SIM_EDGE_BETS') },
             { path: /^\.pass1\.effectiveEdge\[\]\.wins$/, domain: (0, exports.intBetween)(0, config_1.SIM_EDGE_BETS, 'schema-2 integer win count behind a band RTP') },
             { path: /^\.pass1\.effectiveEdge\[\]\.se$/, domain: exports.NONNEG_REAL },
+            // pass1 — edge convergence on the 98 over-mode targets, each with its per-mark running series
+            { path: /^\.pass1\.targets\[\]\.params\.(lower|upper)$/, domain: BAND_BOUND },
+            { path: /^\.pass1\.targets\[\]\.seedCounterFirst$/, domain: (0, exports.intBetween)(config_1.SIM_TARGET_SEED_COUNTER_BASE, config_1.SIM_TARGET_SEED_COUNTER_BASE + (config_1.SIM_TARGETS.length - 1) * config_1.SIM_TARGET_SEEDS_EACH, 'a target\'s first position in the pinned seed stream') },
+            { path: /^\.pass1\.targets\[\]\.seedCounterCount$/, domain: (0, exports.exactly)(config_1.SIM_TARGET_SEEDS_EACH, 'SIM_TARGET_SEEDS_EACH') },
+            { path: /^\.pass1\.targets\[\]\.quotedMultiplier$/, domain: MULTIPLIER },
+            { path: /^\.pass1\.targets\[\]\.discreteWinPct$/, domain: exports.PERCENT },
+            { path: /^\.pass1\.targets\[\]\.(theoreticalRTP|simulatedRTP)$/, domain: RTP },
+            { path: /^\.pass1\.targets\[\]\.theoreticalEdgePct$/, domain: EDGE_PCT },
+            { path: /^\.pass1\.targets\[\]\.deltaSE$/, domain: exports.FINITE },
+            { path: /^\.pass1\.targets\[\]\.tolSE$/, domain: exports.POSITIVE_REAL },
+            { path: /^\.pass1\.targets\[\]\.n$/, domain: (0, exports.exactly)(config_1.SIM_TARGET_BETS, 'SIM_TARGET_BETS') },
+            { path: /^\.pass1\.targets\[\]\.wins$/, domain: (0, exports.intBetween)(0, config_1.SIM_TARGET_BETS, 'integer win count behind a target RTP') },
+            { path: /^\.pass1\.targets\[\]\.se$/, domain: exports.NONNEG_REAL },
+            { path: /^\.pass1\.targets\[\]\.marks\[\]\.n$/, domain: (0, exports.intBetween)(1, config_1.SIM_TARGET_BETS, 'a per-target sample size') },
+            { path: /^\.pass1\.targets\[\]\.marks\[\]\.wins$/, domain: (0, exports.intBetween)(0, config_1.SIM_TARGET_BETS, 'integer win count at a mark') },
+            { path: /^\.pass1\.targets\[\]\.marks\[\]\.rtp$/, domain: RTP },
+            { path: /^\.pass1\.targets\[\]\.marks\[\]\.se$/, domain: exports.NONNEG_REAL },
+            // pass1 — the 98-target mean RTP series (the convergence chart)
+            { path: /^\.pass1\.targetConvergence\.targets$/, domain: (0, exports.exactly)(config_1.SIM_TARGETS.length, 'SIM_TARGETS.length') },
+            { path: /^\.pass1\.targetConvergence\.perTargetBets$/, domain: (0, exports.exactly)(config_1.SIM_TARGET_BETS, 'SIM_TARGET_BETS') },
+            { path: /^\.pass1\.targetConvergence\.totalBets$/, domain: (0, exports.exactly)(config_1.SIM_TARGETS.length * config_1.SIM_TARGET_BETS, 'SIM_TARGETS.length × SIM_TARGET_BETS') },
+            { path: /^\.pass1\.targetConvergence\.marks\[\]$/, domain: (0, exports.intBetween)(1, config_1.SIM_TARGET_BETS, 'a per-target sample size') },
+            { path: /^\.pass1\.targetConvergence\.(theoreticalRTP|finalRTP)$/, domain: RTP },
+            { path: /^\.pass1\.targetConvergence\.(finalSE|finalDeltaSE)$/, domain: exports.NONNEG_REAL },
+            { path: /^\.pass1\.targetConvergence\.points\[\]\.n$/, domain: (0, exports.intBetween)(1, config_1.SIM_TARGET_BETS, 'a per-target sample size') },
+            { path: /^\.pass1\.targetConvergence\.points\[\]\.rtp$/, domain: RTP },
+            { path: /^\.pass1\.targetConvergence\.points\[\]\.se$/, domain: exports.NONNEG_REAL },
             // pass2 — cherry-pick screen + exact null
             { path: /^\.pass2\.seedsTested$/, domain: SEED_COUNT },
             { path: /^\.pass2\.(nullPartitions|nullSupportValues)$/, domain: exports.NONNEG_INT },
@@ -1528,21 +1599,24 @@ exports.STEP_CLAIMS = {
                 id: 'DICE-20', coverage: 'full',
                 note: 'scored against the pinned simulation artifact with every DERIVED field re-derived '
                     + '(multiplier, theoretical RTP, SE, deltaSE), a two-sided uniformity screen over 2,000,000 '
-                    + 'draws, a serial screen, 9 effective-edge bands × 2,000,000 spanning both ends of the '
-                    + 'range, and a 20,000,000-bet convergence series whose standard errors and integer win '
-                    + 'counts are recomputed from the artifact rows. The Pass-1 experiment is now DETERMINISTIC '
+                    + 'draws, a serial screen, edge convergence on 98 over-mode targets (over 2.00 … over 99.00) '
+                    + '× 1,000,000 bets each with the 98-target mean RTP as the convergence series (the Duel dice '
+                    + 'design, standardized 22 October 2026; the targets continue the same pinned seed stream '
+                    + 'after the v1.0.0 blocks, at fixed counters re-derived in verify), 9 effective-edge bands × '
+                    + '2,000,000 across all four modes, and the v1.0.0 20,000,000-bet under-50 convergence series, '
+                    + 'all with standard errors and integer win counts recomputed from the artifact rows. The Pass-1 experiment is now DETERMINISTIC '
                     + 'and BYTE-REPLAYABLE (DICE-20): the seed stream is HMAC(SIM_MASTER_SEED, counter) rather '
                     + 'than crypto.randomBytes, the artifact carries no run metadata, so `npm run simulate` '
                     + 'writes identical bytes every time and `npm run test:full` regenerates it with an empty '
                     + 'field diff — the raw Pass-1 statistics (uniformity.chi2, serial.lag1/runsZ, each band\'s '
-                    + 'simulatedRTP, the convergence path) are re-derivable by replaying the pinned producer, '
+                    + 'simulatedRTP, each target\'s win counts, the convergence paths) are re-derivable by replaying the pinned producer, '
                     + 'not merely attested by an unreproducible regeneration. Former limitation L10 (a stale '
                     + 'zCritical field) is resolved by the regeneration — the artifact is now schema 2 and '
                     + 'stores the correct zCritical, re-derived; L1 (a subtly forged statistic was invisible '
                     + 'because a re-run produced different numbers) is NARROWED to the fast-verify path only: '
                     + 'the producer is now a pure function of pinned source, so test:full reproduces the exact '
                     + 'committed figures and exposes any forgery, though the ~1s verify still does not recompute '
-                    + 'the 40M-draw statistics. simulation.pass1.replayable = true',
+                    + 'the 138M-draw statistics. simulation.pass1.replayable = true',
             },
         ],
     },
@@ -3026,15 +3100,71 @@ function assertSupportedRuntime() {
  * experiment. `artifactSchemaVersion` reports which regime an artifact was scored under.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.FAMILY_WISE_BOUND = exports.STEP_16_BOUND = exports.SCORED_STATISTICAL_PREDICATES = exports.RECONSTRUCTION_MAX_WINS = exports.RECONSTRUCTION_MAX_RESIDUAL = exports.SIM_SCHEMA_VERSION = void 0;
+exports.FAMILY_WISE_BOUND = exports.STEP_16_BOUND = exports.S5_POINTS = exports.S4_ROWS = exports.SCORED_STATISTICAL_PREDICATES = exports.RECONSTRUCTION_MAX_WINS = exports.RECONSTRUCTION_MAX_RESIDUAL = exports.SIM_SCHEMA_VERSION = void 0;
+exports.simSeedAt = simSeedAt;
+exports.rowSE = rowSE;
+exports.crossTargetPoint = crossTargetPoint;
+exports.crossTargetTheory = crossTargetTheory;
 exports.reconstructReturn = reconstructReturn;
 exports.reconstructionTolerance = reconstructionTolerance;
 exports.recoverWinCount = recoverWinCount;
 exports.convergenceSE = convergenceSE;
 exports.validateConvergenceSeries = validateConvergenceSeries;
 exports.runsStatistic = runsStatistic;
-/** The schema `src/simulate.ts` emits. Artifacts without the field are schema 1 (historical). */
-exports.SIM_SCHEMA_VERSION = 2;
+/**
+ * The schema `src/simulate.ts` emits. Artifacts without the field are schema 1 (historical).
+ * Schema 3 (22 October 2026) is schema 2 plus the 98-target edge convergence: `pass1.targets[]`
+ * (one row per target, with its seed-stream position and its integer win counts at every mark) and
+ * `pass1.targetConvergence`, the cross-target mean of those rows. Every schema-2 block is unchanged.
+ */
+exports.SIM_SCHEMA_VERSION = 3;
+const node_crypto_1 = require("node:crypto");
+const config_1 = require("./config");
+/**
+ * The Pass-1 seed at a given position of the pinned stream: HMAC-SHA256(SIM_MASTER_SEED, counter)
+ * truncated to 16 bytes, 32 hex characters. The SAME expression as `randSeed()` in
+ * `src/simulate.ts` (unchanged since 19 September 2026); restated here so Step 16 can re-derive a
+ * target's seeds from its counter without running the producer.
+ */
+function simSeedAt(counter) {
+    return (0, node_crypto_1.createHmac)('sha256', Buffer.from(config_1.SIM_MASTER_SEED, 'hex')).update(String(counter)).digest().subarray(0, 16).toString('hex');
+}
+/**
+ * The standard error of a band or target row's simulated RTP at the band's EXACT lattice win
+ * probability `pr`: SE = sqrt(pr·(m − rtp)² + (1 − pr)·rtp²) / sqrt(n). The expression the
+ * effective-edge rows have used since v1.0.0, single-sourced for the target rows.
+ */
+function rowSE(pr, m, rtp, n) {
+    return Math.sqrt(pr * (m - rtp) ** 2 + (1 - pr) * rtp ** 2) / Math.sqrt(n);
+}
+/**
+ * One point of the cross-target convergence series: the MEAN simulated RTP over the targets at a
+ * common per-target sample size, and its standard error. The targets run on disjoint stretches of
+ * the seed stream, so they are independent and the variance of the mean is the sum of the
+ * per-target variances over T²:
+ *
+ *     rtp = Σ rtpₜ / T          se = sqrt(Σ seₜ²) / T
+ *
+ * where rtpₜ and seₜ are the target's own running RTP and standard error at that mark
+ * (`convergenceSE`, SE = σ/√n). Summed in the targets' declared order. The producer and Step 16
+ * both call this, Step 16 on values it has first re-derived from the integer win counts.
+ */
+function crossTargetPoint(perTarget) {
+    let sr = 0, sv = 0;
+    for (const t of perTarget) {
+        sr += t.rtp;
+        sv += t.se ** 2;
+    }
+    const T = perTarget.length;
+    return { rtp: sr / T, se: Math.sqrt(sv) / T };
+}
+/** The theoretical value of the cross-target mean: Σ theoreticalRTPₜ / T, summed in declared order. */
+function crossTargetTheory(theo) {
+    let s = 0;
+    for (const t of theo)
+        s += t;
+    return s / theo.length;
+}
 /**
  * NUMERICAL COMPARISON POLICY — stated, not assumed.
  *
@@ -3068,9 +3198,9 @@ exports.SIM_SCHEMA_VERSION = 2;
  *      expression (`src/simulate.ts`);
  *   3. require the published RTP to BE `reconstructedReturn / n`, bit for bit.
  *
- * All sixteen published statistics of the committed artifact — nine effective-edge rows and seven
- * convergence checkpoints — satisfy step 3 EXACTLY, so the honest artifact needs no tolerance at
- * all and none is spent on it.
+ * Every published RTP of the committed artifact satisfies step 3 EXACTLY — the nine effective-edge
+ * rows and seven under-50 checkpoints, and (since 22 October 2026) the 98 target rows and their 490
+ * per-mark checkpoints — so the honest artifact needs no tolerance at all and none is spent on it.
  *
  * A FALLBACK exists for one case and one case only: a return summed in a different ORDER (or as
  * `w · m` in one multiplication) is a legitimate producer that lands a few ulps away. That case is
@@ -3305,9 +3435,9 @@ function runsStatistic(runs, n1, n) {
  * The three Bonferroni-corrected Pass-1 screens still have a family-wise level of EXACTLY α = 0.01
  * between them; the claim of a 1 % error rate belongs to those three and is now written that way.
  * The remaining four are listed with their own sizes so the total is visible rather than implied.
- * Union bound over all seven: ≈ 0.0300 — dominated by Pass 1 (0.01) plus the two scored Pass-2
- * screens (0.01 each: the served-band return and the flag-count binomial), with the 5·SE band
- * screens contributing about 5.7e-6 in total.
+ * Union bound over all seven: ≈ 0.0300625 — dominated by Pass 1 (0.01) plus the two scored Pass-2
+ * screens (0.01 each: the served-band return and the flag-count binomial), with the 5·SE row and
+ * final-point screens (107 rows + 2 points) contributing about 6.25e-5 in total.
  *
  * NOT IN THE LIST, ON PURPOSE: the pooled real-roll uniformity χ² (DICE-22). It is INFORMATIONAL
  * since 2026-09-29 — a rejection there prints INFO and cannot fail Step 17 (tests/steps/simulation.ts,
@@ -3316,7 +3446,7 @@ function runsStatistic(runs, n1, n) {
  *
  * NOT A STEP LEVEL EITHER. "The step's level is α = 0.01" must not be published for STEP 16, which
  * also scores S4 and S5: α = 0.01 is the level of S1–S3, and Step 16's own union bound is
- * STEP_16_BOUND ≈ 0.0100057. Small, but the published number has to be the one the decision rule
+ * STEP_16_BOUND ≈ 0.0100625. Small, but the published number has to be the one the decision rule
  * implies, not the one a subset of it implies.
  *
  * APPROXIMATION LIMITS, and what these numbers are NOT. These are the NOMINAL sizes of the reference
@@ -3337,14 +3467,17 @@ exports.SCORED_STATISTICAL_PREDICATES = [
     { id: 'S1', step: 16, screen: 'Pass-1 draw uniformity χ², two-sided (upper: non-uniform; lower: too uniform)', size: 'α/3 = 3.333e-3' },
     { id: 'S2', step: 16, screen: 'Pass-1 lag-1 autocorrelation |z| vs the two-sided critical z', size: 'α/3 = 3.333e-3' },
     { id: 'S3', step: 16, screen: 'Pass-1 Wald–Wolfowitz runs test, two-sided', size: 'α/3 = 3.333e-3' },
-    { id: 'S4', step: 16, screen: 'nine effective-edge bands, each |simRTP − theory| ≤ 5·SE + 1e-4', size: '≈5.73e-7 per band, ≈5.16e-6 over nine' },
-    { id: 'S5', step: 16, screen: 'RTP-convergence final point within 5·SE + 1e-4 of theory', size: '≈5.73e-7' },
+    { id: 'S4', step: 16, screen: 'nine effective-edge bands and 98 over-mode targets, each |simRTP − theory| ≤ 5·SE + 1e-4', size: '≈5.73e-7 per row, ≈6.13e-5 over 107' },
+    { id: 'S5', step: 16, screen: 'the under-50 convergence final point and the 98-target mean RTP, each within 5·SE + 1e-4 of theory', size: '≈5.73e-7 each, ≈1.15e-6 for both' },
     { id: 'S6', step: 17, screen: 'cherry-pick flag count, exact one-sided binomial', size: '≤ α = 0.01 (discrete, achieved size below α)' },
     { id: 'S7', step: 17, screen: 'served-band return, one-sided normal lower tail', size: 'α = 0.01' },
 ];
+/** Rows scored by S4 (nine bands + 98 targets) and points scored by S5 (two series' final points). */
+exports.S4_ROWS = 9 + 98;
+exports.S5_POINTS = 2;
 /**
- * Union bound over the screens STEP 16 ALONE scores: S1–S3 family-wise at α, plus the ten 5·SE band
- * checks. It exists so that "the step's level is α = 0.01" cannot be published for a step that also
+ * Union bound over the screens STEP 16 ALONE scores: S1–S3 family-wise at α, plus the 107 5·SE row
+ * checks (S4) and the two 5·SE final-point checks (S5). It exists so that "the step's level is α = 0.01" cannot be published for a step that also
  * scores S4 and S5. α = 0.01 is the level of the THREE corrected
  * screens; Step 16's own nominal bound is this number, and it is quoted from here rather than typed.
  *
@@ -3355,7 +3488,7 @@ exports.SCORED_STATISTICAL_PREDICATES = [
  * a "perfection proves fabrication" rule, which rejects outcomes that honest runs produce with
  * positive probability and is therefore an unpriced addition to the error budget.
  */
-exports.STEP_16_BOUND = 0.01 + 9 * 5.733e-7 + 5.733e-7;
+exports.STEP_16_BOUND = 0.01 + exports.S4_ROWS * 5.733e-7 + exports.S5_POINTS * 5.733e-7;
 /** Family-wise upper bound over SCORED_STATISTICAL_PREDICATES, by the union bound. */
 exports.FAMILY_WISE_BOUND = exports.STEP_16_BOUND + 0.01 + 0.01;
 
@@ -4518,7 +4651,9 @@ function run(ctx) {
  * Steps 16–17: Simulation Cross-Check
  * Scores the frozen outputs/simulation-results.json (produced by `npm run simulate`):
  *   16 — Pass 1 (fresh seeds): draw uniformity + serial independence + effective-edge table +
- *        the RTP-convergence series, all within tolerance at the pinned sample depths.
+ *        the RTP-convergence series + (since 22 October 2026, the Duel dice standard) edge
+ *        convergence on 98 over-mode targets × 1,000,000 bets and their cross-target mean RTP, all
+ *        within tolerance at the pinned sample depths.
  *   17 — Pass 2 (casino seeds): the DICE-21 load-bearing served-band PAYOUT-WEIGHTED RETURN scan —
  *        every revealed seed × 10,000 nonces, early window = the captured nonce range, reference =
  *        the remainder; the statistic is the payout-weighted return of the bands the casino actually
@@ -4845,10 +4980,97 @@ function run(ctx) {
     // Reported so the chapters can cite Δ/SE from a producing artifact instead of typing it
     // (an earlier RTP chapter's verdict table said "≈0.7·SE" against an artifact that gives 1.04).
     const convDeltaSE = Number.isFinite(convRtp) && convSe > 0 ? Math.abs(convRtp - convTheo) / convSe : NaN;
-    const recomputed16 = uniPass && serialPass && edgePass && convPass;
+    // (e) EDGE CONVERGENCE ON 98 TARGETS (added 22 October 2026, the Duel dice standard). The rows
+    // must BE the 98 canonical SIM_TARGETS in order; each sits at its fixed position in the pinned
+    // seed stream (SIM_TARGET_SEED_COUNTER_BASE + t·SIM_TARGET_SEEDS_EACH), and its client seed and
+    // first server seed are RE-DERIVED from that position (simSeedAt), so a row cannot have been run
+    // on seeds of its own choosing. Every derived field is re-derived, its RTP must be the return of
+    // its stored integer win count (reconstructed forward), it must sit within 5·SE + 1e-4 of theory,
+    // and its per-mark running series is validated like the under-50 series (integer counts
+    // reconstructing bit for bit, cumulatively consistent, every SE recomputed exactly), with the
+    // last mark identical to the row.
+    const tgtRows = Array.isArray(p1?.targets) ? p1.targets : [];
+    const targetsIdentical = tgtRows.length === config_1.SIM_TARGETS.length
+        && config_1.SIM_TARGETS.every((t, i) => !!tgtRows[i]?.params && (0, config_1.bandKey)(tgtRows[i].params) === (0, config_1.bandKey)(t.params));
+    let tgtWithin = 0, tgtFieldBad = 0, tgtSeedBad = 0, tgtCountBad = 0, tgtCountExact = 0, tgtMarksBad = 0, tgtMarkExact = 0, tgtOnTheory = 0;
+    const tgtNotes = [];
+    const perTargetMarks = [];
+    tgtRows.forEach((r, i) => {
+        const label = String(r?.label ?? `target ${i}`);
+        const okShape = !!r?.params && Number(r.n) === config_1.SIM_TARGET_BETS && typeof r.simulatedRTP === 'number';
+        const m = okShape ? (0, config_1.quotedMultiplier)(r.params) : NaN, pr = okShape ? (0, config_1.discreteWinProbability)(r.params) : NaN;
+        const theo = okShape ? (0, config_1.theoreticalRTP)(r.params) : NaN;
+        const simRtp = Number(r?.simulatedRTP);
+        const se = okShape ? (0, sim_checks_1.rowSE)(pr, m, simRtp, config_1.SIM_TARGET_BETS) : NaN;
+        const first = config_1.SIM_TARGET_SEED_COUNTER_BASE + i * config_1.SIM_TARGET_SEEDS_EACH;
+        const seedOk = r?.seedCounterFirst === first && r?.seedCounterCount === config_1.SIM_TARGET_SEEDS_EACH
+            && r?.clientSeed === (0, sim_checks_1.simSeedAt)(first + 1) && r?.firstServerSeed === (0, sim_checks_1.simSeedAt)(first + 2);
+        const fieldsOk = okShape && r.quotedMultiplier === m && r.theoreticalRTP === theo
+            && r.discreteWinPct === pr * 100 && r.theoreticalEdgePct === (1 - theo) * 100
+            && r.se === se && r.deltaSE === Math.abs(simRtp - theo) / se && r.tolSE === 5;
+        const rec = okShape ? (0, sim_checks_1.recoverWinCount)(simRtp, config_1.SIM_TARGET_BETS, m, r.wins) : null;
+        const marks = Array.isArray(r?.marks) ? r.marks : [];
+        const series = (0, sim_checks_1.validateConvergenceSeries)(marks, m, theo);
+        const lastMark = marks[marks.length - 1];
+        const marksOk = series.ok && marks.length === config_1.SIM_TARGET_MARKS.length
+            && config_1.SIM_TARGET_MARKS.every((nAt, k) => marks[k]?.n === nAt)
+            && lastMark?.wins === r?.wins && lastMark?.rtp === r?.simulatedRTP;
+        if (!fieldsOk)
+            tgtFieldBad++;
+        if (!seedOk)
+            tgtSeedBad++;
+        if (!rec?.ok)
+            tgtCountBad++;
+        else if (rec.match === 'exact')
+            tgtCountExact++;
+        if (!marksOk)
+            tgtMarksBad++;
+        if (simRtp === theo)
+            tgtOnTheory++; // observed and reported; never scored
+        tgtMarkExact += series.exactReconstructions;
+        if (tgtNotes.length < 3) {
+            if (!seedOk)
+                tgtNotes.push(`${label}: not at its seed-stream position ${first} (or its seeds are not simSeedAt(${first + 1}), simSeedAt(${first + 2}))`);
+            else if (!rec?.ok)
+                tgtNotes.push(`${label}: ${rec?.reason ?? 'malformed row'}`);
+            else if (!fieldsOk)
+                tgtNotes.push(`${label}: a derived field disagrees with re-derivation`);
+            else if (!marksOk)
+                tgtNotes.push(`${label} marks: ${series.ok ? 'mark sizes or last mark do not match the row' : series.failures.slice(0, 1).join('')}`);
+        }
+        perTargetMarks.push(series.points.map((pt, k) => ({ rtp: Number(marks[k]?.rtp), se: pt.expectedSE })));
+        if (fieldsOk && seedOk && rec?.ok && marksOk && Math.abs(simRtp - theo) <= 5 * se + 1e-4)
+            tgtWithin++;
+    });
+    const targetsPass = targetsIdentical && tgtFieldBad === 0 && tgtSeedBad === 0 && tgtCountBad === 0
+        && tgtMarksBad === 0 && tgtWithin === config_1.SIM_TARGETS.length;
+    // (f) THE 98-TARGET MEAN — the convergence series the chart draws. Every plotted point is
+    // RECOMPUTED from the targets' validated per-mark values (crossTargetPoint: mean RTP and
+    // SE = sqrt(Σ SEₜ²)/98) and must equal the stored point exactly, so neither a plotted mean nor a
+    // plotted SE can be edited on its own (D3: `src/chart.ts` clamps the ±5·SE ribbon to the plot box,
+    // so an absurd SE draws the same chart). finalRTP must BE the last point.
+    const tc = p1?.targetConvergence ?? {};
+    const tcPts = Array.isArray(tc.points) ? tc.points : [];
+    const tcTheo = (0, sim_checks_1.crossTargetTheory)(config_1.SIM_TARGETS.map((t) => (0, config_1.theoreticalRTP)(t.params)));
+    const tcRecomputed = targetsIdentical && perTargetMarks.every((ms) => ms.length === config_1.SIM_TARGET_MARKS.length)
+        ? config_1.SIM_TARGET_MARKS.map((nAt, k) => ({ n: nAt, ...(0, sim_checks_1.crossTargetPoint)(perTargetMarks.map((ms) => ms[k])) }))
+        : [];
+    const tcPointsMatch = tcRecomputed.length === config_1.SIM_TARGET_MARKS.length && tcPts.length === tcRecomputed.length
+        && tcRecomputed.every((q, k) => tcPts[k]?.n === q.n && tcPts[k]?.rtp === q.rtp && tcPts[k]?.se === q.se);
+    const tcLast = tcPts.length ? tcPts[tcPts.length - 1] : null;
+    const tcRtp = Number(tc.finalRTP), tcSe = tcLast ? Number(tcLast.se) : Infinity;
+    const tcIdentity = tc.method === 'cross-target mean' && tc.targets === config_1.SIM_TARGETS.length
+        && tc.perTargetBets === config_1.SIM_TARGET_BETS && tc.totalBets === config_1.SIM_TARGETS.length * config_1.SIM_TARGET_BETS
+        && Array.isArray(tc.marks) && tc.marks.length === config_1.SIM_TARGET_MARKS.length && config_1.SIM_TARGET_MARKS.every((nAt, k) => tc.marks[k] === nAt)
+        && tc.theoreticalRTP === tcTheo && tcLast !== null && tc.finalRTP === tcLast.rtp && tc.finalSE === tcLast.se
+        && tc.finalDeltaSE === Math.abs(tcRtp - tcTheo) / tcSe;
+    const tcPass = tcIdentity && tcPointsMatch && Number.isFinite(tcRtp) && Math.abs(tcRtp - tcTheo) <= 5 * tcSe + 1e-4;
+    const tcDeltaSE = Number.isFinite(tcRtp) && tcSe > 0 ? Math.abs(tcRtp - tcTheo) / tcSe : NaN;
+    const recomputed16 = uniPass && serialPass && edgePass && convPass && targetsPass && tcPass;
     // Traceability: what the artifact says about itself, and whether it agrees with recomputation.
     const selfReport16 = p1?.uniformity?.pass === true && p1?.serial?.pass === true
-        && edgeRows.length > 0 && edgeRows.every((r) => r.withinTol === true);
+        && edgeRows.length > 0 && edgeRows.every((r) => r.withinTol === true)
+        && tgtRows.length > 0 && tgtRows.every((r) => r.withinTol === true);
     const agree16 = recomputed16 === selfReport16;
     const fmt = (x, d) => (Number.isFinite(Number(x)) ? Number(x).toFixed(d) : String(x));
     const s16 = (0, context_1.step)(16, 'Simulation — Pass 1 (RNG + Edge)', recomputed16 && agree16 ? 'PASS' : 'FAIL', `scored against the COMMITTED artifact (pinned by SIMULATION_SHA256, reconciled in Step 19) — this step is deterministic, not a fresh experiment; artifact schema v${schemaVersion}${schemaKnown ? '' : ' (UNKNOWN SCHEMA)'}, verifier schema v${sim_checks_1.SIM_SCHEMA_VERSION}; ${config_1.ALPHA_SCREENS} screens Bonferroni-corrected to α_screen=${config_1.ALPHA_SCREEN.toExponential(3)} so THOSE THREE have a family-wise level of α=${config_1.ALPHA}. `
@@ -4856,14 +5078,16 @@ function run(ctx) {
         + `serial at n=${ser.n} (pinned ${config_1.SIM_SERIAL_DRAWS}): lag1Z=${fmt(lag1Z, 3)} == lag1·√n (${lag1Z === lag1ZDerived ? 'reconciled' : 'MISMATCH'}) < zCrit ${zCrit.toFixed(4)} (the two-sided normal quantile at α_screen, AS 241), runsP=${runsPDerived.toFixed(4)} (derived from runsZ=${fmt(runsZ, 3)}) ≥ α_screen; ${runsNote}; ${zCriticalNote} (${serialPass ? 'ok' : 'FAIL'}); `
         + `effective-edge ${edgeWithin}/${edgeRows.length} bands within 5·SE+1e-4 of theory at n=${config_1.SIM_EDGE_BETS} (recomputed), band set ${bandsIdentical ? `identical to the ${config_1.SIM_EDGE_BANDS.length} canonical bands` : 'NOT the canonical band set'}, ${edgeFieldMismatches} row(s) whose derived fields disagree with re-derivation, ${edgeCountExact}/${edgeRows.length} row(s) whose simulatedRTP IS bit-for-bit the return their integer win count reconstructs to (the producer's own per-win accumulation, replayed) and ${edgeCountBad} row(s) whose simulatedRTP is the return of NO integer win count${edgeCountNotes.length ? ` (e.g. ${edgeCountNotes.join('; ')})` : ''}; `
         + `RTP convergence ${convPts.length} points at the pinned marks (${marksOk ? 'ok' : 'MARKS MISMATCH'}), ends at n=${convN} (pinned ${config_1.SIM_RTP_BETS}), finalRTP=${Number.isFinite(convRtp) ? (convRtp * 100).toFixed(3) : 'NaN'}% == last plotted point (${convIdentity ? 'reconciled' : 'MISMATCH'}) vs ${(convTheo * 100).toFixed(2)}%, Δ=${Number.isFinite(convDeltaSE) ? convDeltaSE.toFixed(4) : 'NaN'}·SE within the 5·SE band; ALL ${convPts.length} plotted standard errors RECOMPUTED from (n, rtp, wins, m) and compared exactly, win counts ${series.points.map((p) => p.wins).join('/')} (${series.points[0]?.winSource ?? 'n/a'}) cumulatively consistent and ${series.exactReconstructions}/${convPts.length} of them reconstructing bit-for-bit to the published RTP — ${series.ok ? 'reconciled' : `MISMATCH: ${series.failures.slice(0, 3).join('; ')}`} (${convPass ? 'ok' : 'FAIL'}); `
+        + `98-target edge convergence (the Duel dice standard): ${tgtWithin}/${tgtRows.length} targets (over ${config_1.SIM_TARGETS[0].params.lower}.00 … over ${config_1.SIM_TARGETS[config_1.SIM_TARGETS.length - 1].params.lower}.00) within 5·SE+1e-4 of theory at n=${config_1.SIM_TARGET_BETS} each (recomputed), target set ${targetsIdentical ? `identical to the ${config_1.SIM_TARGETS.length} canonical targets in order` : 'NOT the canonical target set'}, seed-stream positions ${config_1.SIM_TARGET_SEED_COUNTER_BASE} + t×${config_1.SIM_TARGET_SEEDS_EACH} with client seed and first server seed RE-DERIVED from SIM_MASTER_SEED (${tgtSeedBad} row(s) off position), ${tgtFieldBad} row(s) whose derived fields disagree with re-derivation, ${tgtCountExact}/${tgtRows.length} row(s) whose simulatedRTP IS bit-for-bit the return of its integer win count and ${tgtCountBad} the return of NO integer win count, ${tgtMarksBad} per-target mark series failing validation (${tgtMarkExact}/${tgtRows.length * config_1.SIM_TARGET_MARKS.length} marks reconstructing bit-for-bit, every mark SE recomputed exactly)${tgtNotes.length ? ` (e.g. ${tgtNotes.join('; ')})` : ''} (${targetsPass ? 'ok' : 'FAIL'}); `
+        + `98-target mean RTP (the convergence chart): ${tcPts.length} points at ${config_1.SIM_TARGET_MARKS.map((x) => x.toLocaleString('en-US')).join('/')} bets per target, every plotted mean and SE RECOMPUTED from the targets' marks and compared exactly (${tcPointsMatch ? 'reconciled' : 'MISMATCH'}), mean simulated RTP=${Number.isFinite(tcRtp) ? (tcRtp * 100).toFixed(4) : 'NaN'}% over ${(config_1.SIM_TARGETS.length * config_1.SIM_TARGET_BETS).toLocaleString('en-US')} bets == last plotted point (${tcIdentity ? 'reconciled' : 'MISMATCH'}) vs ${(tcTheo * 100).toFixed(4)}%, SE=${Number.isFinite(tcSe) ? (tcSe * 100).toFixed(4) : 'NaN'} pp, Δ=${Number.isFinite(tcDeltaSE) ? tcDeltaSE.toFixed(4) : 'NaN'}·SE within the 5·SE band (${tcPass ? 'ok' : 'FAIL'}); `
         + `model range/cursor/scale/edge ${modelOk ? 'ok' : 'FAIL'}; artifact self-report ${selfReport16 ? 'pass' : 'fail'}`
         + (agree16 ? '' : ' — DISAGREES with recomputation (artifact self-report tampered?)')
         // OBSERVED, NOT SCORED. A statistic landing exactly on its theoretical value is an event
         // with positive probability under the null — 0.0020149586 for exactly 40,000 wins in 2,000,000
         // `over 98` bets. It is recorded because it is worth a reader's attention, and it moves nothing.
-        + `; OBSERVED (not scored): ${edgeOnTheory} effective-edge row(s) and ${series.exactlyOnTheory} convergence point(s) sit exactly on theory, and runsZ is ${runsZ === 0 ? 'exactly 0' : 'nonzero'} — all legitimate outcomes under the null, reported rather than rejected (client QA 2026-09-10, D4)`
+        + `; OBSERVED (not scored): ${tgtOnTheory} target row(s), ${edgeOnTheory} effective-edge row(s) and ${series.exactlyOnTheory} convergence point(s) sit exactly on theory, and runsZ is ${runsZ === 0 ? 'exactly 0' : 'nonzero'} — all legitimate outcomes under the null, reported rather than rejected (client QA 2026-09-10, D4)`
         // DECLARED LIMITATION L1 (now NARROWED by the deterministic producer), and the error budget.
-        + `; SCOPE — the raw Pass-1 statistics (uniformity.chi2, serial.lag1, serial.runsZ, each band's simulatedRTP, and the convergence series' own RTP path) are not recomputed inside THIS fast verify (that would re-run 40M draws), but the Pass-1 producer is now DETERMINISTIC — seeded from the pinned SIM_MASTER_SEED — so they are re-derivable by replaying it: npm run test:full regenerates the artifact byte-for-byte and the field diff is empty (DICE-20). A statistic forged SUBTLY is therefore no longer invisible the way it was under fresh entropy (former L1): a re-run reproduces the EXACT committed figures, so test:full exposes any figure that is not what the declared experiment outputs; changing SIM_MASTER_SEED to hand-pick one is a visible source edit that re-rolls every Pass-1 figure at once. What the FAST path still relies on for a reader who does not re-run the producer — that the statistics are STRUCTURALLY possible (integer win counts, cumulative consistency, exact standard errors) and fall inside their screens — is unchanged; that residual is declared limitation L1`
+        + `; SCOPE — the raw Pass-1 statistics (uniformity.chi2, serial.lag1, serial.runsZ, each band's and target's simulatedRTP, and the convergence series' own RTP path) are not recomputed inside THIS fast verify (that would re-run 138M draws), but the Pass-1 producer is now DETERMINISTIC — seeded from the pinned SIM_MASTER_SEED — so they are re-derivable by replaying it: npm run test:full regenerates the artifact byte-for-byte and the field diff is empty (DICE-20). A statistic forged SUBTLY is therefore no longer invisible the way it was under fresh entropy (former L1): a re-run reproduces the EXACT committed figures, so test:full exposes any figure that is not what the declared experiment outputs; changing SIM_MASTER_SEED to hand-pick one is a visible source edit that re-rolls every Pass-1 figure at once. What the FAST path still relies on for a reader who does not re-run the producer — that the statistics are STRUCTURALLY possible (integer win counts, cumulative consistency, exact standard errors) and fall inside their screens — is unchanged; that residual is declared limitation L1`
         + `; ERROR BUDGET — ${sim_checks_1.SCORED_STATISTICAL_PREDICATES.length} scored statistical screens across Steps 16-17: ${sim_checks_1.SCORED_STATISTICAL_PREDICATES.map((s) => `${s.id} ${s.screen} [${s.size}]`).join('; ')}. The α=${config_1.ALPHA} claim describes S1-S3 (family-wise, Bonferroni) ONLY — it is NOT this step's level: Step 16 also scores S4 and S5, so THIS STEP's own union bound is ≈${sim_checks_1.STEP_16_BOUND.toFixed(7)}, and over all ${sim_checks_1.SCORED_STATISTICAL_PREDICATES.length} screens across Steps 16-17 it is ≈${sim_checks_1.FAMILY_WISE_BOUND.toFixed(4)}. Everything else this step rejects on — derived-field reconciliation, population identity, sample-depth pins, integer win counts and their RECONSTRUCTION, cumulative consistency, exact standard errors — is a deterministic identity an honest artifact satisfies with probability 1, so it adds nothing to the budget (unlike the D4 'perfection' rules, which rejected honest outcomes and were unpriced). These sizes are NOMINAL UPPER BOUNDS from asymptotic reference distributions (χ² and normal), not measured failure frequencies, and no honest-run trip rate is claimed from them; the exact binomial S6 is conservative. Repeated fresh simulations could calibrate them and would not prove them`);
     // ── Step 17: Pass 2 — RE-DERIVE the cherry-pick scan from the dataset ──────────
     const p2 = sim.pass2;

@@ -193,21 +193,24 @@ export const STEP_CLAIMS: Record<number, StepClaims> = {
         id: 'DICE-20', coverage: 'full',
         note: 'scored against the pinned simulation artifact with every DERIVED field re-derived '
           + '(multiplier, theoretical RTP, SE, deltaSE), a two-sided uniformity screen over 2,000,000 '
-          + 'draws, a serial screen, 9 effective-edge bands × 2,000,000 spanning both ends of the '
-          + 'range, and a 20,000,000-bet convergence series whose standard errors and integer win '
-          + 'counts are recomputed from the artifact rows. The Pass-1 experiment is now DETERMINISTIC '
+          + 'draws, a serial screen, edge convergence on 98 over-mode targets (over 2.00 … over 99.00) '
+          + '× 1,000,000 bets each with the 98-target mean RTP as the convergence series (the Duel dice '
+          + 'design, standardized 22 October 2026; the targets continue the same pinned seed stream '
+          + 'after the v1.0.0 blocks, at fixed counters re-derived in verify), 9 effective-edge bands × '
+          + '2,000,000 across all four modes, and the v1.0.0 20,000,000-bet under-50 convergence series, '
+          + 'all with standard errors and integer win counts recomputed from the artifact rows. The Pass-1 experiment is now DETERMINISTIC '
           + 'and BYTE-REPLAYABLE (DICE-20): the seed stream is HMAC(SIM_MASTER_SEED, counter) rather '
           + 'than crypto.randomBytes, the artifact carries no run metadata, so `npm run simulate` '
           + 'writes identical bytes every time and `npm run test:full` regenerates it with an empty '
           + 'field diff — the raw Pass-1 statistics (uniformity.chi2, serial.lag1/runsZ, each band\'s '
-          + 'simulatedRTP, the convergence path) are re-derivable by replaying the pinned producer, '
+          + 'simulatedRTP, each target\'s win counts, the convergence paths) are re-derivable by replaying the pinned producer, '
           + 'not merely attested by an unreproducible regeneration. Former limitation L10 (a stale '
           + 'zCritical field) is resolved by the regeneration — the artifact is now schema 2 and '
           + 'stores the correct zCritical, re-derived; L1 (a subtly forged statistic was invisible '
           + 'because a re-run produced different numbers) is NARROWED to the fast-verify path only: '
           + 'the producer is now a pure function of pinned source, so test:full reproduces the exact '
           + 'committed figures and exposes any forgery, though the ~1s verify still does not recompute '
-          + 'the 40M-draw statistics. simulation.pass1.replayable = true',
+          + 'the 138M-draw statistics. simulation.pass1.replayable = true',
       },
     ],
   },

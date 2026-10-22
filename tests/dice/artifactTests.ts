@@ -7,7 +7,7 @@
  * at the mocha layer, so a mismatch surfaces before the verifier runs.
  *
  * The chart test is deliberately stronger than a hash. `outputs/rtp-convergence.html` is the twin of
- * the JSON's convergence series and is what a reader looks at; a hash proves only that the file has
+ * the JSON's 98-target mean series (`pass1.targetConvergence`, since 22 October 2026) and is what a reader looks at; a hash proves only that the file has
  * not changed. Re-rendering it from the committed series and asserting byte identity proves the
  * picture IS the data — the two cannot drift apart while both are committed.
  */
@@ -39,9 +39,9 @@ describe('LIQD Dice artifacts of record', () => {
     assert.strictEqual(sha(SIM_HTML), SIMULATION_HTML_SHA256);
   });
 
-  it('the committed chart IS the committed convergence series, byte for byte', () => {
+  it('the committed chart IS the committed 98-target mean series, byte for byte', () => {
     const sim = JSON.parse(fs.readFileSync(SIM_JSON, 'utf8'));
-    const rendered = renderConvergenceChart(sim.pass1.rtpConvergence);
+    const rendered = renderConvergenceChart(sim.pass1.targetConvergence);
     assert.strictEqual(rendered, fs.readFileSync(SIM_HTML, 'utf8'),
       'the chart and the JSON come from different simulation runs');
   });

@@ -62,6 +62,22 @@ rc.multiplier = quotedMultiplier(rc.params);
 rc.finalRTP = rc.points[rc.points.length - 1].rtp;
 rc.finalRTPRunning = rc.finalRTP;
 
+// 4b. (schema 3, 22 October 2026) every one of the 98 targets EXACTLY on theory too, derived fields
+//     recomputed, and the 98-target mean series set to theory with the mean's identity fields kept
+//     consistent.
+for (const r of p1.targets ?? []) {
+  const theo = theoreticalRTP(r.params), m = quotedMultiplier(r.params), pr = discreteWinProbability(r.params);
+  const se = Math.sqrt(pr * (m - theo) ** 2 + (1 - pr) * theo ** 2) / Math.sqrt(r.n);
+  r.simulatedRTP = theo; r.se = se; r.deltaSE = 0; r.withinTol = true;
+  for (const mk of r.marks ?? []) mk.rtp = theo;
+}
+if (p1.targetConvergence) {
+  const tc = p1.targetConvergence;
+  for (const pt of tc.points) pt.rtp = tc.theoreticalRTP;
+  tc.finalRTP = tc.points[tc.points.length - 1].rtp;
+  tc.finalDeltaSE = 0;
+}
+
 fs.writeFileSync(simPath, JSON.stringify(sim, null, 2));
 
 // 5. RE-PIN, exactly as a fabricating auditor would in the same commit. Without this the forgery is

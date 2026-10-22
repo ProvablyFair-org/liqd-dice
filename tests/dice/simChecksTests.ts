@@ -21,8 +21,14 @@ import {
   SCORED_STATISTICAL_PREDICATES,
   recoverWinCount, convergenceSE, validateConvergenceSeries, runsStatistic,
   reconstructReturn, reconstructionTolerance,
+  simSeedAt, rowSE, crossTargetPoint, crossTargetTheory, S4_ROWS, S5_POINTS,
 } from '../../src/sim-checks';
-import { theoreticalRTP, quotedMultiplier, discreteWinProbability, SIM_EDGE_BETS, ALPHA_SCREEN } from '../../src/config';
+import {
+  theoreticalRTP, quotedMultiplier, discreteWinProbability, SIM_EDGE_BETS, ALPHA_SCREEN,
+  SIM_TARGETS, SIM_TARGET_BETS, SIM_TARGET_MARKS, SIM_TARGET_SEED_COUNTER_BASE, SIM_TARGET_SEEDS_EACH,
+  SIM_EDGE_BANDS, SIM_UNIFORMITY_DRAWS, SIM_RTP_BETS, SIM_MASTER_SEED, bandKey,
+} from '../../src/config';
+import { createHmac } from 'node:crypto';
 import { twoSidedNormalP, inverseCriticalZ } from '../../src/stats';
 import { numbersAgree } from '../../src/diff';
 
@@ -402,14 +408,16 @@ describe('the declared error budget describes the decision rule', () => {
 
   it('the family-wise bound is ABOVE the three-screen alpha, not equal to it', () => {
     assert.ok(FAMILY_WISE_BOUND > 0.01, 'the whole family cannot be bounded by one screen group\'s alpha');
-    assert.ok(Math.abs(FAMILY_WISE_BOUND - 0.0300057) < 1e-6, `bound ${FAMILY_WISE_BOUND}`);
+    assert.ok(Math.abs(FAMILY_WISE_BOUND - 0.0300625) < 1e-6, `bound ${FAMILY_WISE_BOUND}`);
   });
 
   it('STEP 16\'s own bound is above α too — it scores more than the three screens', () => {
     // "The step's level is α = 0.01" understates a step that also scores the nine effective-edge
-    // band checks and the convergence band check.
+    // band checks, the 98 target checks and the two final-point checks.
     assert.ok(STEP_16_BOUND > 0.01, 'a step scoring S1-S5 is not bounded by S1-S3\'s alpha');
-    assert.ok(Math.abs(STEP_16_BOUND - 0.0100057) < 1e-7, `step-16 bound ${STEP_16_BOUND}`);
+    assert.strictEqual(S4_ROWS, SIM_EDGE_BANDS.length + SIM_TARGETS.length);
+    assert.strictEqual(S5_POINTS, 2);
+    assert.ok(Math.abs(STEP_16_BOUND - 0.0100625) < 1e-7, `step-16 bound ${STEP_16_BOUND}`);
     // …and the two Pass-2 screens are the rest of the family.
     assert.strictEqual(FAMILY_WISE_BOUND, STEP_16_BOUND + 0.01 + 0.01);
     const step16Screens = SCORED_STATISTICAL_PREDICATES.filter((s) => s.step === 16);
@@ -417,7 +425,74 @@ describe('the declared error budget describes the decision rule', () => {
   });
 
   it('the verifier declares the schema version it implements', () => {
-    assert.strictEqual(SIM_SCHEMA_VERSION, 2);
+    assert.strictEqual(SIM_SCHEMA_VERSION, 3);
+  });
+});
+
+describe('98-target edge convergence on the pre-existing seed stream (22 October 2026)', () => {
+  const SIM = path.join(__dirname, '../../outputs/simulation-results.json');
+
+  it('the targets are over 2.00 … over 99.00, 98 of them, distinct, at 1,000,000 bets each', () => {
+    assert.strictEqual(SIM_TARGETS.length, 98);
+    assert.deepStrictEqual(SIM_TARGETS[0], { label: 'over 2.00', params: { lower: 2, upper: 100, inverted: false } });
+    assert.deepStrictEqual(SIM_TARGETS[97], { label: 'over 99.00', params: { lower: 99, upper: 100, inverted: false } });
+    assert.strictEqual(new Set(SIM_TARGETS.map((t) => bandKey(t.params))).size, 98);
+    assert.strictEqual(SIM_TARGET_BETS, 1_000_000);
+    assert.deepStrictEqual([...SIM_TARGET_MARKS], [10_000, 50_000, 100_000, 500_000, 1_000_000]);
+    assert.strictEqual(discreteWinProbability(SIM_TARGETS[0].params), 0.98);
+    assert.strictEqual(quotedMultiplier(SIM_TARGETS[97].params), 99);
+  });
+
+  it('the targets start where the v1.0.0 blocks stop consuming the stream: counter 800,022', () => {
+    // uniformity 2 + 2,000,000/50; under-50 series 2 + 20,000,000/50; nine bands 9 × (2 + 2,000,000/50)
+    assert.strictEqual(SIM_TARGET_SEED_COUNTER_BASE, (2 + SIM_UNIFORMITY_DRAWS / 50) + (2 + SIM_RTP_BETS / 50) + 9 * (2 + SIM_EDGE_BETS / 50));
+    assert.strictEqual(SIM_TARGET_SEED_COUNTER_BASE, 800_022);
+    assert.strictEqual(SIM_TARGET_SEEDS_EACH, 20_002);
+  });
+
+  it('simSeedAt is the v1.0.0 seed derivation, HMAC-SHA256(SIM_MASTER_SEED, counter)[0..16]', () => {
+    for (const c of [0, 1, 40_001, SIM_TARGET_SEED_COUNTER_BASE]) {
+      const want = createHmac('sha256', Buffer.from(SIM_MASTER_SEED, 'hex')).update(String(c)).digest().subarray(0, 16).toString('hex');
+      assert.strictEqual(simSeedAt(c), want);
+    }
+    assert.strictEqual(SIM_MASTER_SEED, 'a11d17e5c0ffee5ea1ed0c5b1b7ea5e5d1ce5eed5a1710add1ce5eed10addba5');
+  });
+
+  it('a cross-target point is the mean RTP with SE = sqrt(Σ SEₜ²)/T', () => {
+    const pt = crossTargetPoint([{ rtp: 0.98, se: 0.03 }, { rtp: 1.0, se: 0.04 }]);
+    assert.strictEqual(pt.rtp, 0.99);
+    assert.strictEqual(pt.se, 0.025);
+    assert.strictEqual(crossTargetTheory([0.99, 0.99, 0.99, 0.99]), 0.99);
+  });
+
+  it('the COMMITTED artifact: every target at its stream position, every RTP an integer count reconstructed exactly, every plotted mean and SE recomputed exactly', () => {
+    const sim = JSON.parse(fs.readFileSync(SIM, 'utf8'));
+    const rows: any[] = sim.pass1.targets;
+    assert.strictEqual(rows.length, 98);
+    const perTarget: { rtp: number; se: number }[][] = [];
+    rows.forEach((r, i) => {
+      assert.strictEqual(bandKey(r.params), bandKey(SIM_TARGETS[i].params));
+      const first = SIM_TARGET_SEED_COUNTER_BASE + i * SIM_TARGET_SEEDS_EACH;
+      assert.strictEqual(r.seedCounterFirst, first);
+      assert.strictEqual(r.clientSeed, simSeedAt(first + 1));
+      assert.strictEqual(r.firstServerSeed, simSeedAt(first + 2));
+      const m = quotedMultiplier(r.params);
+      const rec = recoverWinCount(r.simulatedRTP, SIM_TARGET_BETS, m, r.wins);
+      assert.strictEqual(rec.ok, true, `${r.label}: ${rec.reason}`);
+      assert.strictEqual(rec.match, 'exact', `${r.label}`);
+      assert.strictEqual(r.se, rowSE(discreteWinProbability(r.params), m, r.simulatedRTP, SIM_TARGET_BETS));
+      const series = validateConvergenceSeries(r.marks, m, theoreticalRTP(r.params));
+      assert.strictEqual(series.ok, true, `${r.label}: ${series.failures.join('; ')}`);
+      assert.strictEqual(series.exactReconstructions, SIM_TARGET_MARKS.length, `${r.label}`);
+      perTarget.push(series.points.map((p, k) => ({ rtp: r.marks[k].rtp, se: p.expectedSE })));
+    });
+    const tc = sim.pass1.targetConvergence;
+    SIM_TARGET_MARKS.forEach((nAt, k) => {
+      const q = crossTargetPoint(perTarget.map((ms) => ms[k]));
+      assert.deepStrictEqual(tc.points[k], { n: nAt, rtp: q.rtp, se: q.se }, `mark ${nAt}`);
+    });
+    assert.strictEqual(tc.theoreticalRTP, crossTargetTheory(SIM_TARGETS.map((t) => theoreticalRTP(t.params))));
+    assert.strictEqual(tc.finalRTP, tc.points[tc.points.length - 1].rtp);
   });
 });
 
