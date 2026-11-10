@@ -5,19 +5,26 @@
 
 import type { InfoItem } from './context';
 import type { VerifyContext } from './context';
-import { effectiveEdge, bandMode, quotedMultiplier, MAX_ODDS } from '../../src/config';
+import { effectiveEdge, bandMode, quotedMultiplier, amountUnits, EXPECTED_PHASES } from '../../src/config';
 
 export function run(ctx: VerifyContext): InfoItem[] {
   const { bets } = ctx;
   const items: InfoItem[] = [];
   if (bets.length === 0) { items.push({ label: 'Live bets', detail: 'No bets in dataset' }); return items; }
 
-  // Realized RTP (informational — variance over 6,700 bets, not the theoretical edge).
-  const totalPayout = bets.reduce((s, b) => s + Number(b.winningAmount), 0);
-  const totalWagered = bets.reduce((s, b) => s + Number(b.betAmount), 0);
+  // Realized RTP (informational: variance over the captured bets, not the theoretical edge), summed
+  // in exact 1e-8 units from the served decimal strings, in total and per phase.
+  const usdt = (u: bigint) => `${u / 100000000n}.${String(u % 100000000n).padStart(8, '0')}`;
+  const sums = (list: typeof bets) => {
+    let w = 0n, r = 0n;
+    for (const b of list) { w += amountUnits(b.betAmount) ?? 0n; r += amountUnits(b.winningAmount) ?? 0n; }
+    return { w, r, pct: w > 0n ? Number(r * 1000000n / w) / 10000 : NaN };
+  };
+  const all = sums(bets);
   items.push({
     label: 'Realized RTP (variance)',
-    detail: `${(totalPayout / totalWagered * 100).toFixed(2)}% ($${totalWagered.toFixed(2)} wagered, $${totalPayout.toFixed(2)} returned over ${bets.length} bets — informational; authoritative edge is the deterministic effective edge, Step 15).`,
+    detail: `${all.pct.toFixed(2)}% (${usdt(all.w)} USDT wagered, ${usdt(all.r)} USDT returned over ${bets.length} bets; informational, a variance illustration only: the edge evidence is the deterministic effective edge, Step 15, and the simulation, Step 16). `
+      + `Per phase: ${EXPECTED_PHASES.map((ph) => { const x = sums(bets.filter((b) => b.phaseId === ph.id)); return `${ph.id} ${x.pct.toFixed(2)}% (${usdt(x.w)} wagered, ${usdt(x.r)} returned)`; }).join('; ')}.`,
   });
 
   // Deterministic mean effective edge + per-mode spread (the finding, from arithmetic).
@@ -41,20 +48,17 @@ export function run(ctx: VerifyContext): InfoItem[] {
   const wins = bets.filter(b => b.win).length;
   items.push({ label: 'Live win rate', detail: `${wins}/${bets.length} = ${(wins / bets.length * 100).toFixed(2)}% (mixed win chances — informational)` });
 
-  // Odds limits — surface the config-vs-live-witnessed maxOdds mismatch in the pipeline:
-  // the dataset's own config snapshot (meta.limits) reads maxOdds 99;
-  // the live-witnessed ceiling is 9900× (E14, F-LIMITS). The docs explain it; so does the artifact.
+  // Odds limits: not read from the operator. The production dice replies serve no limits field.
   const mults = bets.map(b => quotedMultiplier(b.params));
-  const lim = ctx.meta.limits;
   items.push({
-    label: 'Odds limits (config vs live-witnessed)',
-    detail: `operator config snapshot (meta.limits) minOdds ${lim?.minOdds} maxOdds ${lim?.maxOdds}; live-witnessed MAX_ODDS ${MAX_ODDS} (E14, F-LIMITS — the config maxOdds ${lim?.maxOdds} is NOT what the server settles); captured multiplier span ${Math.min(...mults).toFixed(4)}×–${Math.max(...mults).toFixed(4)}×`,
+    label: 'Odds limits',
+    detail: `no operator odds or bet-limit configuration is in the production capture (none is served in the dice replies, none was read from the site); captured multiplier span ${Math.min(...mults).toFixed(4)}×–${Math.max(...mults).toFixed(4)}×. What LIQD accepts outside that span was not measured (declared limitation L7).`,
   });
 
-  // Capture-side self-check fields present and ignored.
+  // Converter-side self-check fields present and ignored.
   items.push({
-    label: 'Capture-side self-check fields',
-    detail: `meta.edgeScan and per-bet/seed self-check flags (localWin, verified, modelMultiplier, commitVerified, …) are present in the dataset but IGNORED by verification — computed at capture time under the superseded inclusive-both-ends band model; every scored figure is re-derived from primitives. See MANIFEST.md#dataset-and-capture and E01 in MANIFEST.md#evidence.`,
+    label: 'Converter-side self-check fields',
+    detail: 'per-bet and per-seed self-check fields written by the converter (localRoll, localWin, verified, commitVerified, chainLinkOk) are present in the dataset but IGNORED by verification; every scored figure is re-derived from primitives. See MANIFEST.md#dataset-and-capture.',
   });
 
   return items;

@@ -7,7 +7,7 @@
  * files are what that source compiles to (`npm run check:standalone-build`). It is ProvablyFair.org's
  * standalone builder; the file the two bundles' headers name as `audit-framework/tools/…` is this one.
  *
- * Emits `<package-dir>/verify.js` — ONE file, plain CommonJS, Node built-ins only. A reviewer who
+ * Emits `<package-dir>/verify.js` — ONE file, plain CommonJS, Node built-ins only. Anyone who
  * unzips the package can run
  *
  *     node verify.js
@@ -220,8 +220,8 @@ function __bind(name) {
   bound.skip = orig.skip; bound.only = orig.only; bound.todo = orig.todo;
   return bound;
 }
-// HOOKS NEED THE SHIM TOO, and leaving them out is not a cosmetic miss. mines' QA-01 suite calls
-// this.timeout(600_000) inside a before(...) hook for a million-round replay. Unwrapped, that hook
+// HOOKS NEED THE SHIM TOO, and leaving them out is not a cosmetic miss. A suite that calls
+// this.timeout(...) inside a before(...) hook (a million-round replay) needs it. Unwrapped, that hook
 // threw, Node cancelled every test in the suite, and the run reported "38 pass, 0 fail" while
 // SEVEN tests had silently never executed — a green result over a hole. Caught 2026-09-11 by the
 // unit-count parity check (mocha 45 vs standalone 38), which is the entire reason that check exists.

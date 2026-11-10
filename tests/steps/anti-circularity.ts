@@ -47,8 +47,8 @@ export function run(ctx: VerifyContext): StepResult[] {
   // ── Enumeration cross-check ────────────────────────────────────────────────
   // The closed form (discreteWinCount) is the fast path; the tally is the anchor.
   // They must agree on EVERY distinct band in the dataset. This is the check that
-  // would have caught the ceil/floor float bug: the buggy closed form disagreed
-  // with the tally on 403 of 5,304 distinct bands.
+  // catches a ceil/floor scaling of the bounds: IEEE-754 puts many 2-dp products just off
+  // their integer, and a ceil/floor closed form then disagrees with the tally.
   const distinct = new Map<string, DiceParams>();
   for (const bet of bets) {
     distinct.set(`${bet.params.lower}|${bet.params.upper}|${bet.params.inverted}`, bet.params);

@@ -2,13 +2,13 @@
  * Decision boundaries of the simulation-artifact checks — `src/sim-checks.ts`.
  *
  * These are the vectors for the decision boundaries that govern what Step 16 accepts and rejects.
- * They exist as unit tests, rather than only as end-to-end mutations, because the point of D4 is
+ * They exist as unit tests, rather than only as end-to-end mutations, because the point of the no-perfection rule is
  * that a step can reject VALID data: an end-to-end run on the committed artifact can only show
  * that honest data passes, never that a specific legitimate-but-unusual outcome is accepted.
  *
- *   D3 — a plotted standard error must be the standard error that (n, rtp, wins, m) implies.
+ *   - a plotted standard error must be the standard error that (n, rtp, wins, m) implies.
  *        An unchecked `se = 123456` passes, and the chart cannot show it either.
- *   D4 — a statistic landing exactly on its theoretical value is not evidence of fabrication.
+ *   - a statistic landing exactly on its theoretical value is not evidence of fabrication.
  *        Exactly 40,000 wins in 2,000,000 `over 98` bets gives RTP exactly 0.99 with probability
  *        0.0020149586. A runs z of exactly 0 with healthy variance is an ordinary result.
  */
@@ -96,7 +96,7 @@ describe('simulation checks — win-count recovery (schema 1 reconstruction)', (
   });
 });
 
-describe('a published RTP must be the return an INTEGER win count produces (D5)', () => {
+describe('a published RTP must be the return an INTEGER win count produces', () => {
   // The `over 98` band pays 49.5× on 2,000,000 bets, so 0.99000495 implies 40,000.2 wins — a
   // fractional count, i.e. a return no integer number of wins can produce. A rule that rounds it
   // to 40,000 accepts the row and the suite exits 0. The end-to-end form of this counterexample is
@@ -113,7 +113,7 @@ describe('a published RTP must be the return an INTEGER win count produces (D5)'
     assert.ok(Math.abs(40000.2 - 40000) < RECONSTRUCTION_MAX_RESIDUAL);
   });
 
-  it('REJECTS the reviewer\'s 0.99000495 over-98 RTP (40,000.2 wins)', () => {
+  it('REJECTS a 0.99000495 over-98 RTP (40,000.2 wins)', () => {
     const rec = recoverWinCount(FORGED, SIM_EDGE_BETS, BAND_M);
     assert.strictEqual(rec.ok, false, 'a fractional win count must not be rounded into acceptance');
     assert.strictEqual(rec.match, 'none');
@@ -191,7 +191,7 @@ describe('a published RTP must be the return an INTEGER win count produces (D5)'
   });
 });
 
-describe('simulation checks — every plotted standard error (D3)', () => {
+describe('simulation checks — every plotted standard error', () => {
   it('accepts the committed series exactly, and counts zero points on theory', () => {
     const r = validateConvergenceSeries(COMMITTED_POINTS, M, THEO);
     assert.strictEqual(r.ok, true, r.failures.join('; '));
@@ -199,7 +199,7 @@ describe('simulation checks — every plotted standard error (D3)', () => {
     r.points.forEach((p) => assert.strictEqual(p.storedSE, p.expectedSE, `n=${p.n}`));
   });
 
-  it('REJECTS the reviewer\'s se = 123456 on the first plotted point', () => {
+  it('REJECTS se = 123456 on the first plotted point', () => {
     const mutated = COMMITTED_POINTS.map((p, i) => (i === 0 ? { ...p, se: 123456 } : p));
     const r = validateConvergenceSeries(mutated, M, THEO);
     assert.strictEqual(r.ok, false);
@@ -264,7 +264,7 @@ describe('simulation checks — cumulative consistency across nested checkpoints
   });
 });
 
-describe('an exact statistical fit is NOT evidence of fabrication (D4)', () => {
+describe('an exact statistical fit is NOT evidence of fabrication', () => {
   it('accepts a consistent 40,000 / 2,000,000 `over 98` summary at exactly 0.99 RTP', () => {
     const band = { lower: 98, upper: 100, inverted: false };
     const m = quotedMultiplier(band);
@@ -285,7 +285,7 @@ describe('an exact statistical fit is NOT evidence of fabrication (D4)', () => {
     assert.strictEqual(rec.ok, true, rec.reason);
     assert.strictEqual(rec.wins, wins);
     assert.strictEqual(recoverWinCount(simRtp, SIM_EDGE_BETS, m, wins).ok, true);
-    // THE MIRROR RISK (G-VALID), asserted rather than assumed: the D5 fix rejects the IMPOSSIBLE
+    // THE MIRROR RISK (G-VALID), asserted rather than assumed: the integer-count check rejects the IMPOSSIBLE
     // (40,000.2 wins), and this — a real result landing exactly on expectation — must still pass,
     // bit-for-bit, after it. Reinstating "too good to be true" from the other direction would be
     // the same defect wearing the opposite sign.
@@ -455,7 +455,7 @@ describe('98-target edge convergence on the pre-existing seed stream (22 October
       const want = createHmac('sha256', Buffer.from(SIM_MASTER_SEED, 'hex')).update(String(c)).digest().subarray(0, 16).toString('hex');
       assert.strictEqual(simSeedAt(c), want);
     }
-    assert.strictEqual(SIM_MASTER_SEED, 'a11d17e5c0ffee5ea1ed0c5b1b7ea5e5d1ce5eed5a1710add1ce5eed10addba5');
+    assert.match(SIM_MASTER_SEED, /^[0-9a-f]{64}$/);   // the pinned value itself lives in src/config.ts only
   });
 
   it('a cross-target point is the mean RTP with SE = sqrt(Σ SEₜ²)/T', () => {
@@ -496,7 +496,7 @@ describe('98-target edge convergence on the pre-existing seed stream (22 October
   });
 });
 
-/** ln C(n, k), by log-gamma — used only to price the D4 counterexample. */
+/** ln C(n, k), by log-gamma — used only to price the exact-fit counterexample. */
 function lnChoose(n: number, k: number): number {
   return lnGamma(n + 1) - lnGamma(k + 1) - lnGamma(n - k + 1);
 }

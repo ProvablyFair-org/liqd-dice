@@ -1,0 +1,25 @@
+liqd-dice-prod-capture-2026-11-10T04-39-32-017Z.ndjson
+LIQD dice PROD capture check: ALL CHECKS PASS
+  PASS  file                           2118 lines, 0 unreadable, SHA-256 8246abcc09029928ced1e8fddfc68766ca242639084628222c9ba8fd489671e0
+  PASS  secret scan                    clean (JWT, e-mail, public IPv4, secret-looking keys, also inside reply bodies)
+  PASS  plan                           liqd.com (https://liqd.com), 6 epochs, 700 rounds in phases D 500 at 0.10000000, A+ 200 at 0.10000000 USDT (currencyId 3); every phase at or above its floor; runner dice-prod-capture-runner 2026-11-03 build 3d2038fe26a7
+  PASS  pre-capture anchor             active 8f79206725cd... read and revealed before any bet: commit OK, link OK
+  PASS  epoch commitments              6/6 epochs: sha256(revealed server seed) = the hash committed before its first round (6 closed by a rotation)
+  PASS  chain                          6/6: each epoch's next hash is the hash active after its rotation
+  PASS  client seeds                   6/6 submitted client seeds accepted; 6/6 drawn after the commitment they were used under was published
+  PASS  player-set seeds               5 Phase D epochs, 5 distinct player-set seeds (floor 2); submitted at the rotation opening their epoch 5/5; taken by the site 5/5; every round of the epoch played under it 500/500; used outside Phase D 0
+  PASS  bet count                      700 rounds recorded (cap 700), 0 recorded twice; 700 rounds started; 0 reply lost; 0 refused and skipped
+  PASS  round seeds                    seed hash 700/700 (700 served in the reply, the rest carry none); client seed 700/700 (700 served); nonce sequence 700/700
+  PASS  phases                         every round records its phase, phase id and the phase's stake 700/700; rounds per phase D 500/500, A+ 200/200
+  PASS  request = served               band params, the phase's stake and idempotency key served as requested 700/700; stake = the phase's stake (0.10 / 10.00) 700/700
+  PASS  roll (src/rng.ts)              roll recomputed from the revealed seed 700/700; win by the half-open band rule 700/700
+  PASS  multiplier (9900/bps)          served multiplier === 9900 / basis points on a win, 0 on a loss 700/700
+  PASS  payout                         winningAmount = floor8(stake x 9900 / bps), prod's round-down (7 Nov: 2268/2268 wins) 700/700; wallet fields 700/700; won/lost 700/700
+  PASS  coverage                       55/55 settings reached; rounds per setting 10..50
+  PASS  verifier replies               700/700 rounds have a verify reply (HTTP 200, the expected shape); 0 other replies stored (refusals, kept as received)
+  PASS  verifier requests              request = the round's revealed inputs 700/700; POST https://liqd.com/api/v1/originals/dice/verify 700/700
+  PASS  verifier = served round        echo 700/700; roll 700/700, win 700/700, multiplier 700/700 equal the served round; roll = the src/rng.ts recompute 700/700
+  ----  run record                     refusals 0, re-sent after a stop 0, lost replies 0, skipped 0, gaps 0, resume checks 0, steps 0, stops 0
+  ----  money                          staked 70.00000000 USDT, paid 69.37667138, net -0.62332862 (live rounds illustrate variance only)
+  ----  window                         rounds 2026-11-10T04:12:36.987Z .. 2026-11-10T04:27:49.318Z; verify replies dated Tue, 10 Nov 2026 04:27:50 GMT .. Tue, 10 Nov 2026 04:39:31 GMT
+  PASS  export redaction               1 IP address(es) replaced by "[ip redacted]" in the exported copy (IPv4 1, IPv6 0; in line 1 (meta)); 1 marker(s) found in the file

@@ -31,27 +31,27 @@ const CHECK = process.argv.includes('--check');
 // ── Package block ─────────────────────────────────────────────────────────────
 
 /**
- * The facts no file in this package can supply. `signature` stays null until the release is
- * signed. `auditIdStatus` records that ProvablyFair.org has confirmed the audit ID. `v1.1.0` supersedes `v1.0.0`, the
- * first public release (ProvablyFair-org/liqd-dice, one commit): it standardizes the simulation on
- * 98 targets × 1,000,000 bets (the Duel dice audit's design) and adds `.gitattributes`. `signature`
- * is the fingerprint of the SSH key that signs the release commit and tag.
+ * The facts no file in this package can supply. `auditIdStatus` records that ProvablyFair.org has
+ * confirmed the audit ID. `v1.2.0` is the re-certification on the liqd.com production capture of
+ * 7 to 10 November 2026; it supersedes `v1.1.0`, the latest release of the public repository, and
+ * carries the documentation errata prepared as `v1.1.1`, which was not published. `signature` is the
+ * fingerprint of the SSH key that signs the release commit and tag.
  */
 const DECLARED = {
   auditId: 'PF-2026-LQ04',
   auditIdStatus: 'confirmed by ProvablyFair.org',
   game: 'dice',
   casino: 'liqd',
-  release: 'v1.1.0',
+  release: 'v1.2.0',
   framework: '1.1',
-  environmentStage: 'pre-production',
-  environmentQualifier: 'provisional',
-  supersedes: 'v1.0.0',
+  environmentStage: 'production',
+  environmentQualifier: 'production',
+  supersedes: 'v1.1.0',
   signature: 'SHA256:gEujiJm2pRyq7lQsfYQfQ1r97H/J7GdaKHbOW8GtikY',
 };
 
 /** The dataset the audit scores. */
-const DATASET = 'data/dice-master-6700bets.json';
+const DATASET = 'data/dice-prod-5935bets.json';
 
 /** Every file whose bytes the release is a claim about. Order is the manifest's order. */
 const ARTIFACTS = [
@@ -60,7 +60,15 @@ const ARTIFACTS = [
   'outputs/simulation-results.json',
   'outputs/verification-results.json',
   'outputs/rtp-claim-table.json',   // RTP-CLAIM per-setting table (src/rtp-settings.ts pins it)
-  'data/dice-master-6700bets.json',
+  'data/dice-prod-5935bets.json',
+  // The capture checker's printouts of the three raw production capture files.
+  'evidence/E16-prod-capture-check-2026-11-07.txt',
+  'evidence/E18-prod-capture-check-2026-11-10-phases-D-A.txt',
+  'evidence/E19-prod-capture-check-2026-11-10-phase-C.txt',
+  // LIQD's production verify endpoint on rolls that land on a band bound (Step 15 re-derives it).
+  'evidence/E17-prod-verify-boundary-probes-2026-11-09.json',
+  // The live liqd.com page figures the RTP claim is read from.
+  'evidence/rtp-page-labels-2026-10-01.json',
 ];
 
 /** Documents that publish the audit ID. If any disagrees, the release is incoherent. Since 2026-10-04 the

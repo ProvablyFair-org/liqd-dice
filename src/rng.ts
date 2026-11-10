@@ -1,35 +1,30 @@
 /**
- * PROVENANCE (header added on integration, 20 Oct 2026; everything below this comment is the
- * clean-room module byte for byte).
+ * PROVENANCE (header rewritten for release v1.2.0, 10 Nov 2026; everything below this comment is the
+ * module byte for byte as integrated on 20 Oct 2026).
  *
- * This module was REBUILT FROM A WRITTEN SPECIFICATION, not ported from LIQD's code:
- *   spec      docs/ALGORITHM.md, a copy of games/liqd-dice/ALGORITHM.md in the ProvablyFair.org audit
- *             framework (SHA-256 212674d0…a80593e2). Written from LIQD's public pages and screens, the
- *             standard provably-fair construction, LIQD's verify-endpoint replies (E13) and the 6,700
- *             live bets, without opening LIQD's code or any port of it (its §8 lists every file read).
- *   rebuild   written by an implementer who read ONLY that spec and a module-interface file, and
- *             never opened LIQD's code, its client bundle, or this package's earlier src/rng.ts.
- *   self-test tests/dice/rngSpecTests.ts (the spec's vectors and properties).
+ * This module was BUILT FROM A WRITTEN SPECIFICATION, not ported from LIQD's code: the implementer
+ * read only a specification and a module-interface file (docs/INTERFACE.md), and never opened
+ * LIQD's code or its client bundle. The specification shipped in this release, docs/ALGORITHM.md, is
+ * re-grounded on production sources only (LIQD's public pages, the liqd.com production capture of
+ * 7 to 10 November 2026 and LIQD's production verify endpoint); the derivation it specifies is the
+ * one this module implements, and tests/dice/rngSpecTests.ts runs the specification's production
+ * vectors against it.
  *
  * LIQD's own verifier is NOT the source of this module. Its replies are run as a SECOND CHECK: the
- * E13 verify-endpoint replies and the session-recorded verify vectors in tests/dice/rngTests.ts.
- * The audit's draw-bias bound is src/bias.ts, built on this module's maxFairFor.
+ * stored verify reply of every captured round (Step 6) and the boundary probes of evidence E17
+ * (Step 15, tests/dice/rngTests.ts). The audit's draw-bias bound is src/bias.ts, built on this
+ * module's maxFairFor.
  *
  * Units: diceRoll returns the roll as an INTEGER in hundredths (0..9999); callers divide by
  * SCALE (src/config.ts) for the 0.00..99.99 value LIQD serves. Server seeds must be lowercase hex
  * (the commitment is over the seed text); every captured seed is.
  *
- * Three-way agreement measured on integration (20 Oct 2026, all 6,700 captured bets): this module vs
- * the live bets, roll 6,700/6,700 and commitment 134/134 seed records (bets paired to seeds by
- * hashing, 6,700/6,700); vs LIQD's verify endpoint, E13 7/7 probe replies and 1/1 settled-bet
- * cross-check, session-recorded vectors 8/8; vs the ProvablyFair.org site verifier's dice module
- * (its source, run from a local checkout; the deployed page was not run) 6,700/6,700 draws. Step 5 of
- * `npm run verify` re-measures the first on every run.
+ * Agreement with the capture is re-measured on every run: Step 5 of `npm run verify` recomputes
+ * every captured roll with this module, and Step 1 every commitment.
  *
- * Where this module and the earlier ported module differ on inputs no captured bet reaches: when all
- * eight chunks of a digest are rejected (spec O2, continuation unspecified) this module throws,
- * while the earlier module, and the site verifier, moved to cursor + 1,000,000. 0 of the 6,700
- * captured draws had even its first chunk rejected (L11).
+ * An input no captured round reaches: when all eight chunks of a digest are rejected this module
+ * throws. LIQD's public technical page describes a redraw at cursor + 1,000,000 for that case
+ * (specification O2); it has probability about (1.7e-6)^8 per draw and was not observed (L11).
  */
 // LIQD Dice outcome derivation, clean-room implementation.
 // Built only from ALGORITHM.md (the spec) and INTERFACE.md (export names/types).

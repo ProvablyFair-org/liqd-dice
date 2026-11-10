@@ -4,7 +4,7 @@
  *
  * WHAT IT CARRIES. DICE-22 asserts the captured rolls fit the uniform lattice AND show no serial
  * dependence, informational only. The uniform-lattice-fit half is the pooled real-roll χ² in
- * Step 17, recomputed from the dataset on all 6,700 rolls — and it too is INFORMATIONAL: a fit
+ * Step 17, recomputed from the dataset on every captured roll — and it too is INFORMATIONAL: a fit
  * rejection there prints INFO and does not fail Step 17 (only a stored record that does not
  * reconcile with the recomputation fails). THIS step carries the serial-dependence half — lag-1
  * autocorrelation and a Wald–Wolfowitz runs test on the live rolls in capture order — which
@@ -22,12 +22,12 @@
  * (the settlementResidual group) change when the bets are reordered (measured 2026-10-02) — never
  * because this step failed.
  *
- * WHY IT NEVER BEARS THE VERDICT. A 6,700-roll serial screen has little power and the profile fixes
+ * WHY IT NEVER BEARS THE VERDICT. A live-sample serial screen of a few thousand rolls has little power and the profile fixes
  * DICE-22 at policy INFORMATIONAL (2026-09-29). So when the screen trips this step returns INFO,
  * which verify.ts reports but never counts as a flag and never lets change the verdict (Full Pass,
  * exit 0).
  * The authoritative serial-independence evidence remains the Pass-1 simulation over fresh seeds
- * (Step 16), whose 200,000-roll screen has the power this 6,700-roll one does not. This step is the
+ * (Step 16), whose 200,000-roll screen has the power the live sample does not. This step is the
  * live-sample cross-check the profile asks for, at the power a live sample affords.
  *
  * THE THRESHOLD is the framework's cross-game serial-independence rule — |lag1 z| < 3 AND runs

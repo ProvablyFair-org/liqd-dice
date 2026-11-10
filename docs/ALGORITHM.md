@@ -1,35 +1,15 @@
-# LIQD Dice: clean-room algorithm specification
+# LIQD Dice: algorithm specification
 
-Copy of the framework spec (SHA-256 212674d07231733d57616762cca63fc2a5636ddd4248402a5409c2a2a80593e2, the hash cited in src/rng.ts); local workspace paths and tool names replaced by neutral wording, nothing else changed.
+Written 10 November 2026 for the ProvablyFair.org audit of LIQD Dice (`originals-dice`, `liqd.com`), release `v1.2.0`.
 
-Written 20 Oct 2026 for the ProvablyFair.org audit of LIQD Dice
-(`originals-dice`, qa.liqd.com / liqd.com Originals).
+This document is the only input an implementer needs to rebuild LIQD Dice's outcome derivation and settlement. Every rule in it is fixed by production sources only, and every step names where it came from:
 
-This document is the only input an implementer needs to rebuild LIQD Dice's
-outcome derivation and settlement. It was written without opening any LIQD
-source code, any port of it, any audit-package code, any saved LIQD JS bundle,
-or any screenshot of LIQD's Verify tab (see §8 for every file and URL read).
-Every step names where it came from:
+- **PAGE**: LIQD's public pages on `liqd.com`, with location and date. Two were read: the Dice game page (read logged out on 1 October 2026; the text read is recorded in `evidence/rtp-page-labels-2026-10-01.json`) and the page `liqd.com/provably-fair/technical-implementation` (read logged out on 3 November 2026; the auditor's read note is the record, the page text was not saved, so nothing is quoted from it and it is cited as a description only).
+- **PROBE**: LIQD's own verify endpoint on production, `POST https://liqd.com/api/v1/originals/dice/verify`: the stored reply for each of the 5,935 captured rounds (`data/dice-prod-5935bets.json`, field `verifier`) and the 23 answered boundary probes of 9 November 2026 (`evidence/E17-prod-verify-boundary-probes-2026-11-09.json`).
+- **STANDARD**: the standard provably-fair construction (commit to SHA-256 of a server seed, HMAC-SHA256 keyed by the server seed over client seed, nonce and a draw cursor, bytes to integer).
+- **DATA**: fixed by testing the standard candidates against the 5,935 rounds captured on `liqd.com` between 7 and 10 November 2026 (`data/dice-prod-5935bets.json`: 33 seed epochs in three capture files, phases A, D, A+ and C). The data chose; LIQD's code did not.
 
-- **PAGE**: LIQD's public pages or a LIQD screen, quoted with location and date.
-- **PROBE**: LIQD's own read-only verify endpoint, as recorded in
-  `repositories/liqd/dice/evidence/E13-verify-endpoint-boundary-probes.json`
-  (captured 31 Aug 2026; request/outcome pairs only).
-- **STANDARD**: the standard provably-fair construction used across the
-  industry (commit to SHA-256 of a server seed, HMAC-SHA256 keyed by the server
-  seed over client seed, nonce and a draw cursor, bytes to integer).
-- **DATA**: fixed by testing the standard candidates against the 6,700 live
-  bets in `repositories/liqd/dice/data/dice-master-6700bets.json` (captured
-  27 Aug 2026, 134 seed epochs × 50 bets). The data chose; LIQD's code did not.
-- **CONFIG**: LIQD's settings API row for `originals-dice`, as transcribed in
-  `evidence/E14-maxodds-live-record.json` (pulled 1 Sep 2026; an
-  auditor-attested session note, not a raw HTTP capture).
-
-No public LIQD page that describes the algorithm could be read: `GET
-https://liqd.com/originals/dice` and `GET https://liqd.com/provably-fair`
-returned **HTTP 403** on 20 Oct 2026 (the 1 Oct page record also reports 403
-for plain GETs). The Provably Fair panel's text was not read beyond E11. So §2
-rests on STANDARD + DATA + PROBE, not on a written LIQD rule (O1).
+`src/rng.ts` implements §1.2 and §2. It was written from a specification and a module-interface file by an implementer who never opened LIQD's code; this document is that specification re-grounded on production sources, and the derivation it specifies is unchanged. Every count below is printed by `node scripts/algorithm-spec-check.mjs` (§7), which reads only the dataset and the probe record and imports nothing from `src/`.
 
 ---
 
@@ -39,32 +19,25 @@ rests on STANDARD + DATA + PROBE, not on a written LIQD rule (O1).
 
 | Input | Form | Source |
 |---|---|---|
-| `serverSeed` | **32** lowercase hex characters (16 bytes); secret until the pair is rotated | DATA: all 135 revealed seeds (134 epochs + the pre-capture seed) are 32 hex chars. PAGE: E11 "Active Server Seed (Hashed)" |
-| `clientSeed` | text string | PAGE: E11 "Active Client Seed" (`audit7b2cd7746b00`), "Next Client Seed" with a CHANGE button. DATA: 17-char seeds in phases A–C, 25-char player-set seeds containing `-` in phase D (`pfaudit-1787856766341-124`) |
-| `nonce` | non-negative integer, 0 on the first bet of a pair, +1 per bet | PAGE: E11 "Total bets made with pair 0". DATA: nonces 0…49 in each of the 134 epochs, base 0 |
+| `serverSeed` | **32** lowercase hex characters (16 bytes); secret until the pair is rotated | DATA: all 36 revealed seeds (33 epochs and the 3 pre-capture seeds) are 32 lowercase hex characters. PAGE (technical page): a 16-byte seed |
+| `clientSeed` | text string | DATA: 28 seeds of the form `audit` + 12 hex (17 characters) and 5 player-set seeds of 33 characters containing `-` (`pfaudit-prod-dice-d1-9e7a04f27b2a`); all ASCII |
+| `nonce` | non-negative integer, 0 on the first bet of a pair, +1 per bet | DATA: every epoch starts at nonce 0 (the post-rotation nonce the rotation reply serves) and runs without a gap |
 | `lower`, `upper` | decimals with 2 places, 0 ≤ lower < upper ≤ 100 | DATA: every bet carries `params {lower, upper, inverted}` |
 | `inverted` | boolean | DATA; PROBE |
-| `amount` | stake (USDC), decimal | DATA (`betAmount`; 0.1 and 10 captured) |
+| `amount` | stake, decimal with up to 8 places (USDT) | DATA (`betAmount`; `0.10000000` and `10.00000000` captured) |
 
-Work in **hundredths** throughout: `L = lower × 100`, `U = upper × 100`
-(integers, converted from the decimal string exactly, never through a float
-multiply).
+Work in **hundredths** throughout: `L = lower × 100`, `U = upper × 100` (integers, converted from the decimal string exactly, never through a float multiply).
 
-The four UI modes map onto `(lower, upper, inverted)` as follows (DATA: all
-four shapes occur):
+The four modes map onto `(lower, upper, inverted)` as follows (DATA: all four shapes occur):
 
-| Mode | params | captured bets |
+| Mode | params | captured rounds |
 |---|---|---|
-| Under X | `lower = 0, upper = X, inverted = false` | 1,362 |
-| Over X | `lower = X, upper = 100, inverted = false` | 2,592 |
-| Between A–B | `lower = A, upper = B, inverted = false` | 1,360 |
-| Outside A–B | `lower = A, upper = B, inverted = true` | 1,386 (2 of them with `upper = 100`) |
+| Under X | `lower = 0, upper = X, inverted = false` | 1,150 |
+| Over X | `lower = X, upper = 100, inverted = false` | 1,387 |
+| Between A–B | `lower = A, upper = B, inverted = false` | 1,148 |
+| Outside A–B | `lower = A, upper = B, inverted = true` | 2,250 |
 
-PAGE (liqd.com/originals/dice meta description, read 1 Oct 2026,
-`rtp-page-labels-2026-10-01.json`): "roll 0.00 to 99.99 under, over, between
-or outside your line. 99% RTP in every mode." E10 shows four "Game mode"
-icons. Which icon is which mode is not read from the screen; the params are
-what the derivation uses.
+PAGE (liqd.com/originals/dice meta description, read 1 October 2026): "roll 0.00 to 99.99 under, over, between or outside your line. 99% RTP in every mode."
 
 ### 1.2 Commitment
 
@@ -72,23 +45,12 @@ what the derivation uses.
 commitment = lowercase_hex( SHA-256( ASCII(serverSeed) ) )
 ```
 
-i.e. hash the **32 ASCII characters** of the seed string, **not** the 16 bytes
-they encode. (This is the opposite of the HMAC key in §2, which is the decoded
-bytes.)
+i.e. hash the **32 ASCII characters** of the seed string, **not** the 16 bytes they encode. (This is the opposite of the HMAC key in §2, which is the decoded bytes.)
 
-- SOURCE: STANDARD (SHA-256 commitment) + DATA for the encoding.
-- Candidates tried: SHA-256 over the ASCII string → **6,700 / 6,700** bets
-  resolve, **134 / 134** seed records; SHA-256 over the hex-decoded 16 bytes →
-  **0 / 6,700**, **0 / 134**.
-- Pair revealed seeds to bets by this hash (`hashedServerSeed`), never by
-  record position.
-- Forward chain: each epoch's `nextHashedServerSeed` (shown before rotation)
-  equals the next epoch's `hashedServerSeed`: **133 / 133** transitions, and the
-  pre-capture record's `nextHashedServerSeed` equals epoch 0's hash. E11 shows
-  the active hash `d399984589d9…cb8614`, which is the last epoch's
-  `nextHashedServerSeed` in the dataset. E11 labels the next value "Next Server
-  Seed" while displaying a 64-hex string (`af19eecb…aded0`), i.e. a hash-length
-  value, not a 32-char seed.
+- SOURCE: STANDARD (SHA-256 commitment) + DATA for the encoding; PAGE (technical page) describes the same encoding.
+- Candidates tried: SHA-256 over the ASCII string → **33 / 33** seed records and **5,935 / 5,935** bets resolve; SHA-256 over the hex-decoded 16 bytes → **0 / 33**. The 3 pre-capture seeds hash to their commitments the same way.
+- Pair revealed seeds to bets by this hash (`hashedServerSeed`), never by record position.
+- Forward chain: inside each capture file, each epoch's `nextHashedServerSeed` (served before the rotation) equals the next epoch's `hashedServerSeed`: **30 / 30** transitions; each file's pre-capture record names its first epoch's hash: **3 / 3**. The links between the three files run through rotations that are not in the dataset.
 
 ---
 
@@ -98,21 +60,14 @@ bytes.)
 
 ```
 key     = hex_decode(serverSeed)                                   # 16 bytes
-message = UTF-8( clientSeed + ":" + decimal(nonce) + ":" + "0" )   # e.g. "auditf2456fc140ac:0:0"
+message = UTF-8( clientSeed + ":" + decimal(nonce) + ":" + "0" )   # e.g. "audit8f7ccfa4326c:9:0"
 digest  = HMAC-SHA256(key, message)                                # 32 bytes
 ```
 
-- `decimal(nonce)` is plain base 10, no padding. The trailing `0` is the draw
-  cursor (dice uses one draw per bet; cursor 0).
-- SOURCE: STANDARD (HMAC-SHA256, server seed as key, `clientSeed:nonce:cursor`
-  as message) + DATA for the key form and the message format.
-- Candidates tried (each with each of the 10 byte→number mappings in Step 2,
-  plus plain `SHA-256(serverSeed + message)` for each message, **150
-  combinations**): key = ASCII string or hex-decoded bytes; message = `c:n`,
-  `c:n:0`, `c-n`, `cn`, `n:c`.
-- Result: key = **hex-decoded bytes**, message = **`c:n:0`** →
-  **6,700 / 6,700**. Best other combination: **3 / 6,700** (chance level for a
-  10,000-value outcome).
+- `decimal(nonce)` is plain base 10, no padding. The trailing `0` is the draw cursor (dice uses one draw per bet; cursor 0).
+- SOURCE: STANDARD + DATA for the key form and the message format; PAGE (technical page) describes the same key and message.
+- Candidates tried: key = ASCII string or hex-decoded bytes; message = `c:n:0`, `c:n`, `c-n`, `cn`, `n:c`; each with each of the 11 byte-to-number mappings in Step 2 (110), plus plain `SHA-256(seed text + message)` for each message format (5): **115 combinations**.
+- Result: key = **hex-decoded bytes**, message = **`c:n:0`** → **5,935 / 5,935**. Best other combination: **2 / 5,935** (chance level for a 10,000-value outcome).
 
 ### Step 2: bytes to roll
 
@@ -126,39 +81,29 @@ for i in 0, 4, 8, …, 28:
 # all 8 chunks rejected: see O2
 ```
 
-`roll` is an integer in 0…9999; displayed as `roll / 100` with two decimals
-(DATA: served `roll` 24.01 ↔ 2401; range observed 0…9999).
+`roll` is an integer in 0…9999; served as `roll / 100` with two decimals (DATA: served `roll` 76.84 ↔ 7684; range observed 0…9999).
 
 - SOURCE for "first 4 bytes, big-endian, mod 10000": DATA.
-- SOURCE for N = 10000: DATA (rolls 0.00…99.99, served max 99.99) + PAGE
-  ("roll 0.00 to 99.99").
-- SOURCE for the rejection loop: STANDARD only. A first chunk ≥ LIMIT has
-  probability 7296 / 2^32 ≈ 1.7 × 10⁻⁶; **0 of 6,700** bets hit it, so the data
-  cannot tell rejection from plain `v mod 10000` (both 6,700 / 6,700). Without
-  rejection, outcomes 0…7295 each carry 429,497 / 2^32 and 7296…9999 carry
-  429,496 / 2^32: a per-outcome deviation of at most 2⁻³² (O2).
-- Candidates tried for the mapping (all with every key/message above):
+- SOURCE for N = 10000: DATA (rolls 0.00…99.99, both ends served) + PAGE ("roll 0.00 to 99.99").
+- SOURCE for the rejection loop: STANDARD + PAGE (the technical page describes 4-byte big-endian chunks with rejection). A first chunk ≥ LIMIT has probability 7296 / 2^32 ≈ 1.7 × 10⁻⁶; **0 of 5,935** rounds hit it, so the data cannot tell rejection from plain `v mod 10000` (both 5,935 / 5,935). Without rejection, outcomes 0…7295 would each carry 429,497 / 2^32 and 7296…9999 would carry 429,496 / 2^32: a per-outcome deviation of at most 2⁻³² (O2).
+- Mappings tried (all with every key and message above):
 
   | Mapping | Best match |
   |---|---|
-  | u32 big-endian (first 4 bytes) mod 10000 (with or without rejection) | **6,700 / 6,700** |
-  | u32 big-endian mod 10001 | ≤ 3 |
-  | u32 little-endian mod 10000 | ≤ 3 |
-  | float from 4 bytes (Σ bᵢ/256^(i+1)) × 10000, floored | ≤ 3 |
-  | float from 4 bytes × 10001, floored | ≤ 3 |
-  | u32 × 10000 / 2^32, floored | ≤ 3 |
-  | float from 8 bytes × 10000, floored | ≤ 3 |
-  | 52-bit float × 10000, floored | ≤ 3 |
-  | whole digest as big integer mod 10000 | ≤ 3 |
-  | 5-hex windows < 10⁶, mod 10000 | ≤ 3 |
+  | u32 big-endian (first 4 bytes) mod 10000 (with or without rejection) | **5,935 / 5,935** |
+  | u32 big-endian mod 10001 | ≤ 2 |
+  | u32 little-endian mod 10000 | ≤ 2 |
+  | float from 4 bytes (Σ bᵢ/256^(i+1)) × 10000, floored | ≤ 2 |
+  | float from 4 bytes × 10001, floored | ≤ 2 |
+  | u32 × 10000 / 2^32, floored | ≤ 2 |
+  | float from 8 bytes × 10000, floored | ≤ 2 |
+  | 52-bit float × 10000, floored | ≤ 2 |
+  | whole digest as big integer mod 10000 | ≤ 2 |
+  | 5-hex windows < 10⁶, mod 10000 | ≤ 2 |
 
 ### Step 3: independent check against LIQD's verify endpoint
 
-E13 records LIQD's own `POST /api/v1/originals/dice/verify` called with the
-revealed epoch-0 seed `015307d5a3f62db476210c3797bac8b7`, client seed
-`auditf2456fc140ac`, nonce **1000** (never a settled bet): roll **3.61**. This
-spec gives roll **361**. E13 also records the settled bet at nonce 0 (roll
-24.01); this spec gives **2401**.
+PROBE: for every captured round, LIQD's verify endpoint was asked with the revealed seed, the round's client seed, nonce and band, and the stored reply carries the served roll, win and multiplier on **5,935 / 5,935**. On the 23 boundary probes of 9 November 2026, 6 of them on nonces that were never settled, this specification's roll equals the verifier's roll on **23 / 23**.
 
 ---
 
@@ -175,23 +120,11 @@ width  = 10000 − (U − L)   if inverted = true
 ```
 
 - SOURCE: PROBE + DATA.
-  - PROBE (E13): roll 3.61 with `[0, 3.61)` → loss; `[3.61, 10)` → win;
-    inverted `[0.5, 3.61]` → win; inverted `[3.61, 10]` → loss;
-    `[3.61, 100]` → win. Only the two probes with roll = upper (1 and 5)
-    separate half-open from inclusive-both-ends; both agree with half-open.
-  - DATA: half-open → **6,700 / 6,700** win flags; inclusive-both-ends also
-    6,700 / 6,700 (no settled bet landed on an upper bound); open-lower
-    `L < roll ≤ U` → 6,698 / 6,700. Lower-bound ties witnessed and won:
-    `gaPf8AzHumK4L9VtrhjJc` (roll 0.00, under 94.69) and
-    `RbGgV6toJS-1CgkkJI0vC` (roll 99.00, over 99).
-  - PAGE (1 Oct 2026, liqd.com/originals/dice body text): "Set a 2x bet on
-    Under and the line sits at 49.50. Switch to Over at 2x and it sits at
-    50.50, not 50. The thin strip between those two lines is where neither bet
-    wins, and it's exactly 1% of the slider." Under the half-open rule, Under
-    49.50 wins on 4,950 outcomes and Over 50.50 on 4,950 (5050…9999), each
-    paying 2x: consistent.
-- `width` is also the count of winning outcomes, so `win_chance = width / 10000`
-  exactly.
+  - DATA cannot choose: half-open reproduces **5,935 / 5,935** win flags, and so do inclusive-both-ends (5,935) and open-lower `L < roll ≤ U` (5,935), because **0** settled rounds have their roll on a lower bound and **0** on an upper bound.
+  - PROBE (E17) chooses: LIQD's verifier, asked for rolls that sit exactly on a bound, agrees with half-open on **23 / 23** probes, with inclusive-both-ends on 15 / 23 and with open-lower on 8 / 23. Roll 25.00 with `[25, 100)` → win, `[25, 75)` → win, inverted `[25, 75)` → loss; roll 75.00 with `[0, 75)` → loss, `[25, 75)` → loss, inverted `[25, 75)` → win; roll 0.00 with `[0, 75)` → win; roll 99.99 with `[25, 99.99)` → loss. The 8 probes with the roll on an upper bound are the ones that separate half-open from inclusive; the 7 with the roll on a lower bound separate it from open-lower.
+  - These are verifier replies. That settlement treats a roll on a bound the same way is not witnessed by a settled round (O5).
+  - PAGE (1 October 2026, liqd.com/originals/dice body text): "Set a 2x bet on Under and the line sits at 49.50. Switch to Over at 2x and it sits at 50.50, not 50. The thin strip between those two lines is where neither bet wins, and it's exactly 1% of the slider." Under the half-open rule, Under 49.50 wins on 4,950 outcomes and Over 50.50 on 4,950 (5050…9999), each paying 2x: consistent.
+- `width` is also the count of winning outcomes, so `win_chance = width / 10000` exactly.
 
 ### 3.2 Multiplier
 
@@ -199,58 +132,30 @@ width  = 10000 − (U − L)   if inverted = true
 multiplier = 9900 / width          (exact rational; RTP = width/10000 × 9900/width = 0.99)
 ```
 
-- Served `multiplier` (a JSON number) equals the IEEE-754 double of
-  `9900 / width` on **2,807 / 2,807** wins. Other double forms matched less:
-  `99 / (width/100)` 2,113; `99 / (upper − lower)` on doubles 1,823;
-  `0.99 / (width/10000)` 2,172. Losses carry `multiplier = 0` (3,893 / 3,893).
-- PROBE agrees: E13 multipliers 27.34806629834254 (width 362),
-  15.492957746478874 (639), 1.0217772731964083 (inverted, 9689),
-  1.0270774976657329 (9639) all equal `9900/width` as a double.
-- SOURCE: PAGE for the edge ("Edge: 1.00%", stats panel "RTP 99%", "House Edge
-  1%", 1 Oct 2026) + STANDARD (multiplier = (1 − edge) / probability) + DATA.
-- UI: E10 shows Win Chance "50.00" %, Multiplier "1.98" x, "Payout On Win:
-  1.98x" (9900 / 5000 = 1.98).
-- Limits: CONFIG `minOdds 1.0102, maxOdds 99, houseEdge 1, maxBet 9898`.
-  Captured widths run 100…9797 (multipliers 99 … 1.0105). E14 (testimony)
-  records the UI clamping at 9900x and one 9900x bet accepted and settled
-  (lost), so `maxOdds 99` is not the enforced ceiling (O4).
+- Served `multiplier` (a JSON number) equals the IEEE-754 double of `9900 / width` on **2,622 / 2,622** wins. `99 / (width/100)` also matches all 2,622 on the captured widths; `0.99 / (width/10000)` matches 1,521. Losses carry `multiplier = 0` (3,313 / 3,313).
+- PROBE agrees: the verifier's multipliers on the boundary probes (for example 1.3916221535001405 at width 7114 and 3.9584166333466615 at width 2501) equal `9900/width` as a double on every winning probe.
+- SOURCE: PAGE for the edge ("Edge: 1.00%", stats panel "RTP 99%", "House Edge 1%", 1 October 2026) + STANDARD (multiplier = (1 − edge) / probability) + DATA.
+- Captured widths: 100, 200, 500, 1000, 2000, 3500, 5000, 6500, 8000, 9000, 9800 (multipliers 99 … 1.0102…). No limits configuration was read from production (O4).
 
-### 3.3 Settlement (two stages, 1e-8 grid)
+### 3.3 Settlement (round down, 1e-8 grid)
 
 ```
-m8          = round_nearest( 9900 / width , 8 decimals )      # stage 1
-amount_won  = round_half_even( amount × m8 , 8 decimals )     # stage 2, win
+amount_won  = floor( amount × 9900 / width , 8 decimals )     # win: the exact product, rounded DOWN
 amount_won  = 0                                               # loss
 ```
 
 Use exact decimal / rational arithmetic, not doubles.
 
-- DATA, wins (2,807):
-  - two-stage as above → **2,807 / 2,807**.
-  - stage-2 rounding mode: half-even 2,807; half-up 2,686; down 1,622; ceil
-    1,604. **274** wins land exactly on a stage-2 tie (`amount × m8` ends in
-    5 at the 9th decimal); every one goes to the even neighbour (153 rounded
-    up from an odd last digit, 121 rounded down from an even one). Half-even is
-    witnessed, not assumed.
-  - stage-1 mode: nearest (half-up or half-even) 2,807; ceil 2,689; down
-    2,669. No stage-1 value fell on a tie, so its tie mode is open (O3).
-  - single-stage `round8(amount × exact 9900/width)` → 2,679 (any nearest
-    mode); best stage-1 precision other than 8 decimals → 2,696 (9 decimals).
-- Losses pay 0: **3,893 / 3,893**.
-- `stakeWallet` = `betAmount` and `winningAmountWallet` = `winningAmount` on
-  6,700 / 6,700.
-- Compare numerically: amounts are served with trailing zeros dropped
-  (`9.9`, `19.8`, `0.1045517`).
-- SOURCE: STANDARD (stake × multiplier) + DATA (precision, two stages,
-  rounding).
+- DATA, wins (2,622): rounding the exact product **down** reproduces **2,622 / 2,622**; half-up 2,086; half-even 2,086; up 1,520. The product is already on the 1e-8 grid on 1,520 wins and off it on 1,102, and every one of the 1,102 is credited the rounded-down amount.
+- Both captured stakes follow it: `0.10000000` (2,496 wins) and `10.00000000` (126 wins, all exact products of 19.8).
+- Losses pay 0: **3,313 / 3,313**.
+- `stakeWallet` = `betAmount` and `winningAmountWallet` = `winningAmount` on 5,935 / 5,935.
+- Amounts are served as 8-decimal strings (`"0.10102040"`, `"19.80000000"`); a loss is served as `"0"`.
+- SOURCE: STANDARD (stake × multiplier) + DATA (precision and rounding direction). LIQD stated on 30 September 2026 that payouts "use exact decimal maths and are then rounded down to 8 decimals".
 
 ### 3.4 Fields an implementation must not read
 
-`roll`, `win`, `result`, `multiplier`, `winningAmount`, the wallet fields and
-the capture's own `localRoll`, `localWin`, `modelMultiplier`, `verified`,
-`multOk`, `creditedOk` are claims or prior-audit computations, to be checked.
-The derivation reads only `serverSeed`, `clientSeed`, `nonce`, `lower`,
-`upper`, `inverted` and `amount`.
+`roll`, `win`, `result`, `multiplier`, `winningAmount`, the wallet fields, the stored `verifier` reply and the converter's own `localRoll`, `localWin`, `verified` are claims or prior computations, to be checked. The derivation reads only `serverSeed`, `clientSeed`, `nonce`, `lower`, `upper`, `inverted` and `amount`.
 
 ---
 
@@ -258,159 +163,167 @@ The derivation reads only `serverSeed`, `clientSeed`, `nonce`, `lower`,
 
 | Step | Source | Evidence |
 |---|---|---|
-| Inputs: server seed, client seed, nonce | PAGE (E11) + DATA | E11 seeds panel; 134 epochs, nonces 0…49 |
-| Commitment = SHA-256 over the ASCII seed | STANDARD + DATA | 6,700/6,700, 134/134 (decoded bytes 0/134) |
-| Forward chain | DATA | 133/133 + pre-capture link |
-| HMAC-SHA256, key = hex-decoded seed | STANDARD + DATA | 6,700/6,700 (ASCII key ≤ 3) |
-| Message = `clientSeed:nonce:0` | STANDARD + DATA | 6,700/6,700 (4 other formats ≤ 3) |
-| First 4 bytes BE u32 mod 10000 | DATA | 6,700/6,700; 9 other mappings ≤ 3 |
-| Rejection ≥ 4294960000 | STANDARD | not exercised (0/6,700); O2 |
+| Inputs: server seed, client seed, nonce | DATA + PAGE | 33 epochs, nonces from 0 without a gap |
+| Commitment = SHA-256 over the ASCII seed | STANDARD + DATA + PAGE | 5,935/5,935, 33/33 (decoded bytes 0/33) |
+| Forward chain | DATA | 30/30 in-file links + 3/3 pre-capture links |
+| HMAC-SHA256, key = hex-decoded seed | STANDARD + DATA + PAGE | 5,935/5,935 (ASCII key ≤ 2) |
+| Message = `clientSeed:nonce:0` | STANDARD + DATA + PAGE | 5,935/5,935 (4 other formats ≤ 2) |
+| First 4 bytes BE u32 mod 10000 | DATA | 5,935/5,935; 9 other mappings ≤ 2 |
+| Rejection ≥ 4294960000 | STANDARD + PAGE | not exercised (0/5,935); O2 |
 | Roll display roll/100, range 0.00–99.99 | PAGE + DATA | meta description; served rolls |
-| Half-open band, inverted = complement | PROBE + DATA | E13 probes 1 and 5; 6,700/6,700 |
-| Multiplier 9900/width | PAGE (1 % edge) + STANDARD + DATA + PROBE | 2,807/2,807 double-exact |
-| Payout two-stage, stage 2 half-even | DATA | 2,807/2,807; 274/274 ties to even |
-| Loss pays 0 | DATA | 3,893/3,893 |
+| Half-open band, inverted = complement | PROBE + DATA | E17 23/23 (inclusive 15/23); 5,935/5,935 |
+| Multiplier 9900/width | PAGE (1 % edge) + STANDARD + DATA + PROBE | 2,622/2,622 double-exact |
+| Payout = exact product rounded down to 8 decimals | DATA | 2,622/2,622 (half-up 2,086) |
+| Loss pays 0 | DATA | 3,313/3,313 |
 
 ---
 
-## 5. Test vectors (from the dataset)
+## 5. Test vectors (from the production dataset)
 
-Each is copied from `dice-master-6700bets.json` (bet `id`), with the server
-seed found by hashing (§1.2). `u32` = first four HMAC bytes, big-endian.
+Each is copied from `data/dice-prod-5935bets.json` (bet `id`), with the server seed found by hashing (§1.2). `u32` = first four HMAC bytes, big-endian.
 
-**V1: bet `kzLjSr11zq5GvEOHlj9n6`** (Under, win, stage-2 tie rounded up to even)
+**V1: bet `JOaaqudLC5XcE2aFNic0w`** (Phase A, Under 98, win, credit rounded down)
 ```
-serverSeed  015307d5a3f62db476210c3797bac8b7
-commitment  918c2a302c7219c91cf31ce3619acb0ac820b9b7760e8ea3889787bfcb5d14d8
-message     auditf2456fc140ac:0:0        params lower 0, upper 92.37, inverted false   amount 0.1
-HMAC        475461d14638cca3e385e940e763bf808fa6ef6c05f1a83c333dc25e586c5b6e
-u32 1196712401 → roll 2401 (24.01) → win, width 9237
-multiplier 1.071776550828191   m8 1.07177655   0.1 × m8 = 0.107177655 → amount_won 0.10717766
+serverSeed  3085a86bd812800c76ae7d81191955b2
+commitment  99d78251a09a8c5ee083928d3ff835b1bca114e1ebf86cbf338f43959a583d8d
+message     audit8f7ccfa4326c:9:0        params lower 0, upper 98, inverted false   amount 0.10000000
+HMAC        0227b8f4a2868a7df388b2431204df236ef73adf635599eedbe030ce63562c4a
+u32 36157684 → roll 7684 (76.84) → win, width 9800
+multiplier 1.010204081632653   0.1 × 9900/9800 = 0.10102040816… → amount_won 0.10102040
 ```
 
-**V2: bet `RbGgV6toJS-1CgkkJI0vC`** (Over 99, Phase B, roll on the lower bound wins)
+**V2: bet `Cp6pO0kMLIR_-nkDWIs_0`** (Phase A, Between, win, credit rounded down)
 ```
-serverSeed  36a8d90f5e7cd710ae29bfc89eb709c7
-commitment  11ff13d04fe380139447a5c1643da301ee883ee6e3e10e11b0b5f56189c651f9
-message     audit4195522a3970:47:0       params lower 99, upper 100, inverted false    amount 0.1
-HMAC        bd93f34cf8d0aef107a4d487d17b8fd5373d9599badd953830bddccece381674
-u32 3180589900 → roll 9900 (99.00) → win (99.00 ≥ 99), width 100
+serverSeed  463775f070cb7cb2e09940f94ee97ac3
+commitment  0efdf3b9cc16b585df2d26b78c1428fa7a5768f78f2b2b040e6bd646cd34c757
+message     audit6fa3a34e4fd5:54:0       params lower 42.79, upper 77.79, inverted false   amount 0.10000000
+HMAC        e27ebcd6adfe3b281518e9cb39b367df53a9291e05f186deb12e430225726b68
+u32 3799956694 → roll 6694 (66.94) → win, width 3500
+multiplier 2.8285714285714287   0.1 × 9900/3500 = 0.28285714285… → amount_won 0.28285714
+```
+
+**V3: bet `I8Q8SDGxcfjU1popneurG`** (Phase A, Outside, win, credit rounded down)
+```
+serverSeed  85cb5f41035e18a2db66e0fa95a742a3
+commitment  42f0b975b33c41e6f8e581ad39c6cda1fc2c2ccbff6b36788e99d58b713d7528
+message     audit516264facc8f:6:0        params lower 14.31, upper 49.31, inverted true    amount 0.10000000
+HMAC        9136a6fa9feda6c54d57f714d47bd17dc743ba95579f032e570e21ba14c8b12d
+u32 2436278010 → roll 8010 (80.10) → outside [1431, 4931) → win, width 10000 − 3500 = 6500
+multiplier 1.523076923076923   0.1 × 9900/6500 = 0.15230769230… → amount_won 0.15230769
+```
+
+**V4: bet `iMgu6U7RKoct0VAxgLffJ`** (Phase A top-up, Outside at a 1 % win chance, 99×, win)
+```
+serverSeed  f12e4515cea57104b9e04178548d8c20
+commitment  0d877282928bdff7b8c93510034b1c0055a905a2c46307475b17d374ba928cab
+message     auditfc6a04215b7e:83:0       params lower 0.5, upper 99.5, inverted true       amount 0.10000000
+HMAC        a33772ad8328da21abaa481519d23ba94b205f586fcb76aa345246b813b6e43e
+u32 2738320045 → roll 45 (0.45) → outside [50, 9950) → win, width 10000 − 9900 = 100
 multiplier 99   amount_won 9.9
 ```
 
-**V3: bet `OsauXga93-aZ8ARsdzDFd`** (Between, win, no tie)
+**V5: bet `ljxzosACO18qUy31tkwlA`** (Phase D, player-set client seed, Over 35, win)
 ```
-serverSeed  015307d5a3f62db476210c3797bac8b7
-commitment  918c2a302c7219c91cf31ce3619acb0ac820b9b7760e8ea3889787bfcb5d14d8
-message     auditf2456fc140ac:18:0       params lower 10.22, upper 66.49, inverted false   amount 0.1
-HMAC        4d760f8d17c14858f9b7fe6568156de067a40dbffb23c68d5743767c5eb1ce1d
-u32 1299582861 → roll 2861 (28.61) → win, width 5627
-multiplier 1.759374444641905   m8 1.75937444   0.1 × m8 = 0.175937444 → amount_won 0.17593744
-```
-
-**V4: bet `Jx3DPeH3HOJUsFfmyfSbh`** (Outside, win, stage-2 tie rounded down to even)
-```
-serverSeed  015307d5a3f62db476210c3797bac8b7
-commitment  918c2a302c7219c91cf31ce3619acb0ac820b9b7760e8ea3889787bfcb5d14d8
-message     auditf2456fc140ac:41:0       params lower 46.27, upper 56.35, inverted true    amount 0.1
-HMAC        cab70be16f56a77447dd92143b4a3f1e81609922136bc8781b491589383a53f9
-u32 3400993761 → roll 3761 (37.61) → outside [4627, 5635) → win, width 10000 − 1008 = 8992
-multiplier 1.1009786476868328   m8 1.10097865   0.1 × m8 = 0.110097865 → amount_won 0.11009786
+serverSeed  425eeb1811ca501f62c67c22c3e3e464
+commitment  5bef5d420546c2a23b5d1701ead71778cf2a486c7a54b30e09b8bf681ec0d286
+message     pfaudit-prod-dice-d1-9e7a04f27b2a:16:0   params lower 35, upper 100, inverted false   amount 0.10000000
+HMAC        8e5c0dc1f77081208d71018244faf1110b0a5fb62114fe79091b08f2801b237e
+u32 2388397505 → roll 7505 (75.05) → win, width 6500
+multiplier 1.523076923076923   amount_won 0.15230769
 ```
 
-**V5: bet `2OREb_OtYFaBKk_duOBkQ`** (Over 50, Phase C, 10 USDC stake, win)
+**V6: bet `EdvA4OjCUyOffdOqerqJ5`** (Phase C, Over 50, stake 10, win)
 ```
-serverSeed  bfde02800431d623efda4473c8966a25
-commitment  a315d0f959b19e8a2762fa90abde4b94c1915528e296d92a85b5db2921cf8ffa
-message     audit085813da8559:0:0        params lower 50, upper 100, inverted false    amount 10
-HMAC        7abf491376aafaeb9efd6de1ed3651eef9c2a91eed254d1f780152c41a31fa3d
-u32 2059356435 → roll 6435 (64.35) → win, width 5000
+serverSeed  426be2756dc6f4b943deeed76b081ee7
+commitment  c63616b206513a87c6f6a41464be633cb3685c79d9b283bf3d7f030543468d59
+message     audit6d93604e032c:1:0        params lower 50, upper 100, inverted false    amount 10.00000000
+HMAC        5235f88ba46f9c6b9152ab7c56b45f0f9ace2ac12740785e561f3126830fce9d
+u32 1379268747 → roll 8747 (87.47) → win, width 5000
 multiplier 1.98   amount_won 19.8
 ```
 
-**V6: LIQD verify endpoint** (E13; no bet id, roll only)
+**V7: bet `9DfhEtFeDzitdNEV2qzHI`** (Phase C, Over 50, stake 10, loss)
 ```
-serverSeed 015307d5a3f62db476210c3797bac8b7   message auditf2456fc140ac:1000:0 → roll 361 → "3.61" (as LIQD's verifier returned)
+serverSeed  426be2756dc6f4b943deeed76b081ee7     message audit6d93604e032c:0:0
+HMAC        37bcf51f127a5f2853c555440ac0eb6d51be863c5e884bb3fd79b607e8cffc8f
+u32 935130399 → roll 399 (3.99) → 399 < 5000 → loss, multiplier 0, amount_won 0
 ```
 
----
-
-## 6. Open points the public sources do not settle
-
-- **O1: no written algorithm.** No LIQD page describing the derivation was
-  readable (403 to plain GET on 20 Oct 2026; Provably Fair panel text beyond
-  E11 not read). Key form, message format (including the `:0` cursor),
-  mapping and N rest on STANDARD + DATA + the E13 verifier roll.
-- **O2: rejection.** Whether LIQD rejects chunks ≥ 4294960000 or takes plain
-  `v mod 10000` is not decided by the data (0 / 6,700 exercised; ≈ 1.7 bets
-  per million). If it rejects, the continuation (next chunk, then cursor 1)
-  is a placeholder. Either way the bias bound is ≤ 2⁻³² per outcome. To
-  settle: find a nonce whose first chunk ≥ LIMIT on a revealed seed and ask
-  LIQD's verify endpoint.
-- **O3: stage-1 tie mode.** Rounding the multiplier to 8 decimals is
-  "nearest"; no captured width put `9900/width` exactly on a half, so half-up
-  vs half-even at stage 1 is open. Stage-2 half-even is witnessed (274 ties).
-- **O4: limits.** CONFIG says `maxOdds 99` (width ≥ 100); E14 (session note,
-  raw HTTP not retained) says the UI and backend accept 9900x (width 1). The
-  captured data spans widths 100…9797 only. Behaviour for widths 1…99, the
-  minimum (`minOdds 1.0102` ⇒ width ≤ 9800) and any exposure cap are not
-  witnessed in settlement.
-- **O5: upper-bound tie in settlement.** The half-open upper bound rests on
-  two verifier probes (E13), not on a settled bet (0 of 6,700 landed on an
-  upper bound).
-- **O6: stake grid and currency.** Only stakes 0.1 and 10 USDC were captured.
-  Stakes with more than 8 decimals, and other currencies, are unwitnessed.
-- **O7: client-seed encoding beyond ASCII.** UTF-8 is assumed; all captured
-  client seeds are ASCII. Whether `:` inside a client seed is allowed is
-  unknown (none captured).
-- **O8: cursor meaning.** The trailing `:0` is read as a per-draw cursor by
-  analogy with the standard multi-draw construction; dice uses only cursor 0
-  in every captured bet.
-
----
-
-## 7. Reproduction of this spec
-
-Implemented in a throwaway script outside the repo
-(`scratchpad/liqd-dice-spec/spec_check.py`, with `rng.py` for the 150-way
-candidate search and `payout2.py` for the rounding search), run on every bet:
-
+**V8: bet `YZRCscx8nuK_hv6jjY7w0`** (Phase A, the round that rolled 0.00)
 ```
-commit SHA256(ascii serverSeed)==hashedServerSeed: bets 6700/6700, seed records 134/134
-forward chain next->active: 133/133, preCapture link True
-roll = HMAC(key=hexdecode(seed), msg="c:n:0") u32BE mod 10000 with rejection: 6700/6700; plain mod: 6700/6700; bets that took rejection path: 0
-roll range 0 9999
-win flag rule half-open: 6700/6700
-win flag rule inclusive: 6700/6700
-win flag rule open-low : 6698/6700
-multiplier 9900/width_hundredths (double)     exact double equality on wins: 2807/2807; all bets: 2807/6700
-losses paying 0: 3893/3893
-wins=2807 winningAmount = round8(amount x round8_nearest(9900/width)), stage-2 mode: {'down': 1622, 'half_up': 2686, 'half_even': 2807, 'ceil': 1604}
-stage-2 ties: 274 {('up', 'lo_odd'): 153, ('down', 'lo_even'): 121}
-stage-1 mode at k=8 (stage-2 half_even): {'down': 2669, 'half_up': 2807, 'half_even': 2807, 'ceil': 2689}
-E13 probe nonce 1000 roll: 361 settled nonce 0: 2401
-combos tried 150 max of rest 3
+serverSeed  f8a011e47813188caa965e5e0f4c925d
+commitment  c0c9028c7ba78146d573b84704013ef26739fd0e19fc962712019fec26b44285
+message     audit28f0a5faf51b:117:0      params lower 33.62, upper 53.62, inverted true   amount 0.10000000
+HMAC        4051e9709c126422f71f3b4c21951fa78508a3dfcb943c5496cc3fa42a6ae168
+u32 1079110000 → roll 0 (0.00) → outside [3362, 5362) → win, width 8000
+multiplier 1.2375   amount_won 0.12375 (exact product)
+```
+
+**V9: bet `vVnhllPfT2QMomDU-d2z2`** (Phase A, the round that rolled 99.99)
+```
+serverSeed  76f6cbe2ac74cda67b021b9f70d0084a
+commitment  772b331e6b32c2d2d8231c3aa895a7393c1894ae88f8675b28e41b0c0d9ed124
+message     audit216e8ae924ba:177:0      params lower 36.73, upper 56.73, inverted true   amount 0.10000000
+HMAC        2f98249f00ab587c3ee46376f4422ac029a4189156de4e85711760f0f9546019
+u32 798499999 → roll 9999 (99.99) → outside [3673, 5673) → win, width 8000
+multiplier 1.2375   amount_won 0.12375 (exact product)
+```
+
+**V10: LIQD verify endpoint on a band bound** (E17; nonces never settled, roll and win only)
+```
+serverSeed edd81eacc3dd5564aa0c26709b918299   message auditf6f5365ea141:410:0 → roll 2500 → "25" (as LIQD's verifier returned)
+serverSeed e42be262c0afeb4e3700d1a90580b266   message audit82cc2056621a:804:0 → roll 7500 → "75"
+roll 2500: [25, 100) win · [25, 75) win · inverted [25, 75) loss
+roll 7500: [0, 75) loss · [25, 75) loss · inverted [25, 75) win
 ```
 
 ---
 
-## 8. Files and URLs read while writing this spec
+## 6. Open points the production sources do not settle
 
-Read: `repositories/liqd/dice/evidence/E10-dice-game-ui.png`,
-`E11-provably-fair-seeds-panel.png`, `E13-verify-endpoint-boundary-probes.json`,
-`E14-maxodds-live-record.json`, `rtp-page-labels-2026-10-01.json`;
-`repositories/liqd/dice/data/dice-master-6700bets.json`;
-the framework spec folder's `games/dice/ALGORITHM.md` (Duel spec, shape
-model) and `games/dice/profile.json`. URLs (GET, no login, both HTTP 403):
-`https://liqd.com/originals/dice`, `https://liqd.com/provably-fair`.
+- **O1: the written algorithm.** LIQD's technical page describes the derivation; its text was read, not saved, so this specification rests on STANDARD + DATA + PROBE for every rule and uses the page as a consistent description only.
+- **O2: rejection.** Whether LIQD's server rejects chunks ≥ 4294960000 or takes plain `v mod 10000` is not decided by the data (0 / 5,935 exercised; ≈ 1.7 rounds per million). The technical page describes rejection, and a redraw at cursor + 1,000,000 when all eight chunks of a digest are rejected; that continuation is not specified here because no input reaches it (probability about (1.7 × 10⁻⁶)⁸ per draw), and `src/rng.ts` stops with an error instead. Either way the bias bound is ≤ 2⁻³² per outcome. To settle the first question: find a nonce whose first chunk is ≥ LIMIT on a revealed seed and ask LIQD's verify endpoint.
+- **O3: rounding.** Round-down is witnessed on 1,102 wins whose product is off the 1e-8 grid, at widths 3500, 6500 and 9800 and the stake 0.10. Other widths and stakes at which the product is off the grid were not captured.
+- **O4: limits.** No odds or bet-limit configuration is in the production replies and none was read. The captured data spans widths 100…9800 only. Behaviour for widths 1…99 and 9801…9899, and any exposure cap, are not witnessed.
+- **O5: bound ties in settlement.** The half-open rule rests on verifier replies (E17), not on a settled round (0 of 5,935 landed on a bound).
+- **O6: stake grid and currency.** Only stakes 0.10 and 10.00 USDT were captured. Other stakes and other currencies are unwitnessed.
+- **O7: client-seed encoding beyond ASCII.** UTF-8 is assumed; all captured client seeds are ASCII. Whether `:` inside a client seed is allowed is unknown (none captured; `-` is, in the player-set seeds).
+- **O8: cursor meaning.** The trailing `:0` is read as a per-draw cursor by analogy with the standard multi-draw construction and the technical page; dice uses only cursor 0 in every captured round.
 
-Not opened: `E12-provably-fair-verify-tab.png`, `evidence/E14-maxodds-live-probe.md`
-(not image or JSON), any `src/`, `tests/`, `scripts/`, `capture/`, `outputs/`,
-`verifier-parity/`, `verify.js`, `test.js`, `MANIFEST.md`, `README.md`,
-`AUDIT_CONTEXT.md` or `workshop-notes/` of any LIQD package, the auditor's other LIQD working folders,
-any LIQD JS bundle, the browser tool's snapshot folder.
+---
 
-Disclosure: `profile.json` reference fields mention earlier LIQD package
-details in passing (e.g. "bit-exact 9900 / basisPoints", "1e-8 integer
-units"); E13/E14 carry the previous audit's prose conclusions. Those texts were
-seen; every rule above was fixed by the counts in §7, not by them.
+## 7. Reproduction of this specification
+
+`node scripts/algorithm-spec-check.mjs` (Node 22, built-in modules only; it reads `data/dice-prod-5935bets.json` and `evidence/E17-prod-verify-boundary-probes-2026-11-09.json` and imports nothing from `src/` or `tests/`), output of 10 November 2026:
+
+```
+commitment SHA-256(ASCII seed) == hashedServerSeed: seed records 33/33, bets 5935/5935; SHA-256(decoded bytes): seed records 0/33
+pre-capture seeds: 3/3 hash to their commitment; all 36 revealed seeds are 32 lowercase hex: true
+forward chain next -> active inside each capture file: 30/30; pre-capture link to the file's first epoch: 3/3
+roll candidates tried: 115
+  5935/5935  HMAC key hex-decoded bytes, message c:n:0, u32 big-endian mod 10000, rejection >= LIMIT
+  5935/5935  HMAC key hex-decoded bytes, message c:n:0, u32 big-endian mod 10000, no rejection
+  best of the other 113: 2/5935
+captured rounds whose first chunk is >= LIMIT (rejection path taken): 0
+served roll range in hundredths: 0 .. 9999
+win rule half-open [L, U): settled rounds 5935/5935; verifier boundary probes (E17) 23/23
+win rule inclusive [L, U]: settled rounds 5935/5935; verifier boundary probes (E17) 15/23
+win rule open-lower (L, U]: settled rounds 5935/5935; verifier boundary probes (E17) 8/23
+settled rounds with the roll on the lower bound: 0; on the upper bound: 0
+multiplier == double(9900 / width) on wins: 2622/2622; == 99 / (width/100): 2622; == 0.99 / (width/10000): 1521; losses with multiplier 0: 3313/3313
+captured widths: 100, 200, 500, 1000, 2000, 3500, 5000, 6500, 8000, 9000, 9800
+winningAmount == round(amount x 9900 / width, 8 dp) on 2622 wins, by mode: down 2622, half-up 2086, half-even 2086, up 1520
+wins whose exact product is not on the 1e-8 grid: 1102 (all credited the rounded-down amount: 1102); on the grid: 1520
+losses paying 0: 3313/3313
+stakeWallet == betAmount and winningAmountWallet == winningAmount: 5935/5935
+stakes captured: 0.10000000, 10.00000000 USDT
+LIQD verify reply == served roll, win, multiplier: 5935/5935
+E17 probes: roll of this specification == LIQD's verifier roll on 23/23
+client seeds: 28 of form audit + 12 hex (17 characters), 5 player-set of 33 characters; all ASCII: true; nonces per epoch start at 0
+```
+
+---
+
+## 8. Sources read for this specification
+
+`data/dice-prod-5935bets.json`; `evidence/E17-prod-verify-boundary-probes-2026-11-09.json`; `evidence/rtp-page-labels-2026-10-01.json`; the auditor's read note of `liqd.com/provably-fair/technical-implementation` (3 November 2026). No LIQD source code, client bundle or port of either was read.

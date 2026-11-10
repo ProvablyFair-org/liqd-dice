@@ -16,17 +16,17 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
-import { DATASET_SHA256, SIMULATION_SHA256, SIMULATION_HTML_SHA256, EXPECTED_BETS, EXPECTED_SEEDS, EXPECTED_EPOCH_SIZE, EXPECTED_PHASE_BETS } from '../../src/config';
+import { DATASET_SHA256, DATASET_FILE, SIMULATION_SHA256, SIMULATION_HTML_SHA256, EXPECTED_BETS, EXPECTED_SEEDS, EXPECTED_EPOCHS, EXPECTED_PHASE_BETS, EXPECTED_CAPTURES, E17_FILE, E17_SHA256 } from '../../src/config';
 import { renderConvergenceChart } from '../../src/chart';
 
 const REPO = path.join(__dirname, '../..');
 const sha = (p: string) => createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 const SIM_JSON = path.join(REPO, 'outputs/simulation-results.json');
 const SIM_HTML = path.join(REPO, 'outputs/rtp-convergence.html');
-const DATASET = path.join(REPO, 'data/dice-master-6700bets.json');
+const DATASET = path.join(REPO, DATASET_FILE);
 
 describe('LIQD Dice artifacts of record', () => {
-  it('data/dice-master-6700bets.json hash matches DATASET_SHA256', () => {
+  it(`${DATASET_FILE} hash matches DATASET_SHA256`, () => {
     assert.strictEqual(sha(DATASET), DATASET_SHA256);
   });
 
@@ -56,11 +56,16 @@ describe('LIQD Dice artifacts of record', () => {
     const perEpoch = new Map<number, number>();
     for (const b of ds.bets) perEpoch.set(b.epoch, (perEpoch.get(b.epoch) ?? 0) + 1);
     assert.strictEqual(perEpoch.size, EXPECTED_SEEDS);
-    for (const [e, n] of perEpoch) assert.strictEqual(n, EXPECTED_EPOCH_SIZE, `epoch ${e}`);
+    for (const [e, n] of perEpoch) assert.strictEqual(n, EXPECTED_EPOCHS[e].bets, `epoch ${e}`);
     const byPhase: Record<string, number> = {};
-    for (const b of ds.bets) byPhase[b.phase] = (byPhase[b.phase] ?? 0) + 1;
+    for (const b of ds.bets) byPhase[b.phaseId] = (byPhase[b.phaseId] ?? 0) + 1;
     assert.deepStrictEqual(byPhase, { ...EXPECTED_PHASE_BETS });
     assert.strictEqual(ds.meta.plannedTotal, EXPECTED_BETS);
-    assert.strictEqual(ds.meta.epochSize, EXPECTED_EPOCH_SIZE);
+    assert.strictEqual(ds.meta.epochs, EXPECTED_SEEDS);
+    assert.strictEqual(ds.meta.captures.length, EXPECTED_CAPTURES);
+  });
+
+  it(`${E17_FILE} hash matches E17_SHA256`, () => {
+    assert.strictEqual(sha(path.join(REPO, E17_FILE)), E17_SHA256);
   });
 });

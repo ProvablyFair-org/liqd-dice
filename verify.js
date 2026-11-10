@@ -40,7 +40,7 @@ const config_1 = require("./config");
  * Every other RNG step proves the draw REPRODUCES — that the roll recorded is the roll the declared
  * algorithm computes from the revealed seed. None of them asks whether that algorithm draws the
  * 10,000 lattice points EQUALLY. If the accepted window `[0, maxFair)` did not hold a WHOLE number
- * of ranges, the low residues would be over-represented, and every one of the 6,700 exact
+ * of ranges, the low residues would be over-represented, and every one of the exact
  * recomputations in Step 5 would be an exact recomputation of a BIASED draw — Step 5 recomputes the
  * roll against the same helper, so it cannot see the bias on its own.
  *
@@ -54,7 +54,7 @@ const config_1 = require("./config");
  * is returned too, as the profile asks when rejection sampling is the mechanism.
  *
  * NOTE this is an ARITHMETIC property of the audit module's constants — it holds for
- * every possible seed, not only the 6,700 captured. It does NOT exercise the operator-side reject
+ * every possible seed, not only the captured ones. It does NOT exercise the operator-side reject
  * branch, which no captured bet's first chunk reached (declared limitation L11, unchanged).
  *
  * Returned as numbers, never as a sentence: the profile's floor is 2^-32 and a reader has to be able
@@ -95,7 +95,9 @@ function drawBiasBound() {
   "src/config.js": function (module, exports, require, __filename, __dirname) {
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PAYOUT_NUMERATOR = exports.SIM_TARGET_SEEDS_EACH = exports.SIM_TARGET_SEED_COUNTER_BASE = exports.SIM_TARGETS = exports.SIM_RTP_STRATEGY = exports.SIM_EDGE_BANDS = exports.SIM_MASTER_SEED = exports.SIMULATION_HTML_SHA256 = exports.SIMULATION_SHA256 = exports.SIM_PASS2_ALPHA = exports.SIM_PASS2_EARLY_WINDOW = exports.EXPECTED_PHASE_BETS = exports.EXPECTED_EPOCH_SIZE = exports.EXPECTED_SEEDS = exports.EXPECTED_BETS = exports.VERDICT_QUALIFIER = exports.AUDIT_ID = exports.DATASET_SHA256 = exports.ALPHA_SCREEN = exports.ALPHA_SCREENS = exports.ALPHA = exports.SIM_PASS2_NONCES = exports.SIM_CHERRY_SEED_ALPHA = exports.SIM_CHERRY_WINDOW = exports.SIM_CHERRY_BINS = exports.SIM_TARGET_MARKS = exports.SIM_TARGET_BETS = exports.SIM_RTP_MARKS = exports.SIM_RTP_BETS = exports.SIM_EDGE_BETS = exports.SIM_SERIAL_DRAWS = exports.SIM_UNIFORMITY_DRAWS = exports.MAX_ODDS = exports.MIN_ODDS = exports.HOUSE_EDGE = exports.SCALE = exports.CURSOR = exports.RANGE = void 0;
+exports.SIM_TARGET_SEEDS_EACH = exports.SIM_TARGET_SEED_COUNTER_BASE = exports.SIM_TARGETS = exports.SIM_RTP_STRATEGY = exports.SIM_EDGE_BANDS = exports.SIM_MASTER_SEED = exports.SIMULATION_HTML_SHA256 = exports.SIMULATION_SHA256 = exports.SIM_PASS2_ALPHA = exports.E17_PROBES = exports.E17_SHA256 = exports.E17_FILE = exports.PHASE_A_MIN_BETS_PER_CLASS = exports.PHASE_D_MIN_DISTINCT_SEEDS = exports.PHASE_C_MIN_WINS = exports.PHASE_C_MIN_BETS = exports.EXPECTED_WIN_CHANCES = exports.ELEVATED_STAKE = exports.BASE_STAKE = exports.EXPECTED_PHASE_BETS = exports.EXPECTED_CAPTURES = exports.EXPECTED_BETS = exports.EXPECTED_SEEDS = exports.EXPECTED_EPOCHS = exports.EXPECTED_PHASES = exports.EXPECTED_STEPS = exports.VERDICT_QUALIFIER = exports.AUDIT_ID = exports.DATASET_FILE = exports.DATASET_SHA256 = exports.ALPHA_SCREEN = exports.ALPHA_SCREENS = exports.ALPHA = exports.SIM_PASS2_NONCES = exports.SIM_CHERRY_SEED_ALPHA = exports.SIM_CHERRY_WINDOW = exports.SIM_CHERRY_BINS = exports.SIM_TARGET_MARKS = exports.SIM_TARGET_BETS = exports.SIM_RTP_MARKS = exports.SIM_RTP_BETS = exports.SIM_EDGE_BETS = exports.SIM_SERIAL_DRAWS = exports.SIM_UNIFORMITY_DRAWS = exports.PRICE_GRID_MAX_BPS = exports.PRICE_GRID_MIN_BPS = exports.HOUSE_EDGE = exports.SCALE = exports.CURSOR = exports.RANGE = void 0;
+exports.PAYOUT_NUMERATOR = void 0;
+exports.expectedEpochSize = expectedEpochSize;
 exports.bandKey = bandKey;
 exports.continuousWinChancePct = continuousWinChancePct;
 exports.payoutBasisPoints = payoutBasisPoints;
@@ -103,56 +105,54 @@ exports.quotedMultiplier = quotedMultiplier;
 exports.discreteWinCount = discreteWinCount;
 exports.discreteWinProbability = discreteWinProbability;
 exports.diceWin = diceWin;
+exports.diceWinInclusive = diceWinInclusive;
 exports.effectiveEdge = effectiveEdge;
 exports.effectiveEdgeIsExact = effectiveEdgeIsExact;
 exports.theoreticalRTP = theoreticalRTP;
 exports.servedReturnSign = servedReturnSign;
 exports.servedRollMatches = servedRollMatches;
-exports.round8 = round8;
 exports.creditResidualSign = creditResidualSign;
 exports.creditResidual = creditResidual;
-exports.settledCreditUnits = settledCreditUnits;
-exports.settledCredit = settledCredit;
-exports.isSettlementTie = isSettlementTie;
+exports.floor8CreditUnits = floor8CreditUnits;
+exports.floor8CreditUnitsServed = floor8CreditUnitsServed;
+exports.amountUnits = amountUnits;
 exports.bandMode = bandMode;
 /**
- * liqd Dice game math. The roll is a single bias-free draw on a discrete integer grid
+ * LIQD Dice game math. The roll is a single bias-free draw on a discrete integer grid
  * (0..9999 → /100 → a value in [0.00, 99.99]). A bet defines a band { lower, upper,
- * inverted }; the win rule is HALF-OPEN — lower inclusive, upper EXCLUSIVE
+ * inverted }; the win rule is HALF-OPEN: lower inclusive, upper EXCLUSIVE
  * (win iff roll >= lower && roll < upper; inverted takes the exact complement).
  *
- * The boundary semantics are pinned by direct probes of the operator's own verifier
- * with a roll landing exactly on each bound (evidence/E13-verify-endpoint-boundary-probes.json):
- * roll == upper LOSES a non-inverted band and WINS its inverted complement; roll == lower
- * does the opposite. An earlier release of this audit modelled the band as inclusive on
- * both ends — indistinguishable across all 6,700 settled bets, because a roll lands
- * exactly on a bound with probability 1/10,000 and none ever landed on an upper bound —
- * and derived a spurious effective-edge variation from it. Under the true half-open rule
- * every mode's winning region holds exactly 100·W grid points, so the effective edge is
- * exactly 1.00% on every bet.
+ * WHERE THE BOUNDARY RULE COMES FROM. No settled round of the production capture has its roll on a
+ * band bound (Step 15 prints the count), so the settled data cannot tell a half-open band from one
+ * that is inclusive on both ends. The rule is witnessed on LIQD's production verify endpoint
+ * (POST https://liqd.com/api/v1/originals/dice/verify, 9 November 2026, logged out): 22 probes built
+ * from revealed production seeds whose roll equals a band bound, or misses it by 0.01, in all four
+ * modes (evidence/E17-prod-verify-boundary-probes-2026-11-09.json; Step 15 re-derives every probe).
+ * Under the half-open rule every mode's winning region holds exactly 100·W grid points, so the
+ * effective edge is exactly 1.00% on every bet. That SETTLEMENT applies the same rule on a roll that
+ * lands on a bound is not witnessed by any settled round (limitation L2).
  *
  * There is no external multiplier table: the payout multiplier is a closed-form function
  * of the band's win chance, derived here and cross-checked against every captured win.
  *
- * originals-dice limits: minOdds 1.0102, maxOdds 9900. House edge 1.00%.
- *
- * maxOdds 9900× was ACCEPTED live on 2026-09-01 by placing a 9900x
- * bet on qa (server accepted and settled it, `place-bet` 200, payout formula
- * stake x 9900) and by the UI clamping any higher multiplier to 9900x. NOTE the
- * operator's own `get-game-settings` config field reads maxOdds 99, which the
- * server does NOT enforce; the earlier 99 in this repo was that config field
- * taken on trust. See finding F-LIMITS in MANIFEST.md#verification-results (the operator's config API
- * misstating enforced behaviour is itself a trust-surface fact).
- * At 9900x the winning band is a single grid point (win chance 0.01%): under the half-open
- * rule (observed on the operator's verifier, E13; assumed for settlement, L2) it wins on exactly
- * 1/10000 -> exactly 99% RTP, so the extreme is fair, not player-favourable.
+ * LIMITS. No odds or bet-limit configuration is served in the production dice replies, and none was
+ * read from the site. What is audited is what was played: win chances 1% to 98% (99× down to
+ * 9900/9800 = 1.0102…×). The price grid the model covers is every band width that has a win chance
+ * and a multiplier above 1× (PRICE_GRID_MIN_BPS … PRICE_GRID_MAX_BPS); which of those widths outside
+ * 1%–98% production accepts was not measured (limitation L7).
  */
 exports.RANGE = 10000; // integer draw domain 0..9999
 exports.CURSOR = 0; // fixed HMAC cursor for the single dice draw
 exports.SCALE = 100; // roll = draw / 100  → 2 decimals, ceiling 99.99
 exports.HOUSE_EDGE = 0.01;
-exports.MIN_ODDS = 1.0102;
-exports.MAX_ODDS = 9900; // live-witnessed ceiling (a 9900x bet settled), NOT the config field's 99
+/**
+ * The price grid in basis points of win chance (1 bp = 0.01 %): every band width with a win chance
+ * whose multiplier 9900/bp is above 1×, i.e. bp 1 … 9899. A mathematical universe, not an operator
+ * limit: the RTP-CLAIM table and the monotonicity step sweep all of it; the capture played 100 … 9800.
+ */
+exports.PRICE_GRID_MIN_BPS = 1;
+exports.PRICE_GRID_MAX_BPS = 9899;
 // Simulation sample depths — exported so the verify step (Steps 16–17) can recompute the
 // edge-band and serial predicates at the SAME n the artifact was produced with, rather than
 // trusting the artifact's stored `n`. NOTE the serial (lag-1 / runs)
@@ -169,7 +169,7 @@ exports.SIM_RTP_MARKS = [1000, 10000, 100000, 1000000, 5000000, 10000000, export
  * EDGE CONVERGENCE ON 98 TARGETS (DICE-20), added 22 October 2026 to standardize on the design of
  * the Duel dice audit (`v1.0.0`): 98 targets × 1,000,000 bets each. Duel's targets are "roll over
  * 2.00 … over 99.00"; on LIQD the same targets are the over-mode bands [X, 100) for X = 2, 3, …, 99
- * (win chance 98% … 1%, 1.0102× … 99×; LIQD's MIN_ODDS 1.0102 is exactly `over 2.00`). Each target
+ * (win chance 98% … 1%, 1.0102× … 99×: the span of win chances the production capture played). Each target
  * is scored within 5·SE + 1e-4 of its theoretical RTP, and the MEAN simulated RTP over the 98 targets
  * at each of SIM_TARGET_MARKS (Duel's marks) is the convergence series the chart draws.
  *
@@ -186,38 +186,33 @@ exports.SIM_CHERRY_WINDOW = 50;
 /** Nominal per-window screening threshold. The ACHIEVED rate is derived in src/exact-chi2.ts. */
 exports.SIM_CHERRY_SEED_ALPHA = 0.05;
 /**
- * PASS-2 SERVED-BAND RETURN SCAN (DICE-21) — the load-bearing cherry-pick realization (the
+ * PASS-2 SERVED-BAND RETURN SCAN (DICE-21): the load-bearing cherry-pick realization (the
  * ProvablyFair.org standard dice realization).
  *
  * Every revealed casino server seed is replayed for SIM_PASS2_NONCES nonces. The EARLY window is the
- * captured nonce range (0..SIM_PASS2_EARLY_WINDOW−1, i.e. the 50 nonces the operator actually
- * served in that epoch); the REFERENCE window is the remainder. The statistic is the payout-weighted
- * RETURN of the bands the casino actually served — a cherry-picking operator biases the PLAYER'S
- * return, which the draw-uniformity screen above (SIM_CHERRY_*) is blind to.
+ * captured nonce range of that epoch (0..size−1, the nonces the operator actually served under that
+ * seed; the size is the epoch's planned size in EXPECTED_EPOCHS, which differs by phase); the
+ * REFERENCE window is the remainder. The statistic is the payout-weighted RETURN of the bands the
+ * casino actually served: a cherry-picking operator biases the PLAYER'S return, which the
+ * draw-uniformity screen above (SIM_CHERRY_*) is blind to.
  *
- * WHAT IS EXACT, AND WHAT IS ASYMPTOTIC — stated precisely so the prose never overstates it. Each
+ * WHAT IS EXACT, AND WHAT IS ASYMPTOTIC, stated precisely so the prose never overstates it. Each
  * served band contributes an INDEPENDENT scaled Bernoulli per nonce: it pays its multiplier `mult`
  * with the band's EXACT lattice win-probability `pᵢ = discreteWinProbability(band)` (the winning
  * grid points over RANGE, an exact rational), else 0. The aggregate early return is therefore a sum
- * of independent scaled Bernoullis across all served (seed, nonce) cells — a SCALED POISSON-BINOMIAL
- * — whose MEAN (Σ pᵢ·multᵢ) and VARIANCE (Σ pᵢ(1−pᵢ)·multᵢ²) are EXACT by linearity, regardless of
+ * of independent scaled Bernoullis across all served (seed, nonce) cells, a SCALED POISSON-BINOMIAL,
+ * whose MEAN (Σ pᵢ·multᵢ) and VARIANCE (Σ pᵢ(1−pᵢ)·multᵢ²) are EXACT by linearity, regardless of
  * the multiplier heterogeneity this capture carries. Those exact per-bet moments are what standardise
- * the statistic. The TAIL is then the one-sided normal (CLT) lower tail of that ~6,700-term
- * aggregate. This is EXACT MOMENTS + an ASYMPTOTIC (CLT) TAIL — NOT an exact-lattice CDF: the exact
- * distribution of the aggregate return would be a convolution of heterogeneous scaled Binomials whose
- * support runs to a mean of 2^25 and up to 2^39 atoms on this multi-band capture (110 of 134 epochs
- * multi-band, up to 36 distinct multipliers per epoch), which is computationally intractable at
- * verify speed. A single-target-per-epoch re-capture (one band held across an epoch's nonces)
- * would collapse each per-seed return to m·Binomial and make the exact CDF tractable —
- * see MANIFEST.md load-bearing-premise row and L4. The one-sided lower-tail rule is fixed in code,
- * but it was specified AFTER the capture (2026-08-27; proposed by an external reviewer on
- * 2026-09-09), not before the data were seen: cherry-picking SHORTS the early window the
- * player saw, so the step rejects on aggP < α. Its detection power is about a 14.4 pp per-bet
- * return deficit at 80% power (printed by Step 17); a smaller selection effect passes it.
+ * the statistic. The TAIL is then the one-sided normal (CLT) lower tail of that aggregate (one term
+ * per captured round). This is EXACT MOMENTS + an ASYMPTOTIC (CLT) TAIL, NOT an exact-lattice CDF:
+ * the exact distribution of the aggregate return is a convolution of heterogeneous scaled Binomials
+ * (most epochs of this capture carry several distinct multipliers), which is not computed here. See
+ * the MANIFEST.md load-bearing-premise row and L4. The one-sided lower-tail rule is fixed in code and
+ * predates the production capture (it was fixed in September 2026): cherry-picking SHORTS the early
+ * window the player saw, so the step rejects on aggP < α. Its detection power is printed by Step 17;
+ * a smaller selection effect passes it.
  *
- * The three SIM_PASS2_* exports are declared just below EXPECTED_EPOCH_SIZE / ALPHA, so the early
- * window and the significance level stay single-sourced (SIM_PASS2_EARLY_WINDOW == EXPECTED_EPOCH_SIZE,
- * SIM_PASS2_ALPHA == ALPHA).
+ * SIM_PASS2_ALPHA is declared below ALPHA so the significance level stays single-sourced.
  */
 exports.SIM_PASS2_NONCES = 10000;
 /**
@@ -250,48 +245,70 @@ exports.ALPHA_SCREEN = exports.ALPHA / exports.ALPHA_SCREENS;
  * SHA-256 of the pinned capture. Single-sourced here so the producer (`src/simulate.ts`) and the
  * verifier (`tests/verify.ts`) cannot pin different datasets.
  */
-exports.DATASET_SHA256 = 'ca1a181a9b4c89a1823e15fe71603b7a5e2267382c134873d80cba536d3aef34';
+exports.DATASET_SHA256 = 'b5357d37d4c65b26e04915ddc8d59d2b8d144f81a51242f278080a1a2d8b8697';
+/** The scored dataset's path, single-sourced for the verifier, the producer and the release manifest. */
+exports.DATASET_FILE = 'data/dice-prod-5935bets.json';
 /**
- * ProvablyFair.org audit identifier — assigned, PROVISIONAL. Single-sourced here so the emitted
+ * ProvablyFair.org audit identifier. Single-sourced here so the emitted
  * `outputs/verification-results.json` carries the same ID the report chapters print (README.md,
  * MANIFEST.md), and DICE-28's "the audit ID is assigned" is machine-checkable rather than prose
- * only. `LQ` = LIQD; `04` = the fourth LIQD audit (blackjack, mines, plinko preceded it). The
- * qualifier stays `provisional` because every bet was captured against the pre-production
- * environment (`qa.liqd.com`) before public launch — production parity is not established by this
- * capture and is not claimed. It is NOT upgraded to a final ID here: that is a publication act.
+ * only. `LQ` = LIQD; `04` = the fourth LIQD audit (blackjack, mines, plinko preceded it).
+ *
+ * The qualifier names the environment the SCORED dataset was captured on: `production`. Every scored
+ * round was placed on `liqd.com` between 7 and 10 November 2026.
  */
 exports.AUDIT_ID = 'PF-2026-LQ04';
-exports.VERDICT_QUALIFIER = 'provisional';
+exports.VERDICT_QUALIFIER = 'production';
 /**
- * THE AUDITED POPULATION, as CODE constants (G-BIND).
- *
- * A statement of how big this audit is that lives INSIDE the file being audited is no statement at
- * all: comparing `bets.length` against `meta.plannedTotal` and `seeds.length` against
- * `Math.ceil(meta.plannedTotal / meta.epochSize)`, both read from the dataset's own header, is
- * self-referential, and the SHA-256 pin does not repair it — the pin proves the file has not
- * changed since WE pinned it, not that it is the capture. An external reviewer executed the
- * consequence: delete nonces 30–49 from every epoch (6,700 → 4,020 bets), set `meta.epochSize = 30`,
- * `meta.plannedTotal = 4020` and `meta.phases` to the new counts, set every `seeds[].nonceEnd = 29`,
- * re-pin `DATASET_SHA256`, regenerate the simulation — and the suite returned
- * **21/21 PROVABLY FAIR — Full Pass on a 4,020-bet dataset**.
- *
- * A row count is not an identity. These constants are the audit's own statement of its population;
- * `meta` is checked AGAINST them rather than believed. Changing them is a visible source edit in
- * the same commit as the dataset, which is exactly the property a header field lacks.
- * Counterexample registered as `coherent population shrink` in `tests/mutations.json`.
+ * The number of numbered steps a complete run executes (21 scored + the informational Step 22).
+ * tests/verify.ts compares the executed step count and numbering against it before any verdict is
+ * printed, so a run that stopped early cannot present its partial list as the whole suite (G-EXEC).
  */
-exports.EXPECTED_BETS = 6700;
-exports.EXPECTED_SEEDS = 134;
-exports.EXPECTED_EPOCH_SIZE = 50;
-/** Bets per capture phase. The plan, in code — not `meta.phases`, which is inside the evidence. */
-exports.EXPECTED_PHASE_BETS = { A: 5000, B: 1000, C: 200, D: 500 };
+exports.EXPECTED_STEPS = 22;
+const PLAN_WIN_CHANCES = [2, 5, 10, 20, 35, 50, 65, 80, 90, 98];
+exports.EXPECTED_PHASES = [
+    { id: 'A', phase: 'A', capture: 0, epochSizes: Array.from({ length: 25 }, () => 200), stake: '0.10000000', playerSeeds: false, winChances: PLAN_WIN_CHANCES },
+    { id: 'D', phase: 'D', capture: 1, epochSizes: [100, 100, 100, 100, 100], stake: '0.10000000', playerSeeds: true, winChances: PLAN_WIN_CHANCES },
+    { id: 'A+', phase: 'A', capture: 1, epochSizes: [200], stake: '0.10000000', playerSeeds: false, winChances: [1] },
+    { id: 'C', phase: 'C', capture: 2, epochSizes: [118, 117], stake: '10.00000000', playerSeeds: false, winChances: [50] },
+];
+exports.EXPECTED_EPOCHS = exports.EXPECTED_PHASES.flatMap((ph) => ph.epochSizes.map((bets) => ({ phaseId: ph.id, phase: ph.phase, capture: ph.capture, bets, stake: ph.stake, playerSeeds: ph.playerSeeds }))).map((e, epoch) => ({ epoch, ...e }));
+exports.EXPECTED_SEEDS = exports.EXPECTED_EPOCHS.length; // 33
+exports.EXPECTED_BETS = exports.EXPECTED_EPOCHS.reduce((a, e) => a + e.bets, 0); // 5,935
+exports.EXPECTED_CAPTURES = new Set(exports.EXPECTED_PHASES.map((ph) => ph.capture)).size; // 3
+/** Rounds per phase id. The plan, in code, not `meta.phases`, which is inside the evidence. */
+exports.EXPECTED_PHASE_BETS = Object.fromEntries(exports.EXPECTED_PHASES.map((ph) => [ph.id, ph.epochSizes.reduce((a, n) => a + n, 0)]));
+/** The base stake (phases A, A+ and D) and the elevated stake (Phase C), as served. */
+exports.BASE_STAKE = '0.10000000';
+exports.ELEVATED_STAKE = '10.00000000';
+/** Every win chance (percent) the plan plays, ascending: Phase A's ten plus the A+ top-up's 1%. */
+exports.EXPECTED_WIN_CHANCES = [...new Set(exports.EXPECTED_PHASES.flatMap((ph) => ph.winChances))].sort((a, z) => a - z);
+/** The audited size of one epoch (throws on an epoch outside the plan). */
+function expectedEpochSize(epoch) {
+    const e = exports.EXPECTED_EPOCHS[epoch];
+    if (!e || e.epoch !== epoch)
+        throw new Error(`expectedEpochSize: epoch ${epoch} is not in the plan`);
+    return e.bets;
+}
+/** Profile floors the plan was sized for (DICE-12, DICE-06, DICE-15), asserted by Steps 12, 14 and 18. */
+exports.PHASE_C_MIN_BETS = 100;
+exports.PHASE_C_MIN_WINS = 100;
+exports.PHASE_D_MIN_DISTINCT_SEEDS = 2;
+exports.PHASE_A_MIN_BETS_PER_CLASS = 50;
 /**
- * Pass-2 served-band return scan (DICE-21), completing the SIM_PASS2_* set whose design is documented
- * above. The early window IS the captured served depth per epoch, and the level IS the suite's single
- * ALPHA — both single-sourced here so the producer (src/simulate.ts) and the verifier
- * (tests/steps/simulation.ts) cannot drift.
+ * The boundary-probe record (evidence E17): LIQD's production verify endpoint asked, on 9 November
+ * 2026, for rolls that land exactly on a band bound. Pinned here; Step 15 re-derives every probe.
+ * E17_PROBES is the number of answered records in the file (22 planned probes and one re-sent
+ * verify call of the capture itself).
  */
-exports.SIM_PASS2_EARLY_WINDOW = exports.EXPECTED_EPOCH_SIZE; // 50 — the captured served depth per epoch
+exports.E17_FILE = 'evidence/E17-prod-verify-boundary-probes-2026-11-09.json';
+exports.E17_SHA256 = '3cf8d772f60f62793579db7f0041ef81e77aff490b95e03717fd96c23f82de98';
+exports.E17_PROBES = 23;
+/**
+ * Pass-2 served-band return scan (DICE-21): the level IS the suite's single ALPHA, single-sourced
+ * here so the producer (src/simulate.ts) and the verifier (tests/steps/simulation.ts) cannot drift.
+ * The early window of an epoch is expectedEpochSize(epoch).
+ */
 exports.SIM_PASS2_ALPHA = exports.ALPHA; // the suite's single significance level (0.01)
 /**
  * SHA-256 of the committed simulation artifacts that Steps 16–17 score.
@@ -324,7 +341,7 @@ exports.SIM_PASS2_ALPHA = exports.ALPHA; // the suite's single significance leve
  * a forged statistic and a Full Pass. Scored inside Step 19 (with the dataset pin), never allowed to
  * abort before the scored steps.
  */
-exports.SIMULATION_SHA256 = '55873640715d1f9e38d86e10227791337c5664dca094068b2d8d148fdf9ccd97';
+exports.SIMULATION_SHA256 = '9e479965badc9bb646b0a6302837291c0704451df6e699e96a855883e70b0828';
 exports.SIMULATION_HTML_SHA256 = '6b7b6bb7c474a49b48effbd31dd69ca952e4af5ee451902dbaff4a745743e02c';
 /**
  * The auditor's pinned entropy source for the Pass-1 simulation (DICE-20). Every "fresh" seed the
@@ -372,7 +389,7 @@ exports.SIM_TARGETS = Array.from({ length: 98 }, (_, i) => ({ label: `over ${i +
  *
  * The targets continue the SAME stream from counter 800,022, and each consumes it exactly as a band
  * does (`src/simulate.ts`): `s = randSeed(), c = randSeed()`, then a fresh server seed `s =
- * randSeed()` every 50 bets (nonce = bet index mod 50, like a real 50-bet epoch). Target t (0-based,
+ * randSeed()` every 50 bets (nonce = bet index mod 50). Target t (0-based,
  * `over (t+2).00`) therefore uses counters SIM_TARGET_SEED_COUNTER_BASE + t·SIM_TARGET_SEEDS_EACH …
  * + SIM_TARGET_SEEDS_EACH − 1: its client seed at +1 and its server seeds at +2 … +20,001. No seed
  * was chosen, searched or re-rolled: the counters are fixed by this arithmetic on the pinned depths,
@@ -393,37 +410,31 @@ function continuousWinChancePct(p) {
  * PAYOUT_NUMERATOR / basisPoints is the exact quotient the operator serves as `multiplier`.
  *
  * `basisPoints` is the AUDITOR'S construction, not an operator field: the capture contains no
- * `basisPoints` anywhere (grep the dataset — it is absent), and this is `Math.round(winChance% ×
- * 100)`, the win chance re-expressed in hundredths of a percent. The evidence for the form is that
- * the served `multiplier` equals `9900/basisPoints` bit-for-bit on all 2,807 captured wins while the
- * float closed form `(100/wc)·(1−edge)` matches only 1,719 of them — so the quotient, not the closed
- * form, is what the server computes. Wherever the report calls the multiplier "the operator's
- * bit-exact 9900/basisPoints value", that is what it means, and every such site now says so.
+ * `basisPoints` anywhere, and this is `Math.round(winChance% × 100)`, the win chance re-expressed in
+ * hundredths of a percent. The evidence for the form is Step 7: the served `multiplier` equals
+ * `9900/basisPoints` bit-for-bit on every captured win, while the float closed form
+ * `(100/wc)·(1−edge)` matches only some of them (Step 7 prints both counts). So the quotient, not the
+ * closed form, is what the server computes.
  */
 exports.PAYOUT_NUMERATOR = (1 - exports.HOUSE_EDGE) * 10000; // exactly 9900 at a 1% edge
 function payoutBasisPoints(p) {
     return Math.round(continuousWinChancePct(p) * 100);
 }
 /**
- * The quoted multiplier — validated against every captured winningAmount:
+ * The quoted multiplier as a float closed form:
  *   mult = (100 / winChance%) · (1 − edge) = 99 / winChance%
- * The operator settles the credit by the two-stage 8-dp rule in settledCredit — NOT at unbounded
- * precision. The served field itself is a full binary64 (e.g. 1.071776550828191 for basisPoints
- * 9237), not a display-rounded 1.07177655; the 8-dp rounding is the SETTLEMENT intermediate, not the
- * form the multiplier arrives in.
+ * It is used for return and edge arithmetic (Steps 15-17, 21). It is NOT what the credit is settled
+ * with: the credit is floor8(stake × 9900/basisPoints) on exact rationals (floor8CreditUnits).
  *
- * PRECISION, stated rather than glossed. This closed form and the served
- * quotient `PAYOUT_NUMERATOR/basisPoints` are equal as RATIONALS but NOT as binary64: over the 2,807
- * captured wins they agree bit-for-bit on 1,719 and differ by up to 24 ULP on the other 1,088 (against
- * `99/winChance%` written that way: 1,823 agree, 984 differ, same 24-ULP worst case). The report must
- * therefore not call `9900/basisPoints == 99/continuousWinChance%` "bit-exact" — it is an exact
- * identity over the rationals and a 1-ULP-class disagreement in floating point. Step 7 pins the
- * served field against the QUOTIENT with `===`, which is why it reports 0 deviation; every other
- * consumer of this function rounds to 8 dp before it matters (`round8(quotedMultiplier(p))` was
- * verified equal to `round8(servedMultiplier)` on all 2,807 wins).
+ * PRECISION, stated rather than glossed. This closed form and the served quotient
+ * `PAYOUT_NUMERATOR/basisPoints` are equal as RATIONALS but NOT always as binary64 (Step 7 prints on
+ * how many captured wins they agree bit-for-bit). The report must therefore not call
+ * `9900/basisPoints == 99/continuousWinChance%` "bit-exact": it is an exact identity over the
+ * rationals and can differ in the last bits in floating point. Step 7 pins the served field against
+ * the QUOTIENT with `===`.
  *
  * Because the payout is priced on the CONTINUOUS win chance and the half-open band wins
- * on exactly 100·W grid points, the edge is exactly 1.00% for every band — nominal and
+ * on exactly 100·W grid points, the edge is exactly 1.00% for every band: nominal and
  * realised agree (see effectiveEdge below).
  */
 function quotedMultiplier(p) {
@@ -431,13 +442,14 @@ function quotedMultiplier(p) {
     return wc > 0 ? (100 / wc) * (1 - exports.HOUSE_EDGE) : 0;
 }
 /**
- * Number of integer roll outcomes (draw ∈ 0..9999, roll = draw/100) that WIN the band —
+ * Number of integer roll outcomes (draw ∈ 0..9999, roll = draw/100) that WIN the band.
  * ANTI-CIRCULAR: pure arithmetic over the roll grid, never operator data. The band is
  * HALF-OPEN: roll ∈ [lower, upper) ⇔ draw ∈ [lower·100, upper·100 − 1], which is
- * upper·100 − lower·100 = 100·W points exactly, in every mode (E13 boundary probes).
+ * upper·100 − lower·100 = 100·W points exactly, in every mode (the rule witnessed by the production
+ * verifier probes, evidence E17).
  *
  * The bounds are scaled with Math.round, NOT ceil/floor: every band bound in the game is
- * a 2-dp decimal, so lower·100 is an integer in exact arithmetic — but IEEE-754 puts many
+ * a 2-dp decimal, so lower·100 is an integer in exact arithmetic, but IEEE-754 puts many
  * of the products just off it (1.1·100 = 110.00000000000001, 0.57·100 = 56.99999999999999),
  * and ceil/floor then land one grid point away. The assertion
  * keeps the rounding honest: if a bound ever stops being a 2-dp decimal, this throws
@@ -458,20 +470,25 @@ function discreteWinProbability(p) {
     return discreteWinCount(p) / exports.RANGE;
 }
 /**
- * Win rule applied to a served roll — HALF-OPEN band [lower, upper), honouring `inverted`.
- * Boundary semantics pinned by operator-verifier probes with the roll exactly on each
- * bound (E13): roll == lower wins, roll == upper loses; inverted is the exact complement.
+ * Win rule applied to a served roll: HALF-OPEN band [lower, upper), honouring `inverted`.
+ * roll == lower wins, roll == upper loses; inverted is the exact complement. The boundary cases are
+ * witnessed on LIQD's production verifier (evidence E17, re-derived by Step 15).
  */
 function diceWin(roll, p) {
     const inBand = roll >= p.lower && roll < p.upper;
     return p.inverted ? !inBand : inBand;
 }
+/** The same band read as INCLUSIVE on both ends: the alternative rule the boundary probes are tested against. */
+function diceWinInclusive(roll, p) {
+    const inBand = roll >= p.lower && roll <= p.upper;
+    return p.inverted ? !inBand : inBand;
+}
 /**
- * EFFECTIVE house edge for a band, from the DISCRETE grid — the number a player actually
+ * EFFECTIVE house edge for a band, from the DISCRETE grid, the number a player actually
  * faces:  edge = 1 − P_discrete · quotedMultiplier.
  * Under the half-open rule the winning region holds exactly 100·W points, so
- * P_discrete = W/100 exactly and this evaluates to exactly HOUSE_EDGE (1.00%) for every
- * band in every mode — computed rather than assumed, so a future rule change would show.
+ * P_discrete = W/100 exactly and this evaluates to HOUSE_EDGE (1.00%) for every
+ * band in every mode, computed rather than assumed, so a future rule change would show.
  */
 function effectiveEdge(p) {
     return 1 - discreteWinProbability(p) * quotedMultiplier(p);
@@ -484,16 +501,12 @@ function effectiveEdge(p) {
  * i.e. at the audited 1% edge, 100·winCount·9900 === 99·10000·basisPoints. Every term is a small
  * integer (largest product 9.9e9, comfortably inside 2^53), so `===` is exact.
  *
- * WHY NOT A TOLERANCE. Asserting `|edge − 0.01| < 1e-12` and justifying that width as
- * "~150× the arithmetic noise", from the 6.3e-15 worst case across the captured bands, measures the
- * noise on the capture — and the capture does not contain the worst case. `continuousWinChancePct` computes `upper − lower` in binary64, so an `over 99.99` band gives
- * `100 − 99.99 = 0.010000000000005116`, a multiplier of 9899.999999994936 and an edge departure of
- * 5.063813951489138e-13 — the threshold was **1.97×** the noise, not 150×, and `over 99.99` is
- * precisely the 9900× extreme E14 recommends probing in a production recapture. A tolerance that is
- * 2× its own noise floor is a coin flip waiting for a band nobody sampled.
- *
- * In integers there is no noise and no threshold: verified with 0 violations over 59,998 bands
- * spanning the under / over / inside / outside families at every 2-dp bound.
+ * WHY NOT A TOLERANCE. `continuousWinChancePct` computes `upper − lower` in binary64, so an
+ * `over 99.99` band gives `100 − 99.99 = 0.010000000000005116`, a float multiplier of
+ * 9899.999999994936 and an edge departure of 5.063813951489138e-13: a tolerance sized on the float
+ * noise of the captured bands would sit within a factor of two of the noise at that band. In
+ * integers there is no noise and no threshold (swept over every 2-dp band of the four families in
+ * tests/dice/settlementTests.ts).
  */
 function effectiveEdgeIsExact(p) {
     const bps = payoutBasisPoints(p);
@@ -513,10 +526,9 @@ function theoreticalRTP(p) {
  *
  * WHY NOT COMPARE THE TWO FLOAT SUMS. Each cell's return is the multiplier 9900/basisPoints on a
  * win (else 0) and its expectation is winCount/RANGE × 9900/basisPoints, which is exactly 0.99 for
- * every band under the half-open rule. A 50-nonce window can therefore land EXACTLY on its
- * expectation (49.5 against 49.5), and the two binary64 accumulations then disagree in the last
- * bits (49.5 against 49.500000000000014), so a float `<` counts an exact tie as "below". The
- * capture has such windows; comparing the floats misclassified them.
+ * every band under the half-open rule. A window can therefore land EXACTLY on its expectation, and
+ * the two binary64 accumulations then disagree in the last bits, so a float `<` would count an exact
+ * tie as "below".
  *
  * Per cell, return − expectation = (9900 / (RANGE·bps)) · (won·RANGE − winCount). The positive
  * factor 9900/RANGE does not change the sign, so the sign is that of Σ (won·RANGE − winCount)/bps,
@@ -544,12 +556,12 @@ function servedReturnSign(cells) {
 }
 /**
  * Does a SERVED roll equal a RECOMPUTED one? The single definition, imported by Steps 4, 5, 6, 13,
- * 14 and 18 — one predicate, six readers.
+ * 14 and 18: one predicate, six readers.
  *
  * EXACT, deliberately. Every roll is draw/100 for an integer draw
  * in [0, 10000), so a served roll that is genuinely the operator's outcome is the nearest binary64
- * to a 2-dp decimal, and the recomputed value is the nearest binary64 to the SAME decimal — they
- * are bit-identical, verified on all 6,700 captured rolls. Allowing |local − served| up
+ * to a 2-dp decimal, and the recomputed value is the nearest binary64 to the SAME decimal: they
+ * are bit-identical (Step 5 checks it on every captured roll). Allowing |local − served| up
  * to 1e-9 is seven orders of magnitude wider than the 0.01 grid spacing: it could not admit a
  * wrong outcome, but it does admit a served value that is not on the grid at all (24.010000001), and
  * a tolerance nobody needs is a tolerance nobody audits. The finiteness guards stay: a non-numeric
@@ -565,94 +577,21 @@ function servedRollMatches(served, recomputed) {
         return false; // outside the roll domain
     return served === recomputed;
 }
-/** Round to 8 decimal places (nearest; strips IEEE-754 dust from an already-8-dp value). */
-function round8(x) {
-    return Math.round(x * 1e8) / 1e8;
-}
-/**
- * The credited amount LIQD actually settles on a win, characterised from the capture.
- * Settlement is TWO-STAGE at 8 decimal places:
- *   credit = ROUND_HALF_EVEN_8( stake × ROUND_8(multiplier) )
- * i.e. the served multiplier is ROUNDED to 8 dp as the first settlement stage, and the product
- * of stake and that rounded value is then rounded half-EVEN
- * (banker's rounding) to 8 dp. This exact rule reproduces all 2,807 captured credits with
- * ZERO residual; naive ROUND_HALF_UP_8(stake × multiplier) misses 128 of them, and 274 of the
- * 2,807 wins land on an exact 8-dp tie where the rounding MODE decides the last unit. Against the
- * raw un-rounded product the residual is directionless: measured in the operator's own number system
- * (creditResidualSign — decimal stake × the exact rational multiplier), the settlement rounds the
- * player down on 1,341 wins and up on 1,316, lands EXACTLY on the product on 150, max |residual|
- * 5.5e-9 and net +4.9e-8 USDC over the whole capture — no house bias. The payout is therefore NOT
- * "full precision, no rounding" — but on 150 of the 2,807 wins nothing was rounded at all.
- *
- * ARITHMETIC. Stage 2 is
- * done in EXACT INTEGER arithmetic on 1e-8 units, because the rule's tie case is unreachable in
- * binary floating point. Forming `stake × round8(m) × 1e8` as a double
- * and calling it a tie when `|frac − 0.5| < 1e-6` is wrong in both halves at scale: the
- * product carries relative error ~1e-16, so at ≥ 9e9 units an exact .5 tie materialises as, e.g.,
- * 22297297297.499996 — outside a tie window that is itself 1e-6 wide in the WRONG units (1e-6 of a
- * unit, not of the ULP). Fuzzing 106,711 (stake, band) pairs against an independent Python
- * `decimal` reference found 7 mismatches, every one an exact tie at ≥ 9e9 units, e.g.
- * settledCredit(2.5, 9900/111) returned 222.97297297 where the rule gives 222.97297298. None is
- * reachable by THIS capture (its 274 ties all sit near 1e7 units, and Step 8 reproduces all 2,807
- * credits either way), but a production capture at $2.50 / $25 stakes would have raised false
- * FAILs against correct operator credits. In integer units the tie is `r === 5·10^7` — an exact
- * comparison with no window at all.
- *
- * Stage 1 (`round8` of the served multiplier) stays in doubles, and its tie behaviour is stated
- * rather than assumed away — "there is no tie to lose there" would be false.
- * Exact 8-dp ties in `9900/basisPoints` DO exist: at basisPoints 2048
- * (multiplier 4.833984375) and 6144 (1.611328125), both inside the swept range. `Math.round` is
- * half-UP, so stage 1 resolves those upward — while stage 2 is half-EVEN. The two stages therefore
- * use DIFFERENT tie modes, and the audit has no evidence for the operator's stage-1 mode, because no
- * captured bet touches either band.
- *
- * ONLY ONE OF THE TWO TIES DISCRIMINATES. At basisPoints 2048 the digit
- * before the tie is 7 — odd — so half-EVEN also rounds up: both modes give 4.83398438 and the tie
- * decides nothing. The discriminator is basisPoints **6144**, where half-up gives **1.61132813** and
- * half-even **1.61132812**. Even there the difference survives only at a stake that preserves it:
- * at $1 the credits differ, at $0.10 the stage-2 rounding erases it (both settle 0.16113281). So the
- * evidence that would close this premise is precisely a settled win on basisPoints 6144 at a stake
- * of $1 or more. The shipped sweep (`tests/dice/settlementTests.ts`) asserts `Math.round` agrees
- * with exact HALF-UP rounding on all 9,800 reachable basis points, which is trivially tie-safe by
- * that definition and would pass just as well if the operator rounded stage 1 half-even. Recorded as
- * an ASSUMED premise (see MANIFEST.md#limitations-and-trust, L6, and `.pf-assumptions`).
- */
-const UNITS_PER_WHOLE = 100000000n; // 1e8 — the settlement grid
-const HALF_UNIT = 50000000n; // 0.5 · 1e8, the exact half-even tie point
+const UNITS_PER_WHOLE = 100000000n; // 1e8, the settlement grid
 /**
  * Sign of (settled credit − stake × multiplier), computed EXACTLY: −1 if the settlement rounded
  * the player down, +1 if up, 0 if it landed exactly on the product.
  *
- * ── THE LESSON THIS FUNCTION EXISTS TO CARRY ──────────────────────────────────────────────────
- * A claim about how the OPERATOR rounds must be computed in the OPERATOR'S OWN NUMBER SYSTEM —
- * decimal — never in the auditor's binary64 representation of it.
+ * A claim about how the OPERATOR rounds must be computed in the OPERATOR'S OWN NUMBER SYSTEM,
+ * decimal, never in the auditor's binary64 representation of it. Taking the exact rational value of
+ * binary64(0.1) (0.1000000000000000055511151231257827…) into the comparison would report a rounding
+ * direction for every single win, including the ones where nothing was rounded: 10.00 × 1.98 is
+ * exactly 19.80, and 0.10 × 9900/5000 is exactly 0.198.
  *
- * Taking `binary64Fraction()` of the stake and of the served multiplier — the EXACT RATIONAL VALUE
- * of each binary64, compared against the exact 8-dp decimal credit with no rounding of the product
- * back to binary64 — lets the representation error inside `binary64(0.1)`,
- * 0.1000000000000000055511151231257827…, survive into the comparison, so the function reports
- * a rounding direction for every single win: "down on 1,386, up on 1,421, none exactly on the
- * product".
- *
- * That is wrong. Witness, bet `vChEZ7Lu-yY1PMmq5fOz5`: `betAmount 0.1`, `multiplier 3.125`
- * (dyadic, therefore exact in binary64), `winningAmount 0.3125`. The exact decimal product is
- * 1/10 × 25/8 = 5/16 = 0.3125 — EXACTLY the credit. Nothing was rounded, yet MODEL 1
- * returns −1, "the settlement rounded the player down". 150 of the 2,807 wins
- * involve no rounding at all; 105 of them are the Phase-C `$10 × 1.98 = $19.80` bets — the very case
- * the report prints as an exact worked example (MANIFEST.md#verify-a-bet) while the harness called it rounded.
- *
- *   MODEL 1  binary64(stake) × binary64(mult), exact rationals   → 1,386 down / 1,421 up / 0 exact
- *   MODEL 2  decimal stake  × exact rational 9900/basisPoints    → 1,341 down / 1,316 up / 150 exact
- *
- * MODEL 2 is what ships, because the operator's ledger is decimal: the stake is a decimal amount the
- * player typed, and the multiplier is the rational 9900/basisPoints (see payoutBasisPoints). Both
- * sides are exact rationals over integers, so the comparison carries no rounding anywhere — and a
- * credit that IS the product is reported as landing on the product, which is the true statement.
- * (Computing MODEL 2 as decimal stake × decimal(served multiplier) gives the identical
- * 1,341 / 1,316 / 150, so the result does not turn on which decimal form of the multiplier is used.)
- *
- * The band, not the served `multiplier` field, is the input: that keeps the measurement
- * anti-circular and makes the "exact rational" explicit rather than reconstructed from a double.
+ * So both sides are exact rationals over integers: the stake through its decimal text (the 8-dp
+ * string LIQD serves), the multiplier as 9900/basisPoints from the band (see payoutBasisPoints). The
+ * band, not the served `multiplier` field, is the input: that keeps the measurement anti-circular.
+ * A credit that IS the product is reported as landing on the product.
  */
 function creditResidualSign(credit, stake, p) {
     const bps = payoutBasisPoints(p);
@@ -682,10 +621,9 @@ function creditResidual(credit, stake, p) {
 /**
  * Exact value of a DECIMAL literal as a rational [numerator, denominator].
  *
- * `String(x)` is the shortest decimal that round-trips to this binary64, which for every money field
- * in this capture is the decimal the operator wrote (`0.1`, `19.8`, `0.10717766`). That decimal — not
- * the binary64 that approximates it — is what the operator's ledger holds. A string input is taken
- * verbatim, so a capture that preserves the raw JSON text needs no round-trip at all.
+ * A string input is taken verbatim: the dataset keeps every money field as the 8-dp string LIQD
+ * served, so no binary64 step sits between the served text and the comparison. For a number,
+ * `String(x)` is the shortest decimal that round-trips to that binary64.
  */
 function decimalFraction(x) {
     const s = typeof x === 'string' ? x.trim() : String(x);
@@ -704,42 +642,52 @@ function decimalFraction(x) {
         d *= 10n ** BigInt(-exp);
     return [n, d];
 }
-/** The credit in exact integer 1e-8 units — the form with no rounding ambiguity at all. */
-function settledCreditUnits(stake, multiplier) {
-    const stakeUnits = BigInt(Math.round(stake * 1e8));
-    const multUnits = BigInt(Math.round(multiplier * 1e8)); // stage 1: ROUND_8(multiplier)
-    const product = stakeUnits * multUnits; // in 1e-16 units
-    let q = product / UNITS_PER_WHOLE;
-    const r = product % UNITS_PER_WHOLE;
-    if (r > HALF_UNIT)
-        q += 1n;
-    else if (r === HALF_UNIT && (q % 2n) === 1n)
-        q += 1n; // exact tie → round to even
-    return q;
+/**
+ * THE SETTLEMENT RULE (scored by Steps 8, 10, 18 and 20).
+ *
+ *   credit = floor8( stake × 9900 / basisPoints )        computed exactly, on the decimal stake
+ *
+ * The exact product is rounded DOWN to the 1e-8 grid; a loss pays 0. Measured on the production
+ * capture (data/dice-prod-5935bets.json): the rule reproduces the served winningAmount on every
+ * win, at both stakes (Step 8 prints the counts), and it is the rule LIQD stated on 30 September
+ * 2026 ("exact decimal maths and are then rounded down to 8 decimals"). A floor has no tie case and
+ * no rounding mode to assume. What it means for the player: a credit is never above the exact
+ * product and is below it by less than 0.00000001 USDT.
+ *
+ * Both inputs are exact rationals: the stake through its decimal text (the 8-dp string LIQD serves),
+ * the multiplier as the integer quotient PAYOUT_NUMERATOR/basisPoints (Step 7 binds the served
+ * multiplier to it bit-for-bit). `floor8CreditUnitsServed` applies the same floor to the served
+ * multiplier's own decimal text, so Step 8 can score the served field and Step 20 the band,
+ * independently.
+ */
+function floor8CreditUnits(stake, p) {
+    const bps = payoutBasisPoints(p);
+    if (bps <= 0)
+        throw new Error(`floor8CreditUnits: band with no win chance: ${JSON.stringify(p)}`);
+    if (!Number.isInteger(exports.PAYOUT_NUMERATOR))
+        throw new Error('floor8CreditUnits: PAYOUT_NUMERATOR is not an integer');
+    const [sn, sd] = decimalFraction(stake);
+    if (sn < 0n)
+        throw new Error(`floor8CreditUnits: negative stake ${stake}`);
+    // stake × PAYOUT_NUMERATOR / bps, in 1e-8 units, rounded down: floor(sn·N·1e8 / (sd·bps))
+    return (sn * BigInt(exports.PAYOUT_NUMERATOR) * UNITS_PER_WHOLE) / (sd * BigInt(bps));
 }
-function settledCredit(stake, multiplier) {
-    const units = settledCreditUnits(stake, multiplier);
-    // Above 2^53 − 1 units (about $90,071,992 credited) the BigInt no longer converts to a double
-    // without loss, and a silently wrong credit is precisely the failure class this function was
-    // rewritten to remove. The operator's own limits reach there in principle (max bet 9,898 at
-    // 9900x is about $98M), so refuse rather than round: callers that need the extreme should use
-    // settledCreditUnits, which stays exact. Unreachable in this capture — the largest CAPTURED
-    // credit is $19.80 (1.98e9 units), the Phase-C $10 × 1.98 bets — but a guard nobody can trip is
-    // cheaper than a defect nobody sees. (Note $990.00 is NOT a captured credit: it is E14's UI
-    // "Payout On Win" display for a 9900× probe bet that LOST, so nothing was credited.)
-    if (units > BigInt(Number.MAX_SAFE_INTEGER)) {
-        throw new Error(`settledCredit: ${units} units exceeds exact double range — use settledCreditUnits`);
-    }
-    return Number(units) / 1e8;
+/** The same floor on the served multiplier's decimal text: floor8(stake × multiplier). */
+function floor8CreditUnitsServed(stake, multiplier) {
+    const [sn, sd] = decimalFraction(stake);
+    const [mn, md] = decimalFraction(multiplier);
+    if (sn < 0n || mn < 0n)
+        throw new Error(`floor8CreditUnitsServed: negative input ${stake} × ${multiplier}`);
+    return (sn * mn * UNITS_PER_WHOLE) / (sd * md);
 }
 /**
- * True when this (stake, multiplier) lands on an EXACT 8-dp half-way point — the case where the
- * rounding MODE decides the last unit, and the case a floating-point implementation cannot detect
- * above ~9e9 units.
+ * A served amount as exact 1e-8 units, or null if it is not on the 8-dp grid. Read from the decimal
+ * text, so `"0.10102040"` is 10102040 units with no binary64 step in between.
  */
-function isSettlementTie(stake, multiplier) {
-    const product = BigInt(Math.round(stake * 1e8)) * BigInt(Math.round(multiplier * 1e8));
-    return product % UNITS_PER_WHOLE === HALF_UNIT;
+function amountUnits(x) {
+    const [n, d] = decimalFraction(x);
+    const scaled = n * UNITS_PER_WHOLE;
+    return scaled % d === 0n ? scaled / d : null;
 }
 /** Mode label for a band, for reporting/aggregation. */
 function bandMode(p) {
@@ -763,7 +711,7 @@ function bandMode(p) {
  * `outputs/report-figures.json` at the end of every run — including a FAILING run — would let a
  * run that disagreed with the committed evidence destroy the evidence of the disagreement, and
  * the next run would compare the repo against the file the failing run had just written, and
- * pass. That is not hypothetical: a reviewer executed exactly that on Node 24 — fail, then pass,
+ * pass. That is not hypothetical: it was executed on Node 24 — fail, then pass,
  * with no trace of the first outcome.
  *
  * Verification therefore writes nothing into the committed paths. It writes this run's results — pass or
@@ -920,15 +868,15 @@ function maxima(diffs) {
  * this game's artifacts contain — every one an honest committed value a naive name-based classifier
  * gets wrong:
  *
- *   `points[].rtp` = 1.0375…              a WINDOW RTP legitimately ABOVE 1 — a short window mean is
- *                                         bounded by the paytable's largest multiplier, not by 1
- *   `serial.lag1` = 0.0027…               an autocorrelation, so [-1, 1] and often negative
+ *   `points[].rtp`                        a WINDOW RTP can legitimately be ABOVE 1: a short window mean is
+ *                                         bounded by the price grid's largest multiplier, not by 1
+ *   `serial.lag1`                         an autocorrelation, so [-1, 1] and often negative
  *   `serial.lag1Z` / `runsZ` / `.z`       signed z-scores, unbounded either way
- *   `cherryPickExpected` = 5.871…         an EXPECTED count, a REAL that is legitimately not an integer
- *   `expectedUpperBoundHits` = 0.4106     an expected count legitimately < 1
- *   `theoreticalEdgePct` = 1.0000…        an edge percent that can be NEGATIVE (player-favourable)
- *   `realizedRtpPct` = 103.56             a realised RTP over a finite sample, legitimately > 100
- *   `netUsdc` = 4.9e-8                     a signed settlement residual, either sign
+ *   `cherryPickExpected`                  an EXPECTED count, a REAL that is legitimately not an integer
+ *   `expectedUpperBoundHits`              an expected count legitimately < 1
+ *   `theoreticalEdgePct`                  an edge percent that can be NEGATIVE (player-favourable)
+ *   `realizedRtpPct`                      a realised RTP over a finite sample, legitimately > 100
+ *   `netUsdt`                             a signed settlement residual, either sign
  *
  * Because a mistake in this table would either wave through a forgery or reject an honest audit,
  * Step 19 (`tests/steps/standardization.ts`) asserts BOTH directions against the committed
@@ -977,19 +925,22 @@ const BAND_BOUND = (0, exports.realBetween)(0, config_1.SCALE, 'band bound on th
 /** A served roll is draw/SCALE, so it lies in [0, (RANGE-1)/SCALE] = [0, 99.99]. */
 const ROLL_VALUE = (0, exports.realBetween)(0, (config_1.RANGE - 1) / config_1.SCALE, 'a roll value on the 2-dp grid');
 /** A quoted multiplier lies within the operator's declared odds limits. */
-const MULTIPLIER = (0, exports.realBetween)(config_1.MIN_ODDS, config_1.MAX_ODDS, 'quoted multiplier within [MIN_ODDS, MAX_ODDS]');
+/** The price grid's multiplier span: 9900/bp over PRICE_GRID_MIN_BPS … PRICE_GRID_MAX_BPS (src/config.ts). */
+const GRID_MIN_MULT = config_1.PAYOUT_NUMERATOR / config_1.PRICE_GRID_MAX_BPS;
+const GRID_MAX_MULT = config_1.PAYOUT_NUMERATOR / config_1.PRICE_GRID_MIN_BPS;
+const MULTIPLIER = (0, exports.realBetween)(GRID_MIN_MULT, GRID_MAX_MULT, 'quoted multiplier within the price grid');
 /**
  * The attainable range of any PAYOUT AVERAGE — a theoretical RTP, a simulated RTP, or a WINDOW RTP.
  * A mean of drawn multipliers cannot fall outside 0 and the largest multiplier the game can pay
- * (MAX_ODDS). NOT [0,1]: a short window legitimately averages above 1 (`points[].rtp` = 1.0375). */
-const RTP = (0, exports.realBetween)(0, config_1.MAX_ODDS, 'attainable payout average in [0, MAX_ODDS]');
+ * (GRID_MAX_MULT). NOT [0,1]: a short window legitimately averages above 1. */
+const RTP = (0, exports.realBetween)(0, GRID_MAX_MULT, 'attainable payout average in [0, the largest grid multiplier]');
 /** An RTP expressed as a PERCENT, so 100× the RTP domain — realizedRtpPct = 103.56 is honest. */
-const RTP_PCT = (0, exports.realBetween)(0, config_1.MAX_ODDS * config_1.SCALE, 'attainable payout average as a percent');
+const RTP_PCT = (0, exports.realBetween)(0, GRID_MAX_MULT * config_1.SCALE, 'attainable payout average as a percent');
 /**
- * A house-edge PERCENT. edge = 1 − RTP with RTP ∈ [0, MAX_ODDS], so as a percent it runs from
- * 100·(1 − MAX_ODDS) (a maximally player-favourable band) up to 100 (a zero-return band). Only the
+ * A house-edge PERCENT. edge = 1 − RTP with RTP ∈ [0, GRID_MAX_MULT], so as a percent it runs from
+ * 100·(1 − GRID_MAX_MULT) (a maximally player-favourable band) up to 100 (a zero-return band). Only the
  * impossible — an edge above 100% — is rejected; a negative edge is a real, disclosable outcome. */
-const EDGE_PCT = (0, exports.realBetween)(100 * (1 - config_1.MAX_ODDS), 100, 'house edge as a percent');
+const EDGE_PCT = (0, exports.realBetween)(100 * (1 - GRID_MAX_MULT), 100, 'house edge as a percent');
 /** Collapse `a.b[3].c` to `a.b[].c` so one rule covers every element of a list. */
 function collapsePath(path) {
     return path.replace(/\[\d+\]/g, '[]');
@@ -1099,7 +1050,7 @@ function domainRules() {
             // p and alpha are probabilities; the direction counts and epoch count are over the seed
             // population; the detection power is a non-negative pp value.
             { path: /^\.pass2\.servedBand\.nonces$/, domain: (0, exports.exactly)(config_1.SIM_PASS2_NONCES, 'SIM_PASS2_NONCES') },
-            { path: /^\.pass2\.servedBand\.earlyWindow$/, domain: (0, exports.exactly)(config_1.SIM_PASS2_EARLY_WINDOW, 'SIM_PASS2_EARLY_WINDOW') },
+            { path: /^\.pass2\.servedBand\.earlyBets$/, domain: (0, exports.exactly)(config_1.EXPECTED_BETS, 'EXPECTED_BETS (one early cell per captured round)') },
             { path: /^\.pass2\.servedBand\.alpha$/, domain: exports.PROBABILITY },
             { path: /^\.pass2\.servedBand\.epochs$/, domain: SEED_COUNT },
             { path: /^\.pass2\.servedBand\.(totalEarlyReturn|totalEarlyExpected|totalEarlyVar)$/, domain: exports.NONNEG_REAL },
@@ -1116,23 +1067,28 @@ function domainRules() {
             { path: /^\.wins$/, domain: BET_COUNT },
             { path: /^\.settledRtp\.(belowNominal|aboveNominal|exactlyNominal)$/, domain: BET_COUNT },
             { path: /^\.settledRtp\.(minPct|maxPct|nominalPct)$/, domain: RTP_PCT },
-            { path: /^\.settlementResidual\.(roundedDown|roundedUp|exactlyOnProduct|exactTies)$/, domain: BET_COUNT },
-            { path: /^\.settlementResidual\.maxAbsUsdc$/, domain: exports.NONNEG_REAL },
-            { path: /^\.settlementResidual\.netUsdc$/, domain: exports.FINITE },
+            { path: /^\.settlementResidual\.(roundedDown|roundedUp|exactlyOnProduct|floatClosedFormMisses)$/, domain: BET_COUNT },
+            { path: /^\.settlementResidual\.maxAbsUsdt$/, domain: exports.NONNEG_REAL },
+            { path: /^\.settlementResidual\.netUsdt$/, domain: exports.FINITE },
             { path: /^\.boundary\.(betsWithReachableUpperBound|betsWithUnreachableUpperBound|observedUpperBoundHits|observedLowerBoundHits|betsWhereBoundaryModelsDisagree|winFlagsReproducedHalfOpen|winFlagsReproducedInclusiveBothEnds)$/, domain: BET_COUNT },
             { path: /^\.boundary\.expectedUpperBoundHits$/, domain: EXPECTED_OVER_BETS },
             { path: /^\.cherryPickPower\.seeds$/, domain: SEED_COUNT },
             { path: /^\.cherryPickPower\.(nullFlagRate|pAtMinRejectable|alpha|seedAlphaNominal)$/, domain: exports.PROBABILITY },
             { path: /^\.cherryPickPower\.expectedFlags$/, domain: EXPECTED_OVER_SEEDS },
             { path: /^\.cherryPickPower\.minRejectableFlags$/, domain: SEED_COUNT },
-            { path: /^\.phaseD\.(firstEpoch|lastEpoch)$/, domain: EPOCH_IDX },
-            { path: /^\.phaseD\.epochs$/, domain: SEED_COUNT },
-            { path: /^\.phaseD\.bets$/, domain: BET_COUNT },
-            { path: /^\.phaseD\.(stakedUsdc|paidUsdc|expectedUsdc)$/, domain: exports.NONNEG_REAL },
-            { path: /^\.phaseD\.z$/, domain: exports.FINITE },
-            { path: /^\.live\.(wageredUsdc|returnedUsdc)$/, domain: exports.NONNEG_REAL },
+            { path: /^\.live\.(wageredUsdt|returnedUsdt)$/, domain: exports.NONNEG_REAL },
             { path: /^\.live\.realizedRtpPct$/, domain: RTP_PCT },
             { path: /^\.live\.meanRoll$/, domain: ROLL_VALUE },
+            // per-phase aggregates: counts over the audited population, served stakes and amounts, class counts
+            { path: /^\.phases\.[^.]+\.(bets|wins|fewestPerClass|mostPerClass)$/, domain: BET_COUNT },
+            { path: /^\.phases\.[^.]+\.epochs$/, domain: SEED_COUNT },
+            { path: /^\.phases\.[^.]+\.classes$/, domain: (0, exports.intAtMost)(4 * config_1.RANGE, '(mode × basis-point) classes') },
+            { path: /^\.phases\.[^.]+\.(stakeUsdt|wageredUsdt|returnedUsdt)$/, domain: exports.NONNEG_REAL },
+            { path: /^\.phases\.[^.]+\.realizedRtpPct$/, domain: RTP_PCT },
+            { path: /^\.modes\.(under|over|inside|outside)$/, domain: BET_COUNT },
+            { path: /^\.verifier\.(replies|equalServedRound)$/, domain: BET_COUNT },
+            { path: /^\.playerSeeds\.(epochs|distinct)$/, domain: SEED_COUNT },
+            { path: /^\.playerSeeds\.bets$/, domain: BET_COUNT },
         ],
     };
 }
@@ -1204,7 +1160,7 @@ function describeDomainFailures(artifact, r) {
  * a sampled null.
  *
  * WHY THIS EXISTS. A sampled null — a parametric bootstrap drawn inside `simulate.ts` — is
- * resampled on every run, so the SAME 134 revealed seeds yield a different flag count from one
+ * resampled on every run, so the SAME revealed seeds would yield a different flag count from one
  * rerun to the next, and at the high end the verifier's binomial tail falls below its threshold:
  * a fresh `npm test` fails Step 17 intermittently and additionally prints "DISAGREES with
  * recomputation (tampered?)", because the producer's self-report was written under a different
@@ -1455,15 +1411,23 @@ exports.STEP_CLAIMS = {
                     + '(G-BIND), which the profile asserts as part of this check',
             }],
     },
-    2: { claims: [{ id: 'DICE-02', coverage: 'full' }] },
+    2: {
+        claims: [{
+                id: 'DICE-02', coverage: 'full',
+                note: 'the dataset holds three capture files: every in-file rotation is checked (next hash == the '
+                    + 'next epoch\'s commitment) and each file is anchored by its own pre-capture pair (revealed, '
+                    + 'hashing to its commitment, naming the file\'s first epoch). The links between the files run '
+                    + 'through rotations outside this dataset and are not checked',
+            }],
+    },
     3: { claims: [{ id: 'DICE-03', coverage: 'full' }] },
     4: {
         claims: [{
                 id: 'DICE-04', coverage: 'full',
                 note: 'nonce contiguity, no-reuse and leading/trailing/short-epoch withholding are asserted, '
                     + 'and the epoch size is bound to src/config.ts not the dataset header (G-BIND); on THIS '
-                    + 'capture every epoch is fully contiguous 0..49 with zero gaps. The capture-origin FLAG rule '
-                    + 'the profile requires (decided 2026-09-17) is now implemented: a nonce gap that the revealed '
+                    + 'capture every epoch is fully contiguous from nonce 0 with zero gaps (Step 4 prints the range). The capture-origin FLAG rule '
+                    + 'the profile requires (decided 2026-09-17) is implemented: a nonce gap that the revealed '
                     + 'seed reconstructs is returned as a FLAG with origin = capture plus a limitation-row detail — '
                     + 'never a PASS — and verify.ts treats a capture-origin flag as verdict-neutral (Full Pass, '
                     + 'exit 0) while an operator-side gap or repeat is a HARD FAIL. The branch does not fire on '
@@ -1496,16 +1460,19 @@ exports.STEP_CLAIMS = {
     6: {
         claims: [{
                 id: 'DICE-10', coverage: 'full',
-                note: 'the recomputed roll under the half-open band rule reproduces the served win flag for all '
-                    + '6,700 bets, inverted honoured (the win-flag half); the roll-range/ceiling half is Step 15',
+                note: 'the recomputed roll under the half-open band rule reproduces the served win flag for every '
+                    + 'captured bet, inverted honoured (the win-flag half), and LIQD\'s own production verify endpoint '
+                    + 'reply stored for each round returns the same roll, win and multiplier; the roll-range half and '
+                    + 'the boundary rule are Step 15',
             }],
     },
     7: { claims: [{ id: 'DICE-13', coverage: 'full' }] },
     8: {
         claims: [{
                 id: 'DICE-11', coverage: 'full',
-                note: 'winning credit == ROUND_HALF_EVEN_8(stake × ROUND_8(multiplier)) asserted exactly on the '
-                    + '1e-8 integer grid (the winning half); the loss-⇒-0 half is Step 9',
+                note: 'winning credit == floor8(stake × multiplier), asserted exactly on the 1e-8 integer grid from '
+                    + 'the served decimal text at both stakes of the plan (the winning half); the loss-⇒-0 half is '
+                    + 'Step 9',
             }],
     },
     9: {
@@ -1518,17 +1485,18 @@ exports.STEP_CLAIMS = {
     10: {
         claims: [{
                 id: 'DICE-14', coverage: 'full',
-                note: 'every quoted multiplier lies within [MIN_ODDS, MAX_ODDS] with exact bounds (the odds-bounds '
-                    + 'half); the strict-monotonicity half is Step 21',
+                note: 'every captured band is priced inside the span of the plan\'s win chances (exact bound on the '
+                    + 'integer basis points; the odds-bounds half as far as the capture carries it: LIQD\'s own odds '
+                    + 'limits were not read, L7); the strict-monotonicity half is Step 21',
             }],
     },
     11: {
         claims: [
             {
                 id: 'DICE-05', coverage: 'full',
-                note: 'bets, seeds, epoch count and per-epoch size bound to EXPECTED_BETS / EXPECTED_SEEDS / '
-                    + 'EXPECTED_EPOCH_SIZE in src/config.ts; meta counts reconciled against them, never used as '
-                    + 'the denominator (G-BIND); per-phase counts are Step 12',
+                note: 'bets, seeds, epoch count and the size, phase and capture file of every epoch bound to '
+                    + 'EXPECTED_BETS / EXPECTED_SEEDS / EXPECTED_EPOCHS in src/config.ts; the dataset header is '
+                    + 'reconciled against them, never used as the denominator (G-BIND); per-phase counts are Step 12',
             },
             {
                 id: 'DICE-26', coverage: 'full',
@@ -1541,15 +1509,18 @@ exports.STEP_CLAIMS = {
         claims: [
             {
                 id: 'DICE-05', coverage: 'full',
-                note: 'per-phase bet counts asserted against the EXPECTED_PHASE_BETS code plan both ways '
+                note: 'per-phase bet counts asserted against the EXPECTED_PHASES code plan both ways '
                     + '(no undeclared phase, every declared phase at its count); the population/epoch half is '
                     + 'Step 11',
             },
             {
                 id: 'DICE-15', coverage: 'full',
-                note: 'all four band modes present, both stake tiers ($10 and $0.10), and the phase counts '
-                    + 'asserted against the EXPECTED_PHASE_BETS code plan (which carries the Phase-B 98%/99% '
-                    + 'tail); target-range endpoint exercise rests on that plan plus Step 15\'s over(99) band',
+                note: 'asserted against the plan in code: Phase A (the 7 November rounds and the A+ top-up) holds '
+                    + 'every planned win chance, 1% to 98%, in each of the four band modes with at least '
+                    + 'PHASE_A_MIN_BETS_PER_CLASS rounds per (mode × win chance) class; both ends of the planned '
+                    + 'range are played (1%, 99×, and 98%); both stake tiers are present (0.10 USDT and the 10.00 '
+                    + 'USDT of Phase C). There is no separate tail phase: 99× is the A+ top-up and 49.5× is the 2% '
+                    + 'setting of Phase A. Band widths outside 1%–98% were not played (L7)',
             },
         ],
     },
@@ -1557,18 +1528,16 @@ exports.STEP_CLAIMS = {
     14: {
         claims: [{
                 id: 'DICE-06', coverage: 'full',
-                note: '500/500 auditor-set (pfaudit-) Phase-D bets recompute exactly and client-seed sensitivity '
-                    + 'is shown (a different client seed changes the roll, 8/8 probes); the A–C client-seed '
-                    + 'generator is disclosed as a node:crypto CSPRNG in the declaration/capture '
-                    + '(capture.clientSeed.generatorPhasesABC, generatorCsprng=true). The predictable Phase-D seed '
-                    + 'pattern is now DISCLOSED with its exposed epochs enumerated: pfaudit-<stamp>-<epoch> with the '
-                    + 'stamp fixed at capture start (capture/client-seed.reference.mjs), so all ten Phase-D epochs '
-                    + '124–133 (500 bets) were derivable in advance — enumerated in outputs/report-figures.json '
-                    + 'phaseD (firstEpoch 124, lastEpoch 133, epochs 10, bets 500, $50.00 staked, $48.93 paid, '
-                    + 'z=−0.14) and registered as declared limitation L19 (declaration '
-                    + 'capture.clientSeed.phaseDDisclosed cites it); the recompute (this step) plus that disclosure '
-                    + 'together satisfy the profile assert. Those epochs\' cherry-pick containment rests on '
-                    + 'Steps 5/16/17, not on client-seed unpredictability',
+                note: 'every epoch ran under its own client seed submitted by the auditor: 28 are "audit" + 12 hex '
+                    + 'characters drawn from the browser CSPRNG at the rotation, and the 5 Phase D epochs carry a '
+                    + 'player-set seed ("pfaudit-prod-dice-d<k>-" + 12 CSPRNG hex characters, not predictable from one '
+                    + 'another). Step 14 asserts the seeds are distinct, that Phase D holds at least the profile floor '
+                    + 'of distinct player-set seeds and that every Phase D roll recomputes under them, that the site '
+                    + 'served back the submitted seed in every epoch, that every bet carries its epoch\'s seed and '
+                    + 'every roll recomputes under it, and that altering the client seed changes the roll at the rate '
+                    + 'the lattice predicts, measured over every bet. The generators are the runner\'s own description, '
+                    + 'carried in the dataset (meta.captures[].runner.clientSeedGenerator). That each seed was submitted '
+                    + 'after its commitment was served is the capture\'s own record of its ordering (L18)',
             }],
     },
     15: {
@@ -1580,16 +1549,19 @@ exports.STEP_CLAIMS = {
             },
             {
                 id: 'DICE-17', coverage: 'full',
-                note: 'the half-open boundary rule is witnessed by the E13 operator-verifier probes (2 of 7 '
-                    + 'discriminate; settled data has zero power, L2) and the roll ceiling is asserted; the '
-                    + 'full-coverage per-mode recompute is carried by Step 6 (DICE-10) and mode presence by '
-                    + 'Step 12 (DICE-15)',
+                note: 'the half-open boundary rule is witnessed by LIQD\'s production verify endpoint (evidence '
+                    + 'E17, 9 November 2026): Step 15 loads the pinned probe record, recomputes every probe from its '
+                    + 'revealed production seed and requires LIQD\'s reply to equal the package rule; the probes with '
+                    + 'the roll on a reachable upper bound are the ones that separate half-open from inclusive, and '
+                    + 'the step counts them. The settled rounds have no power over the rule (no roll on a bound) and '
+                    + 'settlement on a bound is not witnessed (L2). The roll range is asserted; the full-coverage '
+                    + 'per-mode recompute is carried by Step 6 (DICE-10) and mode presence by Step 12 (DICE-15)',
             },
             {
                 id: 'DICE-19', coverage: 'full',
                 note: 'the effective edge is derived per served band from grid arithmetic and the multiplier '
                     + 'formula and asserted == 1.0000% in exact integers on every bet, compared with the claimed '
-                    + '1%; the settled-RTP band is stated',
+                    + '1%; the settled-RTP band under the floor8 rule is in report-figures settledRtp',
             },
         ],
     },
@@ -1626,15 +1598,15 @@ exports.STEP_CLAIMS = {
                 id: 'DICE-21', coverage: 'full',
                 note: 'the load-bearing realization is the served-band PAYOUT-WEIGHTED RETURN scan (the '
                     + 'ProvablyFair.org standard dice realization): every revealed casino seed is replayed '
-                    + 'for SIM_PASS2_NONCES = 10,000 nonces; the early window is the captured nonce range '
-                    + '(0..49, the served depth per epoch) and the reference window is the remainder; the '
+                    + 'for SIM_PASS2_NONCES = 10,000 nonces; the early window is the epoch\'s captured nonce range '
+                    + '(0..size−1, the size the plan gives the epoch) and the reference window is the remainder; the '
                     + 'statistic is the payout-weighted return of the bands the casino actually served, '
                     + 'standardised by its EXACT per-bet mean (Σ pᵢ·multᵢ) and variance (Σ pᵢ(1−pᵢ)·multᵢ²) — a '
                     + 'scaled Poisson-binomial across seeds, each pᵢ the served band\'s EXACT lattice '
                     + 'win-probability discreteWinProbability(band) — and read against a one-sided '
                     + 'normal (CLT) lower-tail p vs α (cherry-picking shorts the early window the player saw). '
-                    + 'The rule is fixed in code but was specified AFTER the capture (proposed by an external '
-                    + 'reviewer on 2026-09-09), not before the data were seen, and it detects only a per-bet '
+                    + 'The rule is fixed in code and predates the production capture (fixed in September 2026); '
+                    + 'it detects only a per-bet '
                     + 'return deficit at or above the detection power Step 17 prints (80% power); a smaller '
                     + 'selection effect passes it. '
                     + 'Every per-epoch row is RE-DERIVED in Step 17 from the revealed seed at 10,000 nonces/seed '
@@ -1643,22 +1615,17 @@ exports.STEP_CLAIMS = {
                     + 'detection power are recomputed and printed. HONEST SCOPE — this is EXACT per-bet '
                     + 'mean/variance + an ASYMPTOTIC one-sided normal (CLT) lower tail; it is NOT an '
                     + 'exact-lattice CDF. The exact lower tail "on the outcome lattice" would be a convolution '
-                    + 'of heterogeneous distinct-multiplier scaled Binomials whose support runs to a mean of '
-                    + '2^25 and up to 2^39 atoms on this multi-band capture (110 of 134 epochs multi-band, up to '
-                    + '36 distinct multipliers per epoch) — computationally intractable at verify speed; a pruned '
-                    + 'sparse DP over the real capture aborts at >8.3M atoms and 5–8 s per worst epoch. This '
-                    + 'exact-moments + CLT-tail realization is the standard realization '
+                    + 'of heterogeneous distinct-multiplier scaled Binomials (most epochs mix several win chances), '
+                    + 'which is not computed. This exact-moments + CLT-tail realization is the standard realization '
                     + 'ProvablyFair.org dice packages ship, recorded as a load-bearing premise / limitation L4 in MANIFEST.md, ASSUMED '
-                    + 'to satisfy DICE-21 full, not yet independently confirmed; a single-target-per-epoch re-capture '
-                    + '(one band held across an epoch\'s nonces) would collapse each per-seed return '
-                    + 'to m·Binomial and make the exact CDF tractable. The exact-discrete draw-uniformity '
+                    + 'to satisfy DICE-21 full, not yet independently confirmed. The exact-discrete draw-uniformity '
                     + 'cherry-pick screen (n=50/20-bin χ², src/exact-chi2.ts) is RETAINED as a supplementary '
                     + 'check. The load-bearing cherry-pick defence remains structural (client-seed-after-commitment)',
             },
             {
                 id: 'DICE-22', coverage: 'full',
-                note: 'the uniform-lattice-fit half — the pooled captured-roll uniformity χ² over all 6,700 '
-                    + 'rolls, recomputed from the dataset and reported here; informational (policy INFORMATIONAL, '
+                note: 'the uniform-lattice-fit half — the pooled captured-roll uniformity χ² over every '
+                    + 'captured roll, recomputed from the dataset and reported here; informational (policy INFORMATIONAL, '
                     + '2026-09-29): a rejection is reported, never counted and never fails the step, while a '
                     + 'pooled record in the artifact that does not reconcile still FAILs; the serial-dependence half '
                     + 'is Step 22',
@@ -1668,10 +1635,12 @@ exports.STEP_CLAIMS = {
     18: {
         claims: [{
                 id: 'DICE-12', coverage: 'full',
-                note: '200/200 Phase-C bets at $10.00 recompute their roll identically to the $0.10 phases '
-                    + '(diceRoll takes no wager) and the effective edge is stake-independent; the elevated-stake '
-                    + 'payout path (~100 wins at 50% chance) is settled by the same exact rule asserted over these '
-                    + 'same rows in Steps 8 and 20',
+                note: 'Phase C: the planned rounds at the elevated stake (10.00 USDT, 100 times the base stake) on '
+                    + 'over 50, a 50% win chance; every roll recomputes from (serverSeed, clientSeed, nonce) alone '
+                    + '(diceRoll takes no wager argument); at least PHASE_C_MIN_WINS of them won and every win is '
+                    + 'credited floor8(stake × 9900/basisPoints) from the band; the same band at the base stake in the '
+                    + 'other phases carries the same served multiplier and the same rule, and the elevated credit is '
+                    + 'exactly 100 times the base credit',
             }],
     },
     19: {
@@ -1690,7 +1659,7 @@ exports.STEP_CLAIMS = {
                     + 'the profile requires is now implemented (ported from liqd-plinko): src/domains.ts declares '
                     + 'a physically-derived domain for every numeric leaf of the committed simulation-results.json '
                     + 'and report-figures.json — every bound taken from src/config.ts (the audited population, the '
-                    + 'sample depths, the odds limits, the roll grid), never from the file being checked — and '
+                    + 'sample depths, the price grid, the roll grid), never from the file being checked — and '
                     + 'Step 19 validates every numeric leaf of both artifacts on every run (the step prints the '
                     + 'count), failing if any '
                     + 'leaf is out of domain OR has no declared domain (so a new unbounded field cannot slip in)',
@@ -1701,7 +1670,7 @@ exports.STEP_CLAIMS = {
         claims: [{
                 id: 'DICE-11', coverage: 'full',
                 note: 'the credited amount is asserted fully determined by (roll, band, stake) — credit == '
-                    + 'ROUND_HALF_EVEN_8(stake × ROUND_8(PAYOUT_NUMERATOR/basisPoints)) with zero tolerance, across '
+                    + 'floor8(stake × PAYOUT_NUMERATOR/basisPoints) with zero tolerance, across '
                     + 'all four modes and both wins and losses, anti-circularly (the served multiplier field is '
                     + 'never read); reinforces the exact payout arithmetic of Steps 8 and 9',
             }],
@@ -1711,15 +1680,16 @@ exports.STEP_CLAIMS = {
                 id: 'DICE-14', coverage: 'full',
                 note: 'the quoted multiplier (the formula value 99/winChance for each captured band; on wins '
                     + 'Step 7 binds the served value to the same rational, 9900/basisPoints) is strictly '
-                    + 'decreasing across ≥100 distinct win-chance '
-                    + 'points with zero inversions (the monotonicity half); the odds-bounds half is Step 10',
+                    + 'decreasing across the plan\'s win-chance points (exactly the plan\'s) and the quotient '
+                    + 'PAYOUT_NUMERATOR/basisPoints across every basis point of the price grid, with zero '
+                    + 'inversions (the monotonicity half); the odds-bounds half is Step 10',
             }],
     },
     22: {
         claims: [{
                 id: 'DICE-22', coverage: 'full',
                 note: 'the serial-dependence half — lag-1 autocorrelation and a Wald–Wolfowitz runs test on the '
-                    + '6,700 captured rolls in capture order, judged by the framework cross-game rule |lag1 z| < 3 '
+                    + 'captured rolls in capture order, judged by the framework cross-game rule |lag1 z| < 3 '
                     + 'AND runs p ≥ 0.01; the uniform-lattice-fit half is Step 17 (also informational). A numbered '
                     + 'step that reports INFO and CANNOT FAIL: it returns PASS or INFO, never FAIL or FLAG, so it is '
                     + 'not scored (policy INFORMATIONAL, 2026-09-29) — verify.ts reports an INFO but never counts it '
@@ -1748,9 +1718,10 @@ exports.NOT_APPLICABLE = [
     {
         id: 'DICE-24',
         reason: 'applies={path: rng.operatorVerifier.published, eq: true} is false — '
-            + 'rng.operatorVerifier.published is false: LIQD ships no operator verifier, so there is no '
-            + 'derive.js to hash-match to computeRoll. The operator-verifier probes (E13) exist but no '
-            + 'verifier is published; the limitations register (DICE-30) carries the row',
+            + 'rng.operatorVerifier.published is false: LIQD publishes no verifier source file, so there is no '
+            + 'derive.js to hash-match to computeRoll. LIQD\'s verify ENDPOINT exists and is used as a second '
+            + 'check (a stored reply for every captured round, Step 6, and the boundary probes E17, Step 15); '
+            + 'the limitations register (DICE-30) carries the row',
     },
 ];
 /**
@@ -1760,9 +1731,9 @@ exports.NOT_APPLICABLE = [
 exports.PACKAGE_CHECKS = [
     {
         id: 'DICE-09', artifact: 'tests/dice/rngTests.ts', coverage: 'full',
-        note: 'the mocha unit suite (npx mocha prints the count) reproduces captured bets from their '
-            + 'revealed seeds and fixed HMAC vectors, including an operator /verify endpoint vector (93.22) '
-            + 'pinned against the shipped adapter',
+        note: 'the mocha unit suite (npx mocha prints the count) reproduces captured production rounds of '
+            + 'every phase from their revealed seeds, the specification\'s HMAC vectors (tests/dice/rngSpecTests.ts), '
+            + 'and LIQD\'s production verify-endpoint replies of evidence E17, against the shipped src/rng.ts',
     },
     {
         id: 'DICE-23', artifact: 'MANIFEST.md#verification-results', coverage: 'full',
@@ -1778,14 +1749,14 @@ exports.PACKAGE_CHECKS = [
             + 'per the framework convention. Validated against the framework check-exploit-matrix rules',
     },
     {
-        id: 'DICE-25', artifact: 'MANIFEST.md#verify-a-bet + evidence/E12', coverage: 'full',
-        note: 'MANIFEST "Verify a bet" carries an ordered six-step player paste-path stating, in order and in the declaration\'s own field names: where the seed is revealed '
-            + '(the provably-fair panel after the epoch rotates, E11/E12), which fields to paste '
+        id: 'DICE-25', artifact: 'MANIFEST.md#verify-a-bet', coverage: 'full',
+        note: 'MANIFEST "Verify a bet" carries an ordered six-step player path stating, in order and in the declaration\'s own field names: where the seed is revealed '
+            + '(by the rotation that ends the epoch), which fields to use '
             + '(hashedServerSeed, serverSeed, clientSeed, nonce, params{lower,upper,inverted}, betAmount), the '
-            + 'exact commitment encoding (SHA-256(utf8(serverSeed)) — the hex string as text, not its bytes), '
+            + 'exact commitment encoding (SHA-256(utf8(serverSeed)), the hex string as text, not its bytes), '
             + 'the roll formula (HMAC-SHA256 over clientSeed:nonce:0, maxFair rejection, draw/100), the '
-            + 'half-open win rule, the 99/continuousWinChance% multiplier and the ROUND_HALF_EVEN_8 credit; '
-            + 'a fully worked instance follows in the same section',
+            + 'half-open win rule, the 9900/basisPoints multiplier and the round-down credit; '
+            + 'a fully worked instance on a production round follows in the same section',
     },
     {
         id: 'DICE-28', artifact: 'package.json (test) + .nvmrc + tests/ + src/config.ts (AUDIT_ID)', coverage: 'full',
@@ -1793,7 +1764,7 @@ exports.PACKAGE_CHECKS = [
             + 'the runtime pinned (engines 22.x, .nvmrc) and pinned artifacts untouched; the audit ID is '
             + 'SET — AUDIT_ID = PF-2026-LQ04 in src/config.ts, emitted into '
             + 'verification-results.json and printed in README.md / MANIFEST.md, with verdictQualifier '
-            + '"provisional" retained because the capture is pre-launch (production parity not established). '
+            + '"production": the scored capture is the liqd.com production capture of 7 to 10 November 2026. '
             + 'The remaining release-gate sub-requirements hold: npm run test:full regenerates the '
             + 'simulation and diffs it field-by-field into outputs/run/diff.json with nothing beyond '
             + 'tolerance (the Pass-1 experiment is now deterministic — DICE-20 — so regeneration reproduces '
@@ -1805,17 +1776,17 @@ exports.PACKAGE_CHECKS = [
         note: 'step-named mutations and structural forgeries run by tests/mutate.ts in a disposable copy '
             + '(npm run mutate prints the counts); every step that can fail is failed by at least one entry '
             + '— Step 17 by the forged served-band early return; Step 22 cannot fail and its entry is an '
-            + 'INFO signal, counted separately from the kills — and 2 declared '
-            + 'survivors are tied to limitation IDs L6 / L11 (L7’s published-ceiling change is caught by the '
-            + 'reproduction/self-consistency gate, so it is not a survivor); forgery scripts that re-pin the '
+            + 'INFO signal, counted separately from the kills. No survivor is declared: removing the rejection '
+            + 'guard from the audit RNG is killed by Step 17, whose 10,000-nonce replay holds a cell with a first '
+            + 'chunk in the rejected tail (L11 remains about the operator\'s server); forgery scripts that re-pin the '
             + 'hash they invalidate are included',
     },
     {
         id: 'DICE-30', artifact: 'MANIFEST.md#limitations-and-trust + MANIFEST.md#evidence', coverage: 'full',
-        note: 'MANIFEST.md carries the declared-limitations register L1–L19 with magnitudes and a '
-            + 'load-bearing-premises table (5 ASSUMED, each with "could the data contradict it?"); MANIFEST Evidence '
-            + 'numbers every exhibit from E01; declaration package.internalFoldersPresent is empty, so no '
-            + 'internal QA material ships in the package',
+        note: 'MANIFEST.md carries the declared-limitations register with magnitudes and a '
+            + 'load-bearing-premises table (each ASSUMED row with "could the data contradict it?"); MANIFEST Evidence '
+            + 'numbers every exhibit; declaration package.internalFoldersPresent is empty, so no '
+            + 'internal working material ships in the package',
     },
 ];
 /** The block emitted alongside the step results. */
@@ -1849,8 +1820,8 @@ function labelFor(step) {
  * reader cannot re-derive it without reimplementing the auditor's reasoning. That is the class the
  * framework's prose check calls an "orphan figure", and it is how a hand-typed number survives a
  * review: it looks like a measurement and is actually a memory. Everything below is quoted in the
- * report — the settled-RTP span, the settlement residual's direction, the Phase-D exposure, the
- * boundary-hit expectation — so it is computed by committed code from the hash-pinned capture and
+ * report — the settled-RTP span, the settlement residual's direction, the boundary-hit
+ * expectation — so it is computed by committed code from the hash-pinned capture and
  * emitted, not typed.
  *
  * Where a comparison is at the scale of floating-point noise it is done in EXACT integer or
@@ -1864,15 +1835,15 @@ const exact_chi2_1 = require("./exact-chi2");
 const stats_1 = require("./stats");
 function computeReportFigures(bets, seeds) {
     const wins = bets.filter((b) => b.win);
-    // ── settled RTP per (band, stake), compared to the nominal 99% in exact integers ──
+    // ── settled RTP per (band, stake) under the production floor8 rule, vs the nominal 99%, exactly ──
     // rtp = (W / RANGE) · (creditUnits / stakeUnits)  vs  (1 − HOUSE_EDGE)
     // Both sides are rationals over integers, so the comparison carries no rounding at all.
     const edgeNum = BigInt(Math.round((1 - config_1.HOUSE_EDGE) * 1e8)); // 99000000 at a 1% edge
     let below = 0, above = 0, exact = 0, minRtp = Infinity, maxRtp = -Infinity;
     for (const b of bets) {
-        const stakeUnits = BigInt(Math.round(Number(b.betAmount) * 1e8));
+        const stakeUnits = (0, config_1.amountUnits)(b.betAmount);
         const w = BigInt((0, config_1.discreteWinCount)(b.params));
-        const creditUnits = (0, config_1.settledCreditUnits)(Number(b.betAmount), (0, config_1.quotedMultiplier)(b.params));
+        const creditUnits = (0, config_1.floor8CreditUnits)(b.betAmount, b.params);
         // (w/RANGE)·(creditUnits/stakeUnits) vs edgeNum/1e8  ⇒  1e8·w·creditUnits vs edgeNum·RANGE·stakeUnits
         const lhs = 100000000n * w * creditUnits;
         const rhs = edgeNum * BigInt(config_1.RANGE) * stakeUnits;
@@ -1893,9 +1864,8 @@ function computeReportFigures(bets, seeds) {
     // Doing this on binary64(stake) × binary64(multiplier) instead reports every win as rounded and
     // none as exact, because the representation error in binary64(0.1) survives into the comparison.
     // See creditResidualSign.
-    let down = 0, up = 0, onProduct = 0, maxAbs = 0, net = 0, ties = 0;
+    let down = 0, up = 0, onProduct = 0, maxAbs = 0, net = 0, floatMisses = 0;
     for (const b of wins) {
-        const stake = Number(b.betAmount), mult = Number(b.multiplier);
         const sign = (0, config_1.creditResidualSign)(b.winningAmount, b.betAmount, b.params);
         if (sign < 0)
             down++;
@@ -1907,8 +1877,8 @@ function computeReportFigures(bets, seeds) {
         net += d;
         if (Math.abs(d) > maxAbs)
             maxAbs = Math.abs(d);
-        if ((0, config_1.isSettlementTie)(stake, mult))
-            ties++;
+        if ((0, config_1.floor8CreditUnitsServed)(b.betAmount, (0, config_1.quotedMultiplier)(b.params)) !== (0, config_1.amountUnits)(b.winningAmount))
+            floatMisses++;
     }
     // ── boundary power: which bets could ever land on their upper bound at all ────
     // The roll ceiling is (RANGE − 1)/SCALE = 99.99, so a band with upper = 100 has an upper bound
@@ -1917,16 +1887,13 @@ function computeReportFigures(bets, seeds) {
     const upperHits = bets.filter((b) => Math.round(Number(b.roll) * config_1.SCALE) === Math.round(b.params.upper * config_1.SCALE)).length;
     const lowerHits = bets.filter((b) => Math.round(Number(b.roll) * config_1.SCALE) === Math.round(b.params.lower * config_1.SCALE)).length;
     // How much power the SETTLED data has over the half-open rule, measured rather than argued.
-    // Rule A (shipped): win ⇔ roll ∈ [lower, upper). Rule B (the retracted pre-E13 model): [lower, upper].
-    // If the two reproduce the same 6,700 win flags, no settled bet can choose between them and the
-    // whole "effective edge is exactly 1%" headline rests on E13 alone.
+    // Rule A (shipped): win ⇔ roll ∈ [lower, upper). Rule B: [lower, upper]. If the two reproduce the
+    // same captured win flags, no settled bet can choose between them and the rule rests on the
+    // production verifier probes (evidence E17) alone.
     let modelsDisagree = 0, okHalfOpen = 0, okInclusive = 0;
     for (const b of bets) {
-        const roll = Number(b.roll), p = b.params;
-        const inHalfOpen = roll >= p.lower && roll < p.upper;
-        const inInclusive = roll >= p.lower && roll <= p.upper;
-        const winHalfOpen = p.inverted ? !inHalfOpen : inHalfOpen;
-        const winInclusive = p.inverted ? !inInclusive : inInclusive;
+        const roll = Number(b.roll);
+        const winHalfOpen = (0, config_1.diceWin)(roll, b.params), winInclusive = (0, config_1.diceWinInclusive)(roll, b.params);
         if (winHalfOpen !== winInclusive)
             modelsDisagree++;
         if (winHalfOpen === !!b.win)
@@ -1945,20 +1912,37 @@ function computeReportFigures(bets, seeds) {
             break;
         }
     }
-    // ── Phase-D exposure ─────────────────────────────────────────────────────────
-    const d = bets.filter((b) => b.phase === 'D');
-    const dEpochs = [...new Set(d.map((b) => b.epoch))].sort((x, y) => x - y);
-    let staked = 0, paid = 0, expected = 0, variance = 0;
-    for (const b of d) {
-        const s = Number(b.betAmount), m = (0, config_1.quotedMultiplier)(b.params), p = (0, config_1.discreteWinProbability)(b.params);
-        staked += s;
-        paid += Number(b.winningAmount);
-        expected += s * p * m;
-        variance += s * s * p * (1 - p) * m * m;
-    }
-    const wagered = bets.reduce((a, b) => a + Number(b.betAmount), 0);
-    const returned = bets.reduce((a, b) => a + Number(b.winningAmount), 0);
+    // Amounts in exact 1e-8 units from the served decimal strings; converted to a double once, at the end.
+    const U = 100000000;
+    const sum = (list, f) => list.reduce((a, b) => a + ((0, config_1.amountUnits)(f(b)) ?? 0n), 0n);
+    const wageredU = sum(bets, (b) => b.betAmount), returnedU = sum(bets, (b) => b.winningAmount);
+    const wagered = Number(wageredU) / U, returned = Number(returnedU) / U;
     const meanRoll = bets.reduce((a, b) => a + Number(b.roll), 0) / bets.length;
+    const phases = {};
+    for (const ph of config_1.EXPECTED_PHASES) {
+        const pb = bets.filter((b) => b.phaseId === ph.id);
+        const w = sum(pb, (b) => b.betAmount), r = sum(pb, (b) => b.winningAmount);
+        const cells = new Map();
+        for (const b of pb) {
+            const k = `${(0, config_1.bandMode)(b.params)}/${(0, config_1.payoutBasisPoints)(b.params)}`;
+            cells.set(k, (cells.get(k) ?? 0) + 1);
+        }
+        const counts = [...cells.values()];
+        phases[ph.id] = {
+            bets: pb.length, epochs: seeds.filter((s) => s.phaseId === ph.id).length, wins: pb.filter((b) => b.win).length,
+            stakeUsdt: Number(ph.stake),
+            wageredUsdt: Number(w) / U, returnedUsdt: Number(r) / U, realizedRtpPct: w > 0n ? (Number(r) / Number(w)) * 100 : 0,
+            classes: cells.size, fewestPerClass: counts.length ? Math.min(...counts) : 0, mostPerClass: counts.length ? Math.max(...counts) : 0,
+        };
+    }
+    const modes = { under: 0, over: 0, inside: 0, outside: 0 };
+    for (const b of bets)
+        modes[(0, config_1.bandMode)(b.params)]++;
+    const vReplies = bets.filter((b) => b.verifier && b.verifier.status === 200).length;
+    const vEqual = bets.filter((b) => b.verifier && b.verifier.status === 200
+        && b.verifier.outcome.roll === b.roll && b.verifier.outcome.win === b.win && b.verifier.outcome.multiplier === b.multiplier).length;
+    const playerEpochs = seeds.filter((s) => s.playerSet);
+    const playerEpochSet = new Set(playerEpochs.map((s) => s.epoch));
     return {
         bets: bets.length,
         wins: wins.length,
@@ -1969,7 +1953,7 @@ function computeReportFigures(bets, seeds) {
         },
         settlementResidual: {
             roundedDown: down, roundedUp: up, exactlyOnProduct: onProduct,
-            maxAbsUsdc: maxAbs, netUsdc: net, exactTies: ties,
+            maxAbsUsdt: maxAbs, netUsdt: net, floatClosedFormMisses: floatMisses,
         },
         boundary: {
             betsWithReachableUpperBound: reachable,
@@ -1986,12 +1970,11 @@ function computeReportFigures(bets, seeds) {
             minRejectableFlags: minRejectable, pAtMinRejectable: pAtMin,
             alpha: config_1.ALPHA, seedAlphaNominal: config_1.SIM_CHERRY_SEED_ALPHA,
         },
-        phaseD: {
-            firstEpoch: dEpochs[0], lastEpoch: dEpochs[dEpochs.length - 1], epochs: dEpochs.length,
-            bets: d.length, stakedUsdc: staked, paidUsdc: paid, expectedUsdc: expected,
-            z: (paid - expected) / Math.sqrt(variance),
-        },
-        live: { wageredUsdc: wagered, returnedUsdc: returned, realizedRtpPct: (returned / wagered) * 100, meanRoll },
+        live: { wageredUsdt: wagered, returnedUsdt: returned, realizedRtpPct: (returned / wagered) * 100, meanRoll },
+        phases,
+        modes,
+        verifier: { replies: vReplies, equalServedRound: vEqual },
+        playerSeeds: { epochs: playerEpochs.length, distinct: new Set(playerEpochs.map((s) => s.clientSeed)).size, bets: bets.filter((b) => playerEpochSet.has(b.epoch)).length },
     };
 }
 
@@ -1999,37 +1982,32 @@ function computeReportFigures(bets, seeds) {
   "src/rng.js": function (module, exports, require, __filename, __dirname) {
 "use strict";
 /**
- * PROVENANCE (header added on integration, 20 Oct 2026; everything below this comment is the
- * clean-room module byte for byte).
+ * PROVENANCE (header rewritten for release v1.2.0, 10 Nov 2026; everything below this comment is the
+ * module byte for byte as integrated on 20 Oct 2026).
  *
- * This module was REBUILT FROM A WRITTEN SPECIFICATION, not ported from LIQD's code:
- *   spec      docs/ALGORITHM.md, a copy of games/liqd-dice/ALGORITHM.md in the ProvablyFair.org audit
- *             framework (SHA-256 212674d0…a80593e2). Written from LIQD's public pages and screens, the
- *             standard provably-fair construction, LIQD's verify-endpoint replies (E13) and the 6,700
- *             live bets, without opening LIQD's code or any port of it (its §8 lists every file read).
- *   rebuild   written by an implementer who read ONLY that spec and a module-interface file, and
- *             never opened LIQD's code, its client bundle, or this package's earlier src/rng.ts.
- *   self-test tests/dice/rngSpecTests.ts (the spec's vectors and properties).
+ * This module was BUILT FROM A WRITTEN SPECIFICATION, not ported from LIQD's code: the implementer
+ * read only a specification and a module-interface file (docs/INTERFACE.md), and never opened
+ * LIQD's code or its client bundle. The specification shipped in this release, docs/ALGORITHM.md, is
+ * re-grounded on production sources only (LIQD's public pages, the liqd.com production capture of
+ * 7 to 10 November 2026 and LIQD's production verify endpoint); the derivation it specifies is the
+ * one this module implements, and tests/dice/rngSpecTests.ts runs the specification's production
+ * vectors against it.
  *
  * LIQD's own verifier is NOT the source of this module. Its replies are run as a SECOND CHECK: the
- * E13 verify-endpoint replies and the session-recorded verify vectors in tests/dice/rngTests.ts.
- * The audit's draw-bias bound is src/bias.ts, built on this module's maxFairFor.
+ * stored verify reply of every captured round (Step 6) and the boundary probes of evidence E17
+ * (Step 15, tests/dice/rngTests.ts). The audit's draw-bias bound is src/bias.ts, built on this
+ * module's maxFairFor.
  *
  * Units: diceRoll returns the roll as an INTEGER in hundredths (0..9999); callers divide by
  * SCALE (src/config.ts) for the 0.00..99.99 value LIQD serves. Server seeds must be lowercase hex
  * (the commitment is over the seed text); every captured seed is.
  *
- * Three-way agreement measured on integration (20 Oct 2026, all 6,700 captured bets): this module vs
- * the live bets, roll 6,700/6,700 and commitment 134/134 seed records (bets paired to seeds by
- * hashing, 6,700/6,700); vs LIQD's verify endpoint, E13 7/7 probe replies and 1/1 settled-bet
- * cross-check, session-recorded vectors 8/8; vs the ProvablyFair.org site verifier's dice module
- * (its source, run from a local checkout; the deployed page was not run) 6,700/6,700 draws. Step 5 of
- * `npm run verify` re-measures the first on every run.
+ * Agreement with the capture is re-measured on every run: Step 5 of `npm run verify` recomputes
+ * every captured roll with this module, and Step 1 every commitment.
  *
- * Where this module and the earlier ported module differ on inputs no captured bet reaches: when all
- * eight chunks of a digest are rejected (spec O2, continuation unspecified) this module throws,
- * while the earlier module, and the site verifier, moved to cursor + 1,000,000. 0 of the 6,700
- * captured draws had even its first chunk rejected (L11).
+ * An input no captured round reaches: when all eight chunks of a digest are rejected this module
+ * throws. LIQD's public technical page describes a redraw at cursor + 1,000,000 for that case
+ * (specification O2); it has probability about (1.7e-6)^8 per draw and was not observed (L11).
  */
 // LIQD Dice outcome derivation, clean-room implementation.
 // Built only from ALGORITHM.md (the spec) and INTERFACE.md (export names/types).
@@ -2887,16 +2865,19 @@ exports.runRtpClaimGate = runRtpClaimGate;
  * source names the game page, one of the rule's six places (decision D3); an enforced miss would be RTP FIGURE OVERSTATED. Rule 1.0.0 agreed
  * 2026-09-29.
  *
- * SETTINGS. The price of a band depends only on its width: every legal win chance in basis points,
- * bp = 1 … 9800 (multiplier 9900/bp between MIN_ODDS 1.0102 and MAX_ODDS 9900, src/config.ts:37-38)
- * — 9,800 settings; normal and inverted bands of the same width are the same price.
+ * SETTINGS. The price of a band depends only on its width: every band width on the roll grid whose
+ * multiplier is above 1×, in basis points bp = 1 … 9899 (src/config.ts PRICE_GRID_MIN_BPS /
+ * PRICE_GRID_MAX_BPS; multiplier 9900/bp), 9,899 settings; normal and inverted bands of the same
+ * width are the same price. This is the whole grid, not LIQD's accepted range: the capture played
+ * 1 % … 98 %, and LIQD's own limits were not read (MANIFEST limitation L7).
  * EXACT RTP. The half-open band wins on exactly bp of the 10,000 draws (src/config.ts discreteWinCount)
  * × the quoted multiplier PAYOUT_NUMERATOR / bp = 9900/bp (the exact quotient the operator serves,
- * src/config.ts PAYOUT_NUMERATOR). The two-stage 8-dp settlement moves a settled RTP by at most ~5.2e-8
- * (declaration outcome.edge.derived), which is not in this table.
+ * src/config.ts PAYOUT_NUMERATOR). The round-down of a credit to 8 decimals lowers a settled RTP by
+ * less than one 0.00000001 unit per win (outputs/report-figures.json settledRtp), which is not in
+ * this table.
  * CLAIM. Flat 1 % house edge = RTP 99/100: the figure the live page shows the player (liqd.com
  * "Edge: 1.00%", RTP 99%, read 2026-10-01, evidence/rtp-page-labels-2026-10-01.json), the same as
- * HOUSE_EDGE = 0.01 (src/config.ts:36; declaration outcome.edge.claimed 0.01).
+ * HOUSE_EDGE = 0.01 (src/config.ts).
  *
  *   npm run rtp-claim:write    rewrite outputs/rtp-claim-table.json and print its SHA-256 to pin
  */
@@ -2908,21 +2889,18 @@ const config_1 = require("./config");
 exports.RTP_CLAIM = {
     kind: 'flat',
     rtp: '0.99',
-    source: 'LIQD Dice: the game page liqd.com/originals/dice shows "Released: September 2026 | Edge: 1.00%" and RTP 99% (read 2026-10-01, evidence/rtp-page-labels-2026-10-01.json). Same figure as HOUSE_EDGE = 0.01, a flat 1 % house edge (src/config.ts:36; declaration outcome.edge.claimed 0.01)',
+    source: 'LIQD Dice: the game page liqd.com/originals/dice shows "Released: September 2026 | Edge: 1.00%" and RTP 99% (read 2026-10-01, evidence/rtp-page-labels-2026-10-01.json). Same figure as HOUSE_EDGE = 0.01, a flat 1 % house edge (src/config.ts HOUSE_EDGE; declaration outcome.edge.claimed 0.01)',
 };
 /** The scored step that carries DICE-19 (src/profile-map.ts). */
 exports.RTP_CLAIM_STEP = 15;
 exports.RTP_CLAIM_TABLE = path.join(__dirname, '..', 'outputs', 'rtp-claim-table.json');
 /** SHA-256 of the committed table — re-pin with the run that rewrote it (npm run rtp-claim:write). */
-exports.RTP_CLAIM_TABLE_SHA256 = '075811c734cfbf4bdf1b374d8aac719f823caad23a86a3e30b73cb02b056ee06';
+exports.RTP_CLAIM_TABLE_SHA256 = '4c1c589c87cc3351209005e145311f400bc07d994519d4e940e19ed6e3c17707';
 function computeRtpClaim() {
     if (!Number.isInteger(config_1.PAYOUT_NUMERATOR))
         throw new Error('PAYOUT_NUMERATOR is not an integer');
     const acc = new rtp_claim_1.RtpClaimAccumulator(exports.RTP_CLAIM);
-    for (let bp = 1; bp <= config_1.RANGE; bp++) {
-        const mult = config_1.PAYOUT_NUMERATOR / bp;
-        if (mult < config_1.MIN_ODDS || mult > config_1.MAX_ODDS)
-            continue; // not a legal price
+    for (let bp = config_1.PRICE_GRID_MIN_BPS; bp <= config_1.PRICE_GRID_MAX_BPS; bp++) {
         // P(win) × multiplier = bp/RANGE × PAYOUT_NUMERATOR/bp
         acc.add(`win chance ${(bp / 100).toFixed(2)}%`, BigInt(bp) * BigInt(config_1.PAYOUT_NUMERATOR), BigInt(config_1.RANGE) * BigInt(bp));
     }
@@ -2931,7 +2909,7 @@ function computeRtpClaim() {
 function rtpClaimTableText(r) {
     return (0, rtp_claim_1.rtpClaimTable)(r, {
         package: 'liqd/dice', game: 'dice',
-        settingSpace: 'every legal band width, win chance 0.01 % … 98.00 % in basis points (multiplier 9900/bp within MIN_ODDS … MAX_ODDS)',
+        settingSpace: 'every band width on the roll grid whose multiplier is above 1x, win chance 0.01 % … 98.99 % in basis points (multiplier 9900/bp); the production capture played 1 % … 98 %',
         rtpMethod: 'exact rational: bp/10000 winning draws × the quoted multiplier 9900/bp',
     });
 }
@@ -2952,10 +2930,10 @@ if (require.main === module) {
  * The SUPPORTED RUNTIME, declared in code and enforced before any scored step runs.
  *
  * ── WHY THIS FILE EXISTS ────────────────────────────────────────────────────────────────────────
- * A reviewer extracted the pristine package twice. On Node v22.23.1 it returned 21/21 Full Pass. On
+ * The pristine package was extracted twice. On Node v22.23.1 it returned 21/21 Full Pass. On
  * a Node 24 release it FAILED, because one probability differed by a single ULP.
  *
- * WHICH PROBABILITY. The field the reviewer reported is
+ * WHICH PROBABILITY. The field reported is
  * `cherryPickPower.pAtMinRejectable` in `outputs/report-figures.json` — a BINOMIAL upper-tail
  * probability, `binomialTailP` in `src/stats.ts`, whose every term carries a `p ** i` and a
  * `(1 - p) ** (n - i)`. ECMAScript leaves the `**` operator implementation-approximated exactly as
@@ -2980,8 +2958,8 @@ if (require.main === module) {
  * WHAT WAS ACTUALLY EXECUTED. Every figure in this package was produced on the runtime named in
  * VALIDATED_RUNTIME below. Node 24 was NOT re-tested by this repository, before or after the fix —
  * the pin exists precisely so that an untested runtime is refused rather than silently scored. The
- * failing run is the reviewer's report, not our observation: our record of it names v24.13.1, the
- * reviewer has since also cited a different Node 24 patch release, and this package deliberately
+ * failing run is an external report, not our observation: our record of it names v24.13.1, the
+ * report has since also cited a different Node 24 patch release, and this package deliberately
  * does not restate a patch version it did not witness. What the pin acts on is the MAJOR, and Node
  * 24 is what both reports agree on. Declared as limitation L17.
  */
@@ -3047,9 +3025,9 @@ function assertSupportedRuntime() {
  * TWO failure modes that pull in opposite directions and are answered together.
  *
  * AN SE THAT IS A NUMBER IS NOT THEREBY THE RIGHT NUMBER.
- * A convergence block that asserts `Number.isFinite(pt.se)` and nothing else accepts anything: a
- * reviewer changed the first plotted standard error from 0.03127046289391956 to 123456, re-pinned
- * the artifact, and the suite returned a Full Pass. The chart does not catch it either:
+ * A convergence block that asserts `Number.isFinite(pt.se)` and nothing else accepts anything:
+ * changing the first plotted standard error from 0.03127046289391956 to 123456 and re-pinning
+ * the artifact returned a Full Pass. The chart does not catch it either:
  * `src/chart.ts` clamps the ±5·SE ribbon to the plot box (`Math.min(ymax, …)`), so an absurd SE
  * and a correct one draw the same band. All seven plotted standard errors are otherwise
  * unvalidated numbers in a published figure.
@@ -3181,7 +3159,7 @@ function crossTargetTheory(theo) {
  * ── WHY A RESIDUAL CAP IS THE WRONG ANSWER ─────────────────────────────────────────────────────
  *
  * ROUNDING the quotient and accepting anything within RECONSTRUCTION_MAX_RESIDUAL of an integer
- * does the opposite of its job. A reviewer set the `over 98` band's RTP to
+ * does the opposite of its job. Setting the `over 98` band's RTP to
  * 0.99000495 — which is 40,000.2 wins in 2,000,000 bets at 49.5× — recomputed every derived field
  * and re-pinned the artifact, and `npm test` returned 21/21, exit 0: the cap let a published RTP
  * stand that NO win count produces, because 0.2 is inside 0.25. A win count is a count.
@@ -3775,8 +3753,9 @@ function erf(x) {
   },
   "src/types.js": function (module, exports, require, __filename, __dirname) {
 "use strict";
-// Types mirror the exact capture schema in data/dice-master-6700bets.json
-// (liqd-dice-capture-v1). Field names match the dataset verbatim.
+// Types mirror the scored dataset data/dice-prod-5935bets.json: the liqd.com production capture of
+// 7 to 10 November 2026 (three capture files, phases A, D, A+ and C), converted to the package shape
+// { meta, seeds[], bets[] }. Field names match the dataset verbatim.
 Object.defineProperty(exports, "__esModule", { value: true });
 
   },
@@ -3825,8 +3804,8 @@ function run(ctx) {
     // ── Enumeration cross-check ────────────────────────────────────────────────
     // The closed form (discreteWinCount) is the fast path; the tally is the anchor.
     // They must agree on EVERY distinct band in the dataset. This is the check that
-    // would have caught the ceil/floor float bug: the buggy closed form disagreed
-    // with the tally on 403 of 5,304 distinct bands.
+    // catches a ceil/floor scaling of the bounds: IEEE-754 puts many 2-dp products just off
+    // their integer, and a ceil/floor closed form then disagrees with the tally.
     const distinct = new Map();
     for (const bet of bets) {
         distinct.set(`${bet.params.lower}|${bet.params.upper}|${bet.params.inverted}`, bet.params);
@@ -3852,65 +3831,177 @@ function run(ctx) {
   "tests/steps/boundary.js": function (module, exports, require, __filename, __dirname) {
 "use strict";
 /**
- * Step 15: Odds Boundary & Effective-Edge Integrity
+ * Step 15: Boundary Rule, Roll Range & Effective-Edge Integrity (DICE-10, DICE-17, DICE-19)
  *
- * Confirms the maxOdds (9900×, live-witnessed) / roll-ceiling (99.99) boundaries behave, and
- * recomputes the DISCRETE effective edge for every captured band from grid arithmetic. Under the
- * half-open win rule (E13 boundary probes) every mode's winning region holds exactly 100·W points,
- * so the effective edge is exactly 1.0000% on every bet.
+ * THREE THINGS, kept apart because they have different evidentiary weight.
  *
- * WHAT THIS STEP IS, HONESTLY. The per-bet edge assertion is a MODEL IDENTITY,
- * not a measurement of the operator. `1 − (100·W/10000)·(9900/(100·W))` is 0.01 by algebra for every
- * 2-dp band, so no dataset — this one or any other — can make it fail. What it DOES catch is a change
- * to our own model (a rule or pricing edit, including an inclusive-upper regression that no settled
- * bet could witness), and that is worth a scored step; what it does not do is confirm the operator's
- * boundary rule. That rests entirely on E13, and E13 is weaker than it looks: only 2 of
- * its 7 probes discriminate half-open from inclusive-both-ends (probe 1, `roll == upper` on a
- * non-inverted band, and probe 5, `roll == upper` inverted). The settled data has ZERO power — both
- * rules reproduce all 6,700 win flags with 0 disagreements (`outputs/report-figures.json`
- * `boundary.betsWhereBoundaryModelsDisagree`). The step therefore states the conditionality in its
- * own detail string rather than leaving it to a chapter.
+ * 1. THE BOUNDARY RULE, WITNESSED ON LIQD'S PRODUCTION VERIFIER (evidence E17). No settled round of
+ *    the capture has its roll on a band bound (counted below), so the settled data cannot choose
+ *    between a half-open band [lower, upper) and one that is inclusive on both ends: both rules
+ *    reproduce every captured win flag. The rule is therefore read off LIQD's own verify endpoint on
+ *    liqd.com, asked on 9 November 2026 for revealed production seeds and nonces whose roll equals a
+ *    band bound, or misses it by 0.01. This step loads that record (pinned by SHA-256), recomputes
+ *    every probe's roll from its seed with src/rng.ts, and requires LIQD's reply to equal the
+ *    package's roll, win (half-open rule) and multiplier. It then counts the probes on which the
+ *    two candidate rules DISAGREE (roll == upper bound, upper below 100): those are the ones that
+ *    carry the evidence, and every one of them must agree with half-open.
+ *    WHAT IT IS NOT: these are VERIFIER replies. That settlement (place-bet) applies the same rule
+ *    to a roll on a bound is not witnessed by any settled round (limitation L2).
  *
- * ARITHMETIC. The identity is asserted in EXACT INTEGERS
- * (`effectiveEdgeIsExact`: 100·winCount·9900 === 99·RANGE·basisPoints), not as
- * `|edge − 0.01| < 1e-12`. A 1e-12 width can be justified as "~150× the arithmetic noise" from the
- * 6.3e-15 worst case ACROSS THE CAPTURE — but `continuousWinChancePct` subtracts in binary64, so an
- * `over 99.99` band (`100 − 99.99 = 0.010000000000005116`) departs by 5.063813951489138e-13. Such a
- * threshold is 1.97× its own noise floor, on precisely the 9900× extreme E14 recommends probing next.
+ * 2. THE ROLL RANGE: every served roll is on the grid 0.00 … 99.99.
+ *
+ * 3. THE EFFECTIVE EDGE, A MODEL IDENTITY. `1 − (100·W/10000)·(9900/(100·W))` is 0.01 by algebra
+ *    for every 2-dp band, so no dataset can make the per-bet assertion fail. What it DOES catch is
+ *    a change to our own model (a rule or pricing edit, including an inclusive-upper regression that
+ *    no settled bet could witness), and that is worth a scored step. It is asserted in EXACT
+ *    INTEGERS (`effectiveEdgeIsExact`: 100·winCount·9900 === 99·RANGE·basisPoints), not within a
+ *    float tolerance: `continuousWinChancePct` subtracts in binary64, and at an `over 99.99` band
+ *    the float form departs from 0.01 by 5.06e-13.
  */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.run = run;
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
+const node_crypto_1 = require("node:crypto");
 const context_1 = require("./context");
+const rng_1 = require("../../src/rng");
 const config_1 = require("../../src/config");
 function run(ctx) {
-    const { bets } = ctx;
-    // Roll ceiling: no served roll exceeds 99.99.
-    const maxRoll = Math.max(...bets.map(b => Number(b.roll)));
-    // exact: the roll domain is the integer grid [0, RANGE), so the ceiling is a grid comparison
-    const ceilingOk = Math.round(maxRoll * config_1.SCALE) <= config_1.RANGE - 1;
-    // over(99) band {99,100}: a 1% win chance, so it pays exactly 99/1 = 99× — checked
-    // against that band-specific multiplier, NOT against MAX_ODDS. The live-witnessed ceiling
-    // is 9900× (win chance 0.01%, a single grid point; live-witnessed 2026-09-01), which
-    // no captured bet reaches — the capture stopped at 99×. maxDepthOk records that scope
-    // gap so the step states it rather than hiding it.
-    const over99 = bets.filter(b => b.params.lower === 99 && b.params.upper === 100 && !b.params.inverted);
-    // exact: 99 is (1 − HOUSE_EDGE)·10000 / 100 basis points, and quotedMultiplier lands on it bit-for-bit
-    const over99Expected = (1 - config_1.HOUSE_EDGE) * 10000 / 100;
-    const over99MultOk = over99.every(b => (0, config_1.quotedMultiplier)(b.params) === over99Expected);
-    const over99Edge = over99.length ? (0, config_1.effectiveEdge)(over99[0].params) : NaN;
-    const maxMultSeen = Math.max(...bets.map(b => (0, config_1.quotedMultiplier)(b.params)));
-    const allWithinCeiling = bets.every(b => (0, config_1.quotedMultiplier)(b.params) <= config_1.MAX_ODDS);
-    // Effective edge across all bets — the finding.
-    // Per-bet assertion, in EXACT INTEGERS: under the
-    // half-open rule EVERY bet's winning region holds exactly 100·W grid points, so
-    // 100·winCount·9900 === 99·RANGE·basisPoints with no tolerance at all. Asserting this per bet —
-    // not merely `favorable === 0` — means a boundary-rule regression surfaces as a HARD FAIL here,
-    // not only in the E13 mocha vectors: an inclusive-upper mutation makes the edge 0.01 − 0.0099/W
-    // (still positive, so `favorable` stays 0 and would NOT catch it), which the integer identity
-    // rejects outright. It is enforcement of the MODEL, conditional on the E13 boundary semantics —
-    // see the header: no dataset can falsify it.
-    let minEdge = Infinity, maxEdge = -Infinity, favorable = 0, edgeRuleViolations = 0;
-    let maxFloatDeparture = 0;
+    const { bets, seeds } = ctx;
+    // ── (1) the boundary probes of record ────────────────────────────────────────
+    const epochOfSeed = new Map(seeds.filter((s) => s.serverSeed).map((s) => [s.serverSeed, s]));
+    const settled = new Set(bets.map((b) => `${b.epoch}|${b.nonce}`));
+    const file = path.join(ctx.outputsDir, '..', config_1.E17_FILE);
+    let probeNote = '';
+    let probesOk = false;
+    let nProbes = 0, replyOk = 0, onLower = 0, onUpper = 0, discriminating = 0, discriminatingHalfOpen = 0, unsettledProbes = 0, controls = 0;
+    const discModes = new Set(), lowerModes = new Set();
+    if (!fs.existsSync(file)) {
+        probeNote = `${config_1.E17_FILE} ABSENT: the boundary rule has no witness`;
+    }
+    else {
+        const raw = fs.readFileSync(file);
+        const sha = (0, node_crypto_1.createHash)('sha256').update(raw).digest('hex');
+        let probes = [];
+        try {
+            probes = (JSON.parse(raw.toString('utf8')).probes ?? []);
+        }
+        catch {
+            probes = [];
+        }
+        nProbes = probes.length;
+        const bad = [];
+        for (const pr of probes) {
+            let rq;
+            let rp;
+            try {
+                rq = JSON.parse(pr.request.body);
+                rp = JSON.parse(pr.body);
+            }
+            catch {
+                bad.push(`${pr.id}: unreadable`);
+                continue;
+            }
+            const seed = epochOfSeed.get(rq.serverSeed);
+            // The probe must use a seed LIQD revealed in THIS capture (it hashes to that epoch's commitment)
+            // and that epoch's client seed; the reply must be the stored bytes (its SHA-256).
+            const provenanceOk = !!seed && (0, rng_1.commitHash)(rq.serverSeed) === seed.hashedServerSeed && rq.clientSeed === seed.clientSeed
+                && pr.status === 200 && (0, node_crypto_1.createHash)('sha256').update(pr.body, 'utf8').digest('hex') === pr.bodySha256
+                && pr.request.method === 'POST' && pr.request.url === 'https://liqd.com/api/v1/originals/dice/verify';
+            const roll = (0, rng_1.diceRoll)(rq.serverSeed, rq.clientSeed, rq.nonce) / config_1.SCALE;
+            const win = (0, config_1.diceWin)(roll, rq.params);
+            const mult = win ? config_1.PAYOUT_NUMERATOR / (0, config_1.payoutBasisPoints)(rq.params) : 0;
+            const agrees = rp.outcome.roll === roll && rp.outcome.win === win && rp.outcome.multiplier === mult;
+            if (provenanceOk && agrees)
+                replyOk++;
+            else
+                bad.push(`${pr.id}: ${provenanceOk ? 'reply differs from the package rule' : 'provenance'}`);
+            const lowerHit = roll === rq.params.lower, upperHit = roll === rq.params.upper;
+            if (lowerHit) {
+                onLower++;
+                lowerModes.add((0, config_1.bandMode)(rq.params));
+            }
+            if (upperHit)
+                onUpper++;
+            if (!lowerHit && !upperHit)
+                controls++;
+            if (seed && !settled.has(`${seed.epoch}|${rq.nonce}`))
+                unsettledProbes++;
+            // The two candidate rules disagree exactly when the roll sits on the upper bound.
+            if ((0, config_1.diceWin)(roll, rq.params) !== (0, config_1.diceWinInclusive)(roll, rq.params)) {
+                discriminating++;
+                discModes.add((0, config_1.bandMode)(rq.params));
+                if (rp.outcome.win === win)
+                    discriminatingHalfOpen++;
+            }
+        }
+        probesOk = sha === config_1.E17_SHA256 && nProbes === config_1.E17_PROBES && replyOk === nProbes
+            && discriminating > 0 && discriminatingHalfOpen === discriminating && onLower > 0;
+        probeNote = `${config_1.E17_FILE} sha256 ${sha.slice(0, 16)}… ${sha === config_1.E17_SHA256 ? 'matches its pin' : '≠ PIN'}; ${nProbes}/${config_1.E17_PROBES} answered probes, each on a seed revealed in this capture: LIQD's reply equals the package's roll, half-open win and 9900/basisPoints multiplier on ${replyOk}/${nProbes}`
+            + (bad.length ? ` (${bad.slice(0, 3).join('; ')})` : '')
+            + `; roll == lower bound on ${onLower} (wins the band; modes ${[...lowerModes].sort().join(', ')}), roll == upper bound on ${onUpper}, ${controls} with no bound hit (controls 0.01 off a bound, the range-edge roll inside its band, and one re-sent verify call of the capture); `
+            + `${discriminating} probes separate half-open from inclusive-both-ends (the roll is on a reachable upper bound; modes ${[...discModes].sort().join(', ')}; an over band's upper bound is 100, which no roll reaches) and ${discriminatingHalfOpen}/${discriminating} follow half-open; ${unsettledProbes} probes use nonces never settled in the capture`;
+    }
+    // ── (2) roll range ───────────────────────────────────────────────────────────
+    const rolls = bets.map((b) => Math.round(Number(b.roll) * config_1.SCALE));
+    const maxRoll = Math.max(...rolls), minRoll = Math.min(...rolls);
+    const rangeOk = minRoll >= 0 && maxRoll <= config_1.RANGE - 1 && bets.every((b) => Math.round(Number(b.roll) * config_1.SCALE) / config_1.SCALE === Number(b.roll));
+    // Power of the SETTLED data over the boundary rule, measured rather than argued.
+    let lowerHits = 0, upperHits = 0, rulesDisagree = 0;
+    for (const b of bets) {
+        const r = Number(b.roll);
+        if (r === b.params.lower)
+            lowerHits++;
+        if (r === b.params.upper)
+            upperHits++;
+        if ((0, config_1.diceWin)(r, b.params) !== (0, config_1.diceWinInclusive)(r, b.params))
+            rulesDisagree++;
+    }
+    // ── (3) top of the captured range, and the per-bet edge identity ─────────────
+    // The highest-multiplier setting the plan played (its smallest win chance) must be priced at
+    // exactly PAYOUT_NUMERATOR/basisPoints and carry the 1.0000% edge.
+    const planMinBps = Math.round(Math.min(...config_1.EXPECTED_WIN_CHANCES) * 100);
+    const minBps = Math.min(...bets.map(b => (0, config_1.payoutBasisPoints)(b.params)));
+    const topBets = bets.filter(b => (0, config_1.payoutBasisPoints)(b.params) === minBps);
+    const topExpected = config_1.PAYOUT_NUMERATOR / minBps;
+    const topMultOk = minBps === planMinBps
+        && topBets.every(b => !b.win || Number(b.multiplier) === topExpected)
+        && topBets.every(b => (0, config_1.effectiveEdgeIsExact)(b.params));
+    const topEdge = topBets.length ? (0, config_1.effectiveEdge)(topBets[0].params) : NaN;
+    let minEdge = Infinity, maxEdge = -Infinity, favorable = 0, edgeRuleViolations = 0, maxFloatDeparture = 0;
     const modeAgg = {};
     for (const b of bets) {
         const e = (0, config_1.effectiveEdge)(b.params);
@@ -3935,24 +4026,24 @@ function run(ctx) {
         if (e > g.max)
             g.max = e;
     }
-    // Coverage for the identity itself: exercise the 9900× extreme the capture does NOT contain, so
-    // the integer form is shown to hold at the band whose float form departs by 5.06e-13.
+    // The identity at the narrowest band of the price grid, which the capture does not contain.
     const extreme = { lower: 99.99, upper: 100, inverted: false };
     const extremeOk = (0, config_1.effectiveEdgeIsExact)(extreme);
     const extremeFloatDeparture = Math.abs((0, config_1.effectiveEdge)(extreme) - config_1.HOUSE_EDGE);
     const modeStr = Object.entries(modeAgg)
         .map(([m, g]) => `${m} ${(g.sum / g.n * 100).toFixed(3)}% [${(g.min * 100).toFixed(3)}–${(g.max * 100).toFixed(3)}]`)
         .join('; ');
-    // Coverage guard: the step must run over a non-empty set and actually exercise the
-    // maxOdds boundary — otherwise Math.max(...[]) / [].every(...) would vacuously "pass".
-    const coverOk = bets.length > 0 && over99.length > 0 && Number.isFinite(over99Edge) && extremeOk;
-    const pass = coverOk && ceilingOk && over99MultOk && allWithinCeiling && favorable === 0 && edgeRuleViolations === 0;
-    const s15 = (0, context_1.step)(15, 'Odds Boundary & Effective Edge', pass ? 'PASS' : ((favorable > 0 || edgeRuleViolations > 0) ? 'FAIL' : 'FLAG'), `${bets.length} bets scanned (coverage ${coverOk ? 'ok' : 'FAIL — empty set or the extreme band failed the identity'}); roll ceiling ≤ 99.99 (max ${maxRoll}, ${ceilingOk ? 'ok' : 'EXCEEDED'}); over(99) pays exactly 99× at edge ${(over99Edge * 100).toFixed(4)}% (${over99.length} bets); `
-        + `live-witnessed maxOdds ${config_1.MAX_ODDS}× (win chance 0.01%); max multiplier in capture ${maxMultSeen}× — the 99×–${config_1.MAX_ODDS}× tail was not sampled live; all captured within ceiling: ${allWithinCeiling}; `
-        + `per-bet effective edge == 1.0000% asserted in EXACT INTEGERS (100·winCount·${config_1.PAYOUT_NUMERATOR} === ${config_1.PAYOUT_NUMERATOR / 100}·${config_1.RANGE}·basisPoints, no tolerance) on ${bets.length - edgeRuleViolations}/${bets.length} bets (${edgeRuleViolations} rule violations); `
-        + `the float form of the same quantity departs from 0.01 by up to ${maxFloatDeparture.toExponential(2)} across the capture and ${extremeFloatDeparture.toExponential(2)} at the un-sampled 9900× extreme (upper 100 − lower 99.99 in binary64), which is why the assertion is integral; `
-        + `MODEL IDENTITY, not a measurement of the operator: this holds by algebra for every 2-dp band, so no dataset can falsify it — it enforces OUR rule set, and the operator's boundary rule rests on the E13 probes alone (2 of 7 discriminate; the settled data has zero power, see report-figures boundary.betsWhereBoundaryModelsDisagree) — declared limitations L2 (E13) and L3 (model identity) in MANIFEST.md; the un-sampled 99×–9900× tail is L7; `
-        + `effective edge spans ${(minEdge * 100).toFixed(3)}%–${(maxEdge * 100).toFixed(3)}%, player-favourable bets ${favorable} (${favorable === 0 ? 'none — not exploitable' : 'EXPLOIT'}); `
+    // Coverage guard: a non-empty set that reaches the top setting with at least one win there.
+    const coverOk = bets.length > 0 && topBets.length > 0 && topBets.some(b => b.win) && Number.isFinite(topEdge) && extremeOk;
+    const pass = coverOk && probesOk && rangeOk && topMultOk && favorable === 0 && edgeRuleViolations === 0;
+    const s15 = (0, context_1.step)(15, 'Boundary Rule, Roll Range & Effective Edge', pass ? 'PASS' : ((favorable > 0 || edgeRuleViolations > 0 || !probesOk || !rangeOk) ? 'FAIL' : 'FLAG'), `BOUNDARY RULE (LIQD's production verify endpoint, 9 November 2026): ${probeNote}. `
+        + `Settled data: ${lowerHits} of ${bets.length} rolls on their band's lower bound and ${upperHits} on its upper bound; the two rules disagree about ${rulesDisagree} captured win flags, so the settled rounds have no power over the rule and it rests on these verifier replies; that settlement treats a roll on a bound the same way is not witnessed (declared limitation L2). `
+        + `ROLL RANGE: ${bets.length} served rolls on the 0.01 grid, min ${(minRoll / config_1.SCALE).toFixed(2)}, max ${(maxRoll / config_1.SCALE).toFixed(2)} (ceiling ${((config_1.RANGE - 1) / config_1.SCALE).toFixed(2)}, ${rangeOk ? 'ok' : 'OUT OF RANGE'}). `
+        + `TOP OF THE CAPTURED RANGE: win chance ${(minBps / 100).toFixed(2)}% pays exactly ${config_1.PAYOUT_NUMERATOR}/${minBps} = ${topExpected}× at edge ${(topEdge * 100).toFixed(4)}% (${topBets.length} bets, ${topBets.filter(b => b.win).length} wins, ${topMultOk ? 'ok' : 'MISPRICED'}); narrower bands (above ${topExpected}×) were not played: declared limitation L7. `
+        + `EFFECTIVE EDGE: per-bet edge == 1.0000% asserted in EXACT INTEGERS (100·winCount·${config_1.PAYOUT_NUMERATOR} === ${config_1.PAYOUT_NUMERATOR / 100}·${config_1.RANGE}·basisPoints, no tolerance) on ${bets.length - edgeRuleViolations}/${bets.length} bets (${edgeRuleViolations} rule violations; coverage ${coverOk ? 'ok' : 'FAIL'}); `
+        + `the float form of the same quantity departs from 0.01 by up to ${maxFloatDeparture.toExponential(2)} across the capture and ${extremeFloatDeparture.toExponential(2)} at an over 99.99 band, which is why the assertion is integral; `
+        + `MODEL IDENTITY, not a measurement of the operator: it holds by algebra for every 2-dp band, so no dataset can falsify it; it enforces OUR rule set (declared limitation L3); `
+        + `effective edge spans ${(minEdge * 100).toFixed(3)}%–${(maxEdge * 100).toFixed(3)}%, player-favourable bets ${favorable} (${favorable === 0 ? 'none' : 'EXPLOIT'}); `
         + `by mode: ${modeStr}`);
     return [s15];
 }
@@ -3980,51 +4071,65 @@ function run(ctx) {
             fails++;
         checked++;
     }
-    const s1 = (0, context_1.step)(1, 'Seed Hash Integrity', fails === 0 && checked === seeds.length ? 'PASS' : 'FAIL', `${checked}/${seeds.length} revealed seeds checked; SHA-256(utf8(serverSeed)) == hashedServerSeed; ${fails} mismatches`);
+    const s1 = (0, context_1.step)(1, 'Seed Hash Integrity', fails === 0 && checked === seeds.length && checked === config_1.EXPECTED_SEEDS ? 'PASS' : 'FAIL', `${checked}/${config_1.EXPECTED_SEEDS} revealed seeds checked (the audited epoch count, src/config.ts); SHA-256(utf8(serverSeed)) == hashedServerSeed; ${fails} mismatches`);
     // ── Step 2: Next-seed pre-commitment chain ──────────────────────────────────
+    // The dataset holds EXPECTED_CAPTURES capture files. Inside a file every epoch's
+    // nextHashedServerSeed must BE the next epoch's commitment. Between files there is no link to
+    // check: the account's seed pair kept rotating in between (rounds outside this dataset), so each
+    // file is anchored by its own pre-capture pair instead.
+    //
+    // PRE-CAPTURE LINK, one per file. The in-file transitions show the chain was never broken DURING
+    // a file, but on their own they say nothing about the file's first epoch: its commitment is simply
+    // the first thing the file saw. Each file also carries `preCapture`, the seed pair that was active
+    // BEFORE its first bet, with its own revealed server seed and its `nextHashedServerSeed`. Two
+    // checks turn that into evidence: the pre-capture seed must hash to its own commitment, and its
+    // `nextHashedServerSeed` must BE the commitment of the file's first epoch. Together they place
+    // that commitment EARLIER IN THE CHAIN than the file's first bet.
+    //
+    // WHAT IT IS NOT. A hash chain orders records; it does not date them. This establishes that the
+    // first epoch's commitment was already fixed by a record the capture holds from before the first
+    // bet, as recorded BY THE CAPTURE. The anchor for "before" is the auditor's own capture record,
+    // not an independently authenticated timestamp, so the detail string below says "conditional on
+    // the attested chronology" and names limitation L18.
     const byEpoch = [...seeds].sort((a, b) => a.epoch - b.epoch);
+    const captures = Array.isArray(ctx.meta.captures) ? ctx.meta.captures : [];
     let promoChecked = 0, promoFails = 0;
     for (let i = 0; i + 1 < byEpoch.length; i++) {
+        if (byEpoch[i].capture !== byEpoch[i + 1].capture)
+            continue; // a file boundary: no in-dataset link
         promoChecked++;
         if (byEpoch[i].nextHashedServerSeed !== byEpoch[i + 1].hashedServerSeed)
             promoFails++;
     }
-    const expectedTransitions = seeds.length - 1;
-    // PRE-CAPTURE LINK. The 133 in-capture transitions show the chain was never
-    // broken DURING the capture, but on their own they say nothing about epoch 0: its commitment is
-    // simply the first thing the capture saw. The dataset also carries `meta.preCapture` — the seed
-    // pair that was active BEFORE the first bet, with its own revealed server seed and its
-    // `nextHashedServerSeed`. Two checks turn that into evidence: the pre-capture seed must hash to
-    // its own commitment, and its `nextHashedServerSeed` must BE epoch 0's commitment. Together they
-    // place epoch 0's commitment EARLIER IN THE CHAIN than the first bet's epoch. Without them the
-    // field sits in the dataset and is read by nothing.
-    //
-    // WHAT IT IS NOT. A hash chain orders records; it does not date
-    // them. This establishes that epoch 0's commitment was already fixed by a record the capture holds
-    // from before the first bet — as recorded BY THE CAPTURE. The anchor for "before" is the auditor's
-    // own capture record, not an independently authenticated timestamp, so the detail string below
-    // says "conditional on the attested chronology" and names limitation L18. Wording such as
-    // "the operator could not have chosen it after seeing a bet" would claim more than a matching
-    // hash can carry.
-    const pre = ctx.meta.preCapture;
-    const epoch0 = byEpoch[0];
-    let preState;
-    let preOk = false;
-    if (!pre || !pre.hashedServerSeed || !pre.revealedServerSeed || !pre.nextHashedServerSeed) {
-        preState = 'no meta.preCapture record — epoch 0\'s commitment has no pre-capture witness';
-    }
-    else {
+    const expectedTransitions = config_1.EXPECTED_SEEDS - config_1.EXPECTED_CAPTURES;
+    let preOkCount = 0, crossLinked = 0;
+    const preNotes = [];
+    for (const c of captures) {
+        const pre = c.preCapture;
+        const first = byEpoch.find((s) => s.capture === c.index);
+        if (!pre || !pre.hashedServerSeed || !pre.revealedServerSeed || !pre.nextHashedServerSeed || !first) {
+            preNotes.push(`file ${c.index}: no pre-capture record`);
+            continue;
+        }
         const preCommitOk = (0, rng_1.commitHash)(pre.revealedServerSeed) === pre.hashedServerSeed;
-        const preLinkOk = pre.nextHashedServerSeed === epoch0.hashedServerSeed;
-        preOk = preCommitOk && preLinkOk;
-        preState = preOk
-            ? 'pre-capture link verified: the pair the capture recorded before the first bet reveals a seed that hashes to its own commitment, and its nextHashedServerSeed IS epoch 0\'s commitment — so epoch 0\'s commitment was already fixed by an EARLIER LINK IN THE CHAIN. A hash chain orders records, it does not date them: that this link predates the first bet is the auditor\'s capture record — an ASSUMED premise, not independently authenticated timing (declared limitation L18), so the no-post-hoc-choice reading of it is CONDITIONAL on that attested chronology'
-            : `pre-capture link BROKEN (commitment ${preCommitOk ? 'ok' : 'MISMATCH'}, link to epoch 0 ${preLinkOk ? 'ok' : 'MISMATCH'})`;
+        const preLinkOk = pre.nextHashedServerSeed === first.hashedServerSeed;
+        if (preCommitOk && preLinkOk)
+            preOkCount++;
+        else
+            preNotes.push(`file ${c.index}: commitment ${preCommitOk ? 'ok' : 'MISMATCH'}, link to epoch ${first.epoch} ${preLinkOk ? 'ok' : 'MISMATCH'}`);
+        // Measured, not required: does the previous file's last next-hash reach this file?
+        const prevLast = [...byEpoch].reverse().find((s) => s.capture === c.index - 1);
+        if (prevLast && (prevLast.nextHashedServerSeed === pre.hashedServerSeed || prevLast.nextHashedServerSeed === first.hashedServerSeed))
+            crossLinked++;
     }
+    const preOk = captures.length === config_1.EXPECTED_CAPTURES && preOkCount === config_1.EXPECTED_CAPTURES;
     const s2 = (0, context_1.step)(2, 'Next-Seed Pre-Commitment Chain', promoFails === 0 && promoChecked === expectedTransitions && preOk ? 'PASS' : 'FAIL', (promoFails === 0
-        ? `${promoChecked}/${expectedTransitions} transitions: nextHashedServerSeed == next epoch's hashedServerSeed (chain INTACT)`
+        ? `${promoChecked}/${expectedTransitions} in-file transitions: nextHashedServerSeed == next epoch's hashedServerSeed (chain INTACT inside each of the ${config_1.EXPECTED_CAPTURES} capture files)`
         : `${promoChecked - promoFails}/${expectedTransitions} match; ${promoFails} mismatch`)
-        + `; ${preState}`);
+        + `; pre-capture link ${preOkCount}/${config_1.EXPECTED_CAPTURES}: the pair each file recorded before its first bet reveals a seed that hashes to its own commitment, and its nextHashedServerSeed IS the commitment of the file's first epoch`
+        + (preNotes.length ? ` (${preNotes.join('; ')})` : '')
+        + `; ${crossLinked}/${config_1.EXPECTED_CAPTURES - 1} file-to-file links are in the dataset (the last next-hash of one file is not the next file's pre-capture pair or first commitment: the account's seed pair rotated in between, outside this dataset, so each file stands on its own anchor)`
+        + '. A hash chain orders records, it does not date them: that each anchor predates its file\'s first bet is the auditor\'s capture record, an ASSUMED premise, not independently authenticated timing (declared limitation L18), so the no-post-hoc-choice reading of it is CONDITIONAL on that attested chronology');
     // ── Step 3: Hash consistency within epoch ────────────────────────────────────
     const betsByEpoch = new Map();
     for (const b of bets) {
@@ -4071,8 +4176,8 @@ function run(ctx) {
         // Interior contiguity alone cannot see bets withheld BEFORE the first or AFTER the last
         // recorded nonce. The three bounds below have DIFFERENT evidentiary weight:
         //   • leading  — operator-sourced (the rotate response's post-rotation nonce), a real guard;
-        //   • epoch size — the capture placed exactly meta.epochSize bets per pair, so a short epoch
-        //                  exposes a dropped bet ANYWHERE (interior or last), a real invariant;
+        //   • epoch size — the plan (src/config.ts EXPECTED_EPOCHS) fixes the rounds of every epoch, so
+        //                  a short epoch exposes a dropped bet ANYWHERE (interior or last), a real invariant;
         //   • trailing — operator-witnessed ONLY if operatorBetCount was captured; otherwise nonceEnd
         //                is the auditor's OWN last recorded nonce and can be checked for internal
         //                consistency only. Trailing withholding is not observable client-side (R-ORPHAN).
@@ -4084,16 +4189,25 @@ function run(ctx) {
             if (seedEntry.nonceStart != null && minNonce !== seedEntry.nonceStart) {
                 hardFailures.push(`Epoch ${epochNum}: first observed nonce ${minNonce} != operator post-rotation nonce ${seedEntry.nonceStart} (leading bets withheld?)`);
             }
-            // G-BIND: the epoch size comes from src/config.ts, NOT from
-            // `ctx.meta.epochSize`. Read from the header, this guard catches only an INCOHERENT forgery —
-            // a reviewer dropped nonces 30–49 from every epoch, set `meta.epochSize = 30`, and the line
-            // agreed with the shrunken data. Against a coherent shrink a header-sourced bound is not an
-            // invariant at all.
-            if (epochBets.length !== config_1.EXPECTED_EPOCH_SIZE) {
-                hardFailures.push(`Epoch ${epochNum}: ${epochBets.length} bets != audited epoch size ${config_1.EXPECTED_EPOCH_SIZE} (src/config.ts)`);
+            // G-BIND: the epoch size comes from src/config.ts (EXPECTED_EPOCHS, one row per epoch), NOT
+            // from the dataset. Read from the dataset, this guard catches only an INCOHERENT forgery:
+            // drop the trailing nonces of every epoch, rewrite the header and every seed record to match,
+            // and a dataset-sourced size agrees with the shrunken data. Against a coherent shrink a
+            // dataset-sourced bound is not an invariant at all.
+            const plan = config_1.EXPECTED_EPOCHS[epochNum];
+            if (!plan) {
+                hardFailures.push(`Epoch ${epochNum}: not in the audited plan (src/config.ts EXPECTED_EPOCHS)`);
             }
-            if (ctx.meta.epochSize !== config_1.EXPECTED_EPOCH_SIZE) {
-                hardFailures.push(`Epoch ${epochNum}: dataset header epochSize ${ctx.meta.epochSize} != audited epoch size ${config_1.EXPECTED_EPOCH_SIZE}`);
+            else {
+                if (epochBets.length !== plan.bets) {
+                    hardFailures.push(`Epoch ${epochNum}: ${epochBets.length} bets != audited epoch size ${plan.bets} (src/config.ts)`);
+                }
+                if (seedEntry.plannedBets !== plan.bets) {
+                    hardFailures.push(`Epoch ${epochNum}: seed record plannedBets ${seedEntry.plannedBets} != audited epoch size ${plan.bets}`);
+                }
+                if (maxNonce !== plan.bets - 1 && missing.length === 0) {
+                    hardFailures.push(`Epoch ${epochNum}: last nonce ${maxNonce} != audited epoch size ${plan.bets} - 1`);
+                }
             }
             if (seedEntry.operatorBetCount != null) {
                 if (maxNonce !== seedEntry.operatorBetCount - 1) {
@@ -4127,8 +4241,9 @@ function run(ctx) {
         }
         epochsChecked++;
     }
-    if (epochsChecked !== seeds.length)
-        hardFailures.push(`coverage: audited ${epochsChecked}/${seeds.length} epochs`);
+    if (epochsChecked !== seeds.length || epochsChecked !== config_1.EXPECTED_SEEDS)
+        hardFailures.push(`coverage: audited ${epochsChecked}/${config_1.EXPECTED_SEEDS} epochs`);
+    const planSizeOk = [...byHash.values()].filter((eb) => eb.length === config_1.EXPECTED_EPOCHS[eb[0].epoch]?.bets).length;
     let s4status;
     let s4detail;
     // A reconstructable capture-retry gap is a FLAG with origin = capture — NEVER a PASS. Profile
@@ -4136,7 +4251,7 @@ function run(ctx) {
     // log attributes to an auditor-side retry, where the revealed seed reconstructs every recorded
     // bet, is disclosed with a limitation row and counted, but is verdict-neutral (origin = capture
     // is not scored against the game). Returning PASS here would erase the disclosure. On THIS capture
-    // every epoch is fully contiguous 0..49 so the branch does not fire, but the mechanism is present
+    // every epoch is fully contiguous so the branch does not fire, but the mechanism is present
     // so a future capture that DID retry is disclosed rather than absorbed.
     let s4origin;
     if (hardFailures.length > 0) {
@@ -4150,7 +4265,7 @@ function run(ctx) {
     }
     else {
         s4status = 'PASS';
-        s4detail = `${epochsChecked} epochs: single client seed each, ${config_1.EXPECTED_EPOCH_SIZE} distinct contiguous nonces 0..${config_1.EXPECTED_EPOCH_SIZE - 1} (no interior gaps, no reuse); first nonce == nonceStart (capture default 0 — not operator-witnessed in this capture) in ${epochsChecked}/${seeds.length}; ${config_1.EXPECTED_EPOCH_SIZE}/${config_1.EXPECTED_EPOCH_SIZE} bets per epoch, epoch size bound to src/config.ts not to the dataset header (G-BIND); `
+        s4detail = `${epochsChecked} epochs: single client seed each, distinct contiguous nonces 0..size−1 with the size the plan gives each epoch (${[...new Set(config_1.EXPECTED_EPOCHS.map((e) => e.bets))].sort((x, y) => x - y).join(' / ')} rounds; no interior gaps, no reuse); first nonce == nonceStart in ${epochsChecked}/${seeds.length} (the leading bound: the post-rotation nonce served by the rotation reply that opened the epoch); ${planSizeOk}/${config_1.EXPECTED_SEEDS} epochs hold exactly their planned number of bets, the size bound to src/config.ts not to the dataset (G-BIND); `
             + (trailingAuditorRecorded
                 ? 'trailing bound is auditor-recorded (no operator end counter in this capture); trailing withholding is not observable client-side, see R-ORPHAN and declared limitation L13 in MANIFEST.md'
                 : 'trailing bound operator-witnessed via operatorBetCount');
@@ -4183,87 +4298,135 @@ function step(num, name, status, detail, origin) {
 /**
  * Steps 11–12: Dataset Integrity & Coverage
  *
- * POPULATION BINDING (G-BIND). Taking the audited population from the dataset's OWN header makes the plan
- * self-referential: Step 11 comparing `bets.length` to `meta.plannedTotal` and
- * `seeds.length` to `Math.ceil(meta.plannedTotal / meta.epochSize)`, and Step 12 comparing the
- * observed phase counts to `meta.phases`, all read fields inside the file being scored — shrink
- * the data, doctor the header, re-pin `DATASET_SHA256`, and the repo is internally consistent
- * again. A reviewer executed it: nonces 30–49 deleted from every epoch, `epochSize` 30,
- * `plannedTotal` 4020, phases rewritten, every `nonceEnd` 29 — and the suite
- * returned 21/21 Full Pass on a 4,020-bet dataset. The SHA pin cannot help; it proves the file has
- * not changed since WE pinned it, not that it is the capture.
+ * POPULATION BINDING (G-BIND). Taking the audited population from the dataset's OWN header makes the
+ * plan self-referential: comparing `bets.length` to a planned total in the header, or the observed
+ * phase counts to `meta.phases`, reads fields inside the file being scored. Shrink the data, doctor
+ * the header, re-pin `DATASET_SHA256`, and the repo is internally consistent again. The SHA pin
+ * cannot help; it proves the file has not changed since WE pinned it, not that it is the capture.
  *
  * The expected cardinality therefore comes from CODE constants (`EXPECTED_BETS`, `EXPECTED_SEEDS`,
- * `EXPECTED_EPOCH_SIZE`, `EXPECTED_PHASE_BETS` in `src/config.ts`) and `meta` is checked AGAINST
- * them — the header is evidence to be reconciled, not the plan. Registered as `coherent population
- * shrink` in `tests/mutations.json`.
+ * `EXPECTED_EPOCHS`, `EXPECTED_PHASES` in `src/config.ts`) and `meta` is checked AGAINST them: the
+ * header is evidence to be reconciled, not the plan. Registered as `coherent population shrink` in
+ * `tests/mutations.json`.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.run = run;
 const context_1 = require("./context");
 const config_1 = require("../../src/config");
+const MODES = ['under', 'over', 'inside', 'outside'];
+/** 9900/bp as a display value (the exact quotient). */
+const PAYOUT_NUMERATOR_OVER = (bp) => config_1.PAYOUT_NUMERATOR / bp;
 function run(ctx) {
     const { bets, seeds, meta, datasetSha256, expectedDatasetHash } = ctx;
     // ── Step 11: Dataset integrity ───────────────────────────────────────────────
     const hashOk = datasetSha256 === expectedDatasetHash;
     const seed0Ok = seeds.length > 0 && seeds[0].serverSeed != null; // recurring miss guard
     const allRevealed = seeds.every(s => s.serverSeed != null);
-    // (a) the population IS the audited population — against src/config.ts, never against meta
+    // (a) the population IS the audited population, against src/config.ts, never against meta
     const betCountOk = bets.length === config_1.EXPECTED_BETS;
     const seedCountOk = seeds.length === config_1.EXPECTED_SEEDS;
-    // (b) every epoch is a full epoch, and the epoch size is the audited one
+    // (b) every epoch is the epoch the plan says it is: its size, its phase, its capture file
     const perEpoch = new Map();
     for (const b of bets)
         perEpoch.set(b.epoch, (perEpoch.get(b.epoch) ?? 0) + 1);
-    const epochsOk = perEpoch.size === config_1.EXPECTED_SEEDS
-        && [...perEpoch.values()].every(n => n === config_1.EXPECTED_EPOCH_SIZE)
-        && config_1.EXPECTED_SEEDS * config_1.EXPECTED_EPOCH_SIZE === config_1.EXPECTED_BETS;
-    // (c) each epoch's nonces are exactly 0..EXPECTED_EPOCH_SIZE−1 — a withheld trailing bet cannot
-    //     be absorbed by shrinking the declared epoch size, because the size is no longer declared here
+    const seedOf = new Map(seeds.map((s) => [s.epoch, s]));
+    let epochPlanOk = 0;
+    for (const e of config_1.EXPECTED_EPOCHS) {
+        const s = seedOf.get(e.epoch);
+        if (perEpoch.get(e.epoch) === e.bets && s && s.phaseId === e.phaseId && s.phase === e.phase && s.capture === e.capture && s.plannedBets === e.bets)
+            epochPlanOk++;
+    }
+    const epochsOk = perEpoch.size === config_1.EXPECTED_SEEDS && epochPlanOk === config_1.EXPECTED_SEEDS;
+    // (c) each epoch's nonces are exactly 0..size−1 with the size from the plan: a withheld trailing
+    //     bet cannot be absorbed by shrinking a declared size, because the size is not declared here
     let nonceGaps = 0;
     const byEpochNonces = new Map();
     for (const b of bets) {
-        let s = byEpochNonces.get(b.epoch);
-        if (!s) {
-            s = new Set();
-            byEpochNonces.set(b.epoch, s);
+        let ns = byEpochNonces.get(b.epoch);
+        if (!ns) {
+            ns = new Set();
+            byEpochNonces.set(b.epoch, ns);
         }
-        s.add(b.nonce);
+        ns.add(b.nonce);
     }
-    for (const [, ns] of byEpochNonces) {
-        for (let i = 0; i < config_1.EXPECTED_EPOCH_SIZE; i++)
-            if (!ns.has(i)) {
-                nonceGaps++;
-                break;
-            }
+    for (const e of config_1.EXPECTED_EPOCHS) {
+        const ns = byEpochNonces.get(e.epoch);
+        let gap = !ns || ns.size !== e.bets;
+        for (let i = 0; !gap && i < e.bets; i++)
+            if (!ns.has(i))
+                gap = true;
+        if (gap)
+            nonceGaps++;
     }
     // (d) the header is RECONCILED against the constants, not trusted as the plan
-    const metaAgrees = meta.plannedTotal === config_1.EXPECTED_BETS && meta.epochSize === config_1.EXPECTED_EPOCH_SIZE;
-    const countsOk = betCountOk && seedCountOk && epochsOk && nonceGaps === 0 && metaAgrees;
+    const captures = Array.isArray(meta.captures) ? meta.captures : [];
+    const captureBets = (c) => config_1.EXPECTED_EPOCHS.filter((e) => e.capture === c).reduce((a, e) => a + e.bets, 0);
+    const captureEpochs = (c) => config_1.EXPECTED_EPOCHS.filter((e) => e.capture === c).length;
+    const capturesOk = captures.length === config_1.EXPECTED_CAPTURES
+        && captures.every((c, i) => c.index === i && c.bets === captureBets(i) && c.epochs?.count === captureEpochs(i) && c.status === 'completed' && c.verifierReplies === captureBets(i));
+    const metaAgrees = meta.plannedTotal === config_1.EXPECTED_BETS && meta.epochs === config_1.EXPECTED_SEEDS && capturesOk;
+    // (e) one id per bet: a round counted twice would inflate every count above
+    const idsOk = new Set(bets.map((b) => b.id)).size === bets.length;
+    const countsOk = betCountOk && seedCountOk && epochsOk && nonceGaps === 0 && metaAgrees && idsOk;
+    const sizes = [...new Set(config_1.EXPECTED_EPOCHS.map((e) => e.bets))].sort((x, y) => x - y);
     const s11 = (0, context_1.step)(11, 'Dataset Integrity', hashOk && seed0Ok && allRevealed && countsOk ? 'PASS' : 'FAIL', `SHA-256 pin ${hashOk ? 'match' : 'MISMATCH'}; population bound to src/config.ts, NOT to the dataset header (G-BIND): `
         + `${bets.length}/${config_1.EXPECTED_BETS} bets (${betCountOk ? 'ok' : 'WRONG POPULATION'}), ${seeds.length}/${config_1.EXPECTED_SEEDS} seeds (${seedCountOk ? 'ok' : 'WRONG POPULATION'}), `
-        + `${perEpoch.size} epochs × ${config_1.EXPECTED_EPOCH_SIZE} bets each (${epochsOk ? 'ok' : 'EPOCH SIZE/COUNT MISMATCH'}), ${nonceGaps} epoch(s) missing a nonce in 0..${config_1.EXPECTED_EPOCH_SIZE - 1}; `
-        + `dataset header reconciles with those constants (meta.plannedTotal=${meta.plannedTotal}, meta.epochSize=${meta.epochSize}: ${metaAgrees ? 'ok' : 'DISAGREES'}); `
+        + `${epochPlanOk}/${config_1.EXPECTED_SEEDS} epochs match the plan row for row (size ${sizes.join(' / ')}, phase, capture file) (${epochsOk ? 'ok' : 'EPOCH PLAN MISMATCH'}), ${nonceGaps} epoch(s) not holding exactly the nonces 0..size−1; ${new Set(bets.map((b) => b.id)).size} distinct bet ids (${idsOk ? 'ok' : 'DUPLICATE'}); `
+        + `dataset header reconciles with those constants (meta.plannedTotal=${meta.plannedTotal}, meta.epochs=${meta.epochs}, ${captures.length} capture files each complete, with its own epoch and bet counts: ${metaAgrees ? 'ok' : 'DISAGREES'}); `
         + `seed[0].serverSeed ${seed0Ok ? 'present' : 'NULL'}; ${seeds.filter(s => s.serverSeed != null).length}/${seeds.length} seeds revealed (100% verifiable ${allRevealed ? 'yes' : 'NO'})`);
-    // ── Step 12: Phase & mode coverage ───────────────────────────────────────────
+    // ── Step 12: Phase & mode coverage (DICE-15) ─────────────────────────────────
+    // The plan is EXPECTED_PHASES (code), not meta.phases (inside the evidence). Both directions:
+    // every planned phase present at its planned count, and no phase in the data that is not planned.
     const byPhase = {};
     for (const b of bets)
-        byPhase[b.phase] = (byPhase[b.phase] || 0) + 1;
-    // The plan is EXPECTED_PHASE_BETS (code), not meta.phases (inside the evidence). Both directions:
-    // every declared phase present at its declared count, and no phase in the data that is not declared.
+        byPhase[b.phaseId] = (byPhase[b.phaseId] || 0) + 1;
     const planOk = Object.entries(config_1.EXPECTED_PHASE_BETS).every(([k, n]) => byPhase[k] === n)
         && Object.keys(byPhase).every(k => k in config_1.EXPECTED_PHASE_BETS);
     // meta.phases is reconciled against the same constants rather than believed.
-    const metaPhasesOk = Object.entries(config_1.EXPECTED_PHASE_BETS).every(([k, n]) => meta.phases?.[k]?.bets === n)
+    const metaPhasesOk = config_1.EXPECTED_PHASES.every((ph) => meta.phases?.[ph.id]?.bets === config_1.EXPECTED_PHASE_BETS[ph.id] && meta.phases?.[ph.id]?.stake === ph.stake && meta.phases?.[ph.id]?.phase === ph.phase)
         && Object.keys(meta.phases ?? {}).every(k => k in config_1.EXPECTED_PHASE_BETS);
-    const modes = new Set(bets.map(b => (0, config_1.bandMode)(b.params)));
-    const modesOk = ['under', 'over', 'inside', 'outside'].every(m => modes.has(m));
-    // stake independence coverage: a $10 phase and a $0.10 phase both present
-    const stakes = new Set(bets.map(b => Number(b.betAmount)));
-    const stakeOk = stakes.has(10) && stakes.has(0.1);
-    const s12 = (0, context_1.step)(12, 'Phase & Mode Coverage', planOk && metaPhasesOk && modesOk && stakeOk ? 'PASS' : 'FAIL', `phases ${JSON.stringify(byPhase)} match the CODE plan ${JSON.stringify(config_1.EXPECTED_PHASE_BETS)} (${planOk}); dataset header meta.phases reconciles with it (${metaPhasesOk}); `
-        + `all 4 modes present [${[...modes].join(',')}]; `
-        + `stake-independence phases present ($10 and $0.10: ${stakeOk})`);
+    // Per phase: the phase letter, the one stake (the served 8-dp string) and the win chances are the plan's.
+    const phaseNotes = [];
+    let phasesOk = true;
+    for (const ph of config_1.EXPECTED_PHASES) {
+        const pb = bets.filter((b) => b.phaseId === ph.id);
+        const letterOk = pb.every((b) => b.phase === ph.phase);
+        const stakeOk = pb.length > 0 && pb.every((b) => String(b.betAmount) === ph.stake);
+        const wantBps = new Set(ph.winChances.map((w) => Math.round(w * 100)));
+        const gotBps = new Set(pb.map((b) => (0, config_1.payoutBasisPoints)(b.params)));
+        const bpsOk = gotBps.size === wantBps.size && [...gotBps].every((x) => wantBps.has(x));
+        const modes = new Set(pb.map((b) => (0, config_1.bandMode)(b.params)));
+        if (!(letterOk && stakeOk && bpsOk))
+            phasesOk = false;
+        phaseNotes.push(`${ph.id} ${pb.length} at ${ph.stake} (${stakeOk ? 'ok' : 'STAKE MISMATCH'}), win chance ${[...gotBps].sort((x, y) => x - y).map((x) => x / 100).join('/')}% (${bpsOk ? 'the plan\'s' : 'NOT the plan\'s'}), modes ${[...modes].join(',')}`);
+    }
+    // Both stake tiers present (the base stake and the elevated Phase C stake), and no other.
+    const stakes = new Set(bets.map(b => String(b.betAmount)));
+    const tiersOk = stakes.size === 2 && stakes.has(config_1.BASE_STAKE) && stakes.has(config_1.ELEVATED_STAKE);
+    // Phase A coverage (the phase letter A: the 7 Nov rounds and the A+ top-up): every planned win
+    // chance in every one of the four modes, at least PHASE_A_MIN_BETS_PER_CLASS rounds per
+    // (mode, win chance) class, both ends of the range (the lowest and the highest planned win chance).
+    const aBets = bets.filter((b) => b.phase === 'A');
+    const aPlanBps = [...new Set(config_1.EXPECTED_PHASES.filter((ph) => ph.phase === 'A').flatMap((ph) => ph.winChances))].map((w) => Math.round(w * 100));
+    const cellCount = new Map();
+    for (const b of aBets) {
+        const k = `${(0, config_1.bandMode)(b.params)}/${(0, config_1.payoutBasisPoints)(b.params)}`;
+        cellCount.set(k, (cellCount.get(k) ?? 0) + 1);
+    }
+    const wantCells = MODES.flatMap((m) => aPlanBps.map((bp) => `${m}/${bp}`));
+    const cellsPresent = wantCells.filter((k) => (cellCount.get(k) ?? 0) >= config_1.PHASE_A_MIN_BETS_PER_CLASS).length;
+    const cellMin = Math.min(...wantCells.map((k) => cellCount.get(k) ?? 0));
+    const cellsOk = cellsPresent === wantCells.length && cellCount.size === wantCells.length;
+    const allBps = new Set(bets.map((b) => (0, config_1.payoutBasisPoints)(b.params)));
+    const planAll = config_1.EXPECTED_WIN_CHANCES.map((w) => Math.round(w * 100));
+    const endsOk = allBps.has(Math.min(...planAll)) && allBps.has(Math.max(...planAll)) && allBps.size === planAll.length;
+    const modesAll = new Set(bets.map(b => (0, config_1.bandMode)(b.params)));
+    const modesOk = MODES.every(m => modesAll.has(m));
+    const s12 = (0, context_1.step)(12, 'Phase & Mode Coverage', planOk && metaPhasesOk && phasesOk && tiersOk && cellsOk && endsOk && modesOk ? 'PASS' : 'FAIL', `phases ${JSON.stringify(byPhase)} match the CODE plan ${JSON.stringify(config_1.EXPECTED_PHASE_BETS)} (${planOk}); dataset header meta.phases reconciles with it (${metaPhasesOk}); `
+        + `per phase: ${phaseNotes.join('; ')}; `
+        + `both stake tiers present, ${config_1.BASE_STAKE} and ${config_1.ELEVATED_STAKE} USDT, and no other (${tiersOk}); `
+        + `Phase A (A and the A+ top-up, ${aBets.length} rounds): ${cellsPresent}/${wantCells.length} (mode × win chance) classes hold at least ${config_1.PHASE_A_MIN_BETS_PER_CLASS} rounds (fewest ${cellMin}), all 4 modes [${[...modesAll].join(',')}] at each of the ${aPlanBps.length} planned win chances (${cellsOk}); `
+        + `both ends of the planned range played, ${Math.min(...planAll) / 100}% (${PAYOUT_NUMERATOR_OVER(Math.min(...planAll))}×) and ${Math.max(...planAll) / 100}% (${PAYOUT_NUMERATOR_OVER(Math.max(...planAll))}×) (${endsOk}). There is no separate tail phase: the 99× setting is the A+ top-up and the 49.5× setting is the 2% win chance of Phase A`);
     return [s11, s12];
 }
 
@@ -4338,19 +4501,42 @@ function run(ctx) {
                 + `${b.rejectionProbabilityPerChunk.toExponential(3)}`);
     // ── Step 6: Win-rule reproduction ────────────────────────────────────────────
     // The recomputed roll under the published band rule must reproduce the served win flag.
+    //
+    // SECOND WITNESS, also scored: LIQD's own verify endpoint. After each epoch's seed was revealed the
+    // capture posted every round's revealed inputs to https://liqd.com/api/v1/originals/dice/verify and
+    // stored the reply; the dataset carries it per bet (`verifier`). The reply must exist (HTTP 200),
+    // must have been asked for THIS round's inputs (the revealed server seed, the round's client seed,
+    // nonce and band), and its roll, win and multiplier must equal the served round AND this
+    // recomputation. The recomputation is the test; the verifier is LIQD saying the same thing.
     let winChecked = 0, winFails = 0;
+    let vReplies = 0, vRequestOk = 0, vServedOk = 0, vLocalOk = 0;
     for (const b of bets) {
         const ss = seedMap.get(b.hashedServerSeed);
         if (!ss)
             continue;
         const local = (0, rng_1.diceRoll)(ss, b.clientSeed, b.nonce) / config_1.SCALE;
-        if ((0, config_1.diceWin)(local, b.params) !== !!b.win)
+        const localWin = (0, config_1.diceWin)(local, b.params);
+        if (localWin !== !!b.win)
             winFails++;
         winChecked++;
+        const v = b.verifier;
+        if (!v || v.status !== 200 || !v.outcome || !v.request)
+            continue;
+        vReplies++;
+        const rq = v.request;
+        if (rq.serverSeed === ss && rq.clientSeed === b.clientSeed && rq.nonce === b.nonce
+            && rq.params?.lower === b.params.lower && rq.params?.upper === b.params.upper && rq.params?.inverted === b.params.inverted)
+            vRequestOk++;
+        if (v.outcome.roll === b.roll && v.outcome.win === b.win && v.outcome.multiplier === b.multiplier)
+            vServedOk++;
+        if ((0, config_1.servedRollMatches)(Number(v.outcome.roll), local) && v.outcome.win === localWin)
+            vLocalOk++;
     }
-    const s6 = (0, context_1.step)(6, 'Win-Rule Reproduction', winFails === 0 && winChecked === bets.length ? 'PASS' : 'FAIL', winFails === 0
+    const verifierOk = vReplies === bets.length && vRequestOk === bets.length && vServedOk === bets.length && vLocalOk === bets.length;
+    const s6 = (0, context_1.step)(6, 'Win-Rule Reproduction', winFails === 0 && winChecked === bets.length && verifierOk ? 'PASS' : 'FAIL', (winFails === 0
         ? `${winChecked}/${bets.length} bets: recomputed roll ∈/∉ band reproduces the served win flag (inverted honoured)`
-        : `${winFails} win-flag mismatches`);
+        : `${winFails} win-flag mismatches`)
+        + `; LIQD's production verify endpoint (stored reply per round): ${vReplies}/${bets.length} replies HTTP 200, ${vRequestOk}/${bets.length} asked with the round's own revealed inputs, ${vServedOk}/${bets.length} return the served roll, win and multiplier, ${vLocalOk}/${bets.length} equal this recomputation`);
     return [s5, s6];
 }
 
@@ -4363,7 +4549,7 @@ function run(ctx) {
  *
  * WHAT IT CARRIES. DICE-22 asserts the captured rolls fit the uniform lattice AND show no serial
  * dependence, informational only. The uniform-lattice-fit half is the pooled real-roll χ² in
- * Step 17, recomputed from the dataset on all 6,700 rolls — and it too is INFORMATIONAL: a fit
+ * Step 17, recomputed from the dataset on every captured roll — and it too is INFORMATIONAL: a fit
  * rejection there prints INFO and does not fail Step 17 (only a stored record that does not
  * reconcile with the recomputation fails). THIS step carries the serial-dependence half — lag-1
  * autocorrelation and a Wald–Wolfowitz runs test on the live rolls in capture order — which
@@ -4381,12 +4567,12 @@ function run(ctx) {
  * (the settlementResidual group) change when the bets are reordered (measured 2026-10-02) — never
  * because this step failed.
  *
- * WHY IT NEVER BEARS THE VERDICT. A 6,700-roll serial screen has little power and the profile fixes
+ * WHY IT NEVER BEARS THE VERDICT. A live-sample serial screen of a few thousand rolls has little power and the profile fixes
  * DICE-22 at policy INFORMATIONAL (2026-09-29). So when the screen trips this step returns INFO,
  * which verify.ts reports but never counts as a flag and never lets change the verdict (Full Pass,
  * exit 0).
  * The authoritative serial-independence evidence remains the Pass-1 simulation over fresh seeds
- * (Step 16), whose 200,000-roll screen has the power this 6,700-roll one does not. This step is the
+ * (Step 16), whose 200,000-roll screen has the power the live sample does not. This step is the
  * live-sample cross-check the profile asks for, at the power a live sample affords.
  *
  * THE THRESHOLD is the framework's cross-game serial-independence rule — |lag1 z| < 3 AND runs
@@ -4454,20 +4640,16 @@ function run(ctx) {
     // Served multiplier on wins == PAYOUT_NUMERATOR / basisPoints, where basisPoints =
     // round(winChance% × 100) is the win chance re-expressed in hundredths of a percent.
     //
-    // `basisPoints` is the AUDITOR'S construction and appears nowhere in the capture — the evidence
-    // that it is the operator's form is that the quotient matches the served field
-    // bit-for-bit on all 2,807 wins while the float closed form matches only 1,719 of them.
-    // This is the exact form the server serves (the float `(100/wc)·(1−edge)` closed form carries
-    // auditor-side rounding noise ~1e-13); pinned with strict `===`, so a served multiplier off by
-    // even 1 ULP is caught. All 2,807 captured winning multipliers match
-    // bit-for-bit.
+    // `basisPoints` is the AUDITOR'S construction and appears nowhere in the capture. The evidence
+    // that it is the operator's form is that the quotient matches the served field bit-for-bit on
+    // every captured win, while the float closed form `(100/wc)·(1−edge)` matches only some of them
+    // (both counts are printed below). Pinned with strict `===`, so a served multiplier off by even
+    // 1 ULP is caught.
     //
-    // The numerator is DERIVED from HOUSE_EDGE, not typed as 9900: the
-    // mutation registry declares that doubling HOUSE_EDGE must fail THIS step, and a hardcoded 9900
-    // would make that declared guard stop guarding — the run still flips, but via
-    // Steps 10/16/20/21, so the registry would name a step that no longer fires. (1 − 0.01)·10000
-    // is exactly 9900 in binary64; the assertion below keeps that true if the edge ever changes to
-    // a value where it is not.
+    // The numerator is DERIVED from HOUSE_EDGE, not typed as 9900: the mutation registry declares
+    // that doubling HOUSE_EDGE must fail THIS step, and a hardcoded 9900 would make that declared
+    // guard stop guarding. (1 − 0.01)·10000 is exactly 9900 in binary64; the assertion below keeps
+    // that true if the edge ever changes to a value where it is not.
     const numeratorIntegral = Number.isInteger(config_1.PAYOUT_NUMERATOR);
     let mChecked = 0, mFails = 0, maxDev = 0, closedFormAgrees = 0;
     for (const b of bets) {
@@ -4490,26 +4672,27 @@ function run(ctx) {
         + `basisPoints = round(winChance%·100) is AUDITOR-DERIVED — the field does not appear in the capture; `
         + `the float closed form (100/winChance%)·(1−edge) is the same rational but a different binary64, agreeing bit-for-bit on only ${closedFormAgrees}/${mChecked} of these wins`);
     // ── Step 8: Credit arithmetic ────────────────────────────────────────────────
-    // The credit is settled by the EXACT two-stage 8-dp rule:
-    //   credit == ROUND_HALF_EVEN_8( stake × ROUND_8(multiplier) )   (settledCredit)
-    // asserted with ZERO tolerance — this rule reproduces all 2,807 credits exactly, so any
-    // deviation is a real settlement error, not rounding margin (the old 1e-6 tolerance masked a
-    // 128-credit gap between this rule and naive half-up rounding). cRawResidual reports the
-    // symmetric max |credit − stake×mult_raw| (≈5.5e-9) so the report can cite the real figure.
-    let cChecked = 0, cFails = 0, cMaxDev = 0, cRawResidual = 0;
-    let resBelow = 0, resAbove = 0, resExact = 0, resNet = 0, ties = 0;
+    // The credit is settled by the production rule, exactly:
+    //   credit == floor8( stake × multiplier )   (floor8CreditUnitsServed, on the served multiplier)
+    // asserted on the 1e-8 integer grid with ZERO tolerance, every input taken from its decimal text,
+    // at BOTH stakes of the plan. Step 20 asserts the same rule from the band alone
+    // (9900/basisPoints), never reading the served multiplier.
+    let cChecked = 0, cFails = 0, cRawResidual = 0, firstCreditFail = '';
+    let resBelow = 0, resAbove = 0, resExact = 0, resNet = 0, offGrid = 0;
+    const perStake = new Map();
     for (const b of bets) {
-        const stake = Number(b.betAmount), win = Number(b.winningAmount);
-        const expected = b.win ? (0, config_1.settledCredit)(stake, Number(b.multiplier)) : 0;
-        const dev = Math.abs(win - expected);
-        if (dev > cMaxDev)
-            cMaxDev = dev;
+        const credited = (0, config_1.amountUnits)(b.winningAmount);
+        if (credited === null)
+            offGrid++;
+        const expected = b.win ? (0, config_1.floor8CreditUnitsServed)(b.betAmount, b.multiplier) : 0n;
+        if (credited !== expected) {
+            cFails++;
+            if (!firstCreditFail)
+                firstCreditFail = `epoch ${b.epoch} nonce ${b.nonce}: credited ${b.winningAmount} vs floor8 ${expected} units`;
+        }
         if (b.win) {
-            const mult = Number(b.multiplier);
-            // Direction and magnitude of the settlement's rounding, in the OPERATOR'S number system —
-            // decimal stake × the exact rational 9900/basisPoints. Computing it on binary64(stake) ×
-            // binary64(multiplier) instead reports every win as rounded and none as landing on the
-            // product — a published figure that is an artefact of the auditor's own number system.
+            // Direction and magnitude of the settlement against the raw un-rounded product, in the
+            // OPERATOR'S number system: decimal stake × the exact rational 9900/basisPoints.
             const raw = Math.abs((0, config_1.creditResidual)(b.winningAmount, b.betAmount, b.params));
             if (raw > cRawResidual)
                 cRawResidual = raw;
@@ -4521,18 +4704,26 @@ function run(ctx) {
                 resAbove++;
             else
                 resExact++;
-            // an exact 8-dp tie is where the half-even rule is actually load-bearing
-            if ((0, config_1.isSettlementTie)(stake, mult))
-                ties++;
+            const k = String(b.betAmount);
+            const row = perStake.get(k) ?? { wins: 0, ok: 0, down: 0, exact: 0 };
+            row.wins++;
+            if (credited === expected)
+                row.ok++;
+            if (sign < 0)
+                row.down++;
+            if (sign === 0)
+                row.exact++;
+            perStake.set(k, row);
         }
-        if (dev !== 0)
-            cFails++;
         cChecked++;
     }
     const wins = resBelow + resAbove + resExact;
-    const s8 = (0, context_1.step)(8, 'Credit Arithmetic', cFails === 0 && cChecked === bets.length ? 'PASS' : 'FAIL', `${cChecked}/${bets.length} bets: winningAmount == ROUND_HALF_EVEN_8(stake × ROUND_8(multiplier)) exactly (loss ⇒ 0); ${cFails} mismatches; two-stage residual ${cMaxDev.toExponential(2)} (exact); `
-        + `against the raw un-rounded product (decimal stake × exact 9900/basisPoints — the operator's own number system, not binary64) the settlement rounds the player DOWN on ${resBelow} and UP on ${resAbove} of ${wins} wins, and lands EXACTLY on the product on ${resExact} (no rounding at all), max |credit − stake×mult| ${cRawResidual.toExponential(2)}, net ${resNet >= 0 ? '+' : ''}${resNet.toExponential(2)} USDC — no directional bias; `
-        + `${ties} of the ${wins} wins settle on an exact 8-dp tie, where the half-even rule decides the last unit`);
+    const stakeRows = [config_1.BASE_STAKE, config_1.ELEVATED_STAKE].map((k) => ({ k, r: perStake.get(k) ?? { wins: 0, ok: 0, down: 0, exact: 0 } }));
+    const bothStakes = stakeRows.every(({ r }) => r.wins > 0 && r.ok === r.wins) && perStake.size === stakeRows.length;
+    const s8 = (0, context_1.step)(8, 'Credit Arithmetic', cFails === 0 && offGrid === 0 && resAbove === 0 && cChecked === bets.length && bothStakes ? 'PASS' : 'FAIL', `${cChecked}/${bets.length} bets: winningAmount == floor8(stake × multiplier) exactly on the 1e-8 grid, from the served decimal text (loss ⇒ 0); ${cFails} mismatches${firstCreditFail ? ` — first: ${firstCreditFail}` : ''}; ${offGrid} amounts off the 8-dp grid; `
+        + `per stake: ${stakeRows.map(({ k, r }) => `${k} USDT ${r.ok}/${r.wins} wins (${r.exact} exactly the product, ${r.down} rounded down)`).join('; ')}; `
+        + `against the raw un-rounded product (decimal stake × exact 9900/basisPoints, the operator's own number system, not binary64) the settlement rounds the player DOWN on ${resBelow} and UP on ${resAbove} of ${wins} wins, and lands EXACTLY on the product on ${resExact} (no rounding at all), max |credit − stake×mult| ${cRawResidual.toExponential(2)}, net ${resNet >= 0 ? '+' : ''}${resNet.toExponential(2)} USDT; `
+        + `round-down is the rule LIQD stated on 30 September 2026: a credit is never above the exact product and is below it by less than one 0.00000001 unit`);
     // ── Step 9: Loss settlement ──────────────────────────────────────────────────
     // Every losing bet pays exactly 0 and has multiplier 0.
     let lChecked = 0, lFails = 0;
@@ -4546,50 +4737,51 @@ function run(ctx) {
     const s9 = (0, context_1.step)(9, 'Loss Settlement', lFails === 0 && lChecked > 0 ? 'PASS' : 'FAIL', `${lChecked} losing bets: winningAmount == 0 and multiplier == 0; ${lFails} violations`);
     // ── Step 10: Wallet credit consistency + odds bounds ─────────────────────────
     // Wallet-denominated amounts must settle by the SAME exact rule as the game credit, and every
-    // derived multiplier must lie within the published odds window [minOdds, maxOdds].
+    // captured band's multiplier must lie inside the span the plan played.
     //
-    // This step is where a payout tolerance survives longest. Making Steps 7 and 8 bit-exact while
-    // leaving Step 10 comparing `winningAmountWallet` against the RAW
-    // product `stakeWallet × multiplier` at 1e-6 means editing a single wallet credit by +1e-7
-    // still returns 21/21 while the report claims wallet-credit consistency (MANIFEST.md#payouts-and-rtp). Three
-    // assertions stand in its place, all exact:
-    //   • winningAmountWallet == settledCredit(stakeWallet, multiplier)  — the same two-stage rule
+    // Three assertions, all exact:
+    //   • winningAmountWallet == floor8(stakeWallet × multiplier): the same production rule
     //     Step 8 applies to the game credit, with ZERO tolerance;
-    //   • winningAmountWallet == winningAmount and stakeWallet == betAmount — the wallet and game
-    //     ledgers are the same money in this capture (true on all 6,700 rows), so a divergence in
-    //     either direction is a real finding rather than a rounding artefact.
+    //   • winningAmountWallet == winningAmount and stakeWallet == betAmount, as decimal amounts: the
+    //     wallet and game ledgers are the same money in this capture (USDT on both sides), so a
+    //     divergence in either direction is a real finding rather than a rounding artefact;
+    //   • the quoted multiplier of every captured band is inside [9900/maxBps, 9900/minBps] of the
+    //     plan's win chances (src/config.ts EXPECTED_WIN_CHANCES). This is a bound on the CAPTURE
+    //     against its plan. LIQD's own odds limits were not read (limitation L7).
+    const planBps = config_1.EXPECTED_WIN_CHANCES.map((w) => Math.round(w * 100));
+    const minBps = Math.min(...planBps), maxBps = Math.max(...planBps);
     let wChecked = 0, wFails = 0, wLedgerFails = 0, boundFails = 0, wMissing = 0;
     let firstWalletFail = '';
     for (const b of bets) {
         const q = (0, config_1.quotedMultiplier)(b.params);
-        if (q < config_1.MIN_ODDS || q > config_1.MAX_ODDS)
-            boundFails++; // exact bound, no tolerance: the capture spans 1.0105×–99×
+        const bp = (0, config_1.payoutBasisPoints)(b.params);
+        if (bp < minBps || bp > maxBps || !(q > 0))
+            boundFails++; // exact bound on the integer basis points, no tolerance
         if (b.stakeWallet == null || b.winningAmountWallet == null) {
             wMissing++;
             continue;
         }
-        const expW = b.win ? (0, config_1.settledCredit)(Number(b.stakeWallet), Number(b.multiplier)) : 0;
-        if (Number(b.winningAmountWallet) !== expW) {
+        const expW = b.win ? (0, config_1.floor8CreditUnitsServed)(b.stakeWallet, b.multiplier) : 0n;
+        if ((0, config_1.amountUnits)(b.winningAmountWallet) !== expW) {
             wFails++;
             if (!firstWalletFail)
                 firstWalletFail = `epoch ${b.epoch} nonce ${b.nonce}: wallet credit ${b.winningAmountWallet} != settled ${expW}`;
         }
-        if (Number(b.winningAmountWallet) !== Number(b.winningAmount) || Number(b.stakeWallet) !== Number(b.betAmount))
+        if ((0, config_1.amountUnits)(b.winningAmountWallet) !== (0, config_1.amountUnits)(b.winningAmount) || (0, config_1.amountUnits)(b.stakeWallet) !== (0, config_1.amountUnits)(b.betAmount))
             wLedgerFails++;
         wChecked++;
     }
-    // DECLARED LIMITATION L5 (R-CREDIT). Measured, not asserted: the capture recorded no wallet
-    // BALANCE before/after each bet, so `balanceOk` is null on every row. stakeWallet and
-    // winningAmountWallet ARE present and are checked above with zero tolerance — but they are
-    // settle-RESPONSE fields, so what this step establishes is that the operator's reported credit is
-    // internally consistent with the formula, not what the wallet was actually credited. The count is
-    // emitted into the detail string so the artifact carries the limitation, not only the prose.
+    // DECLARED LIMITATION L5 (R-CREDIT). No wallet BALANCE before/after a bet is in any production
+    // dice reply, so there is no balance ledger to reconcile. stakeWallet and winningAmountWallet ARE
+    // present and are checked above with zero tolerance, but they are settle-RESPONSE fields, so what
+    // this step establishes is that the operator's reported credit is internally consistent with the
+    // formula, not what the wallet was actually credited. Counted so the artifact carries it.
     const balanceLedgerRows = bets.filter((b) => b.balanceOk !== null
         && b.balanceOk !== undefined).length;
-    const s10 = (0, context_1.step)(10, 'Wallet Credit & Odds Bounds', wFails === 0 && wLedgerFails === 0 && boundFails === 0 && wMissing === 0 && wChecked === bets.length ? 'PASS' : 'FAIL', `${wChecked}/${bets.length} bets (${wMissing} missing wallet fields): winningAmountWallet == ROUND_HALF_EVEN_8(stakeWallet × ROUND_8(multiplier)) exactly (${wFails} bad${firstWalletFail ? ` — first: ${firstWalletFail}` : ''}); `
+    const s10 = (0, context_1.step)(10, 'Wallet Credit & Odds Bounds', wFails === 0 && wLedgerFails === 0 && boundFails === 0 && wMissing === 0 && wChecked === bets.length ? 'PASS' : 'FAIL', `${wChecked}/${bets.length} bets (${wMissing} missing wallet fields): winningAmountWallet == floor8(stakeWallet × multiplier) exactly (${wFails} bad${firstWalletFail ? ` — first: ${firstWalletFail}` : ''}); `
         + `wallet ledger == game ledger (winningAmountWallet == winningAmount, stakeWallet == betAmount) on ${wChecked - wLedgerFails}/${wChecked} (${wLedgerFails} divergent); `
-        + `all quoted multipliers within [${config_1.MIN_ODDS}, ${config_1.MAX_ODDS}] (${boundFails} out of range — the ${config_1.MAX_ODDS}× ceiling rests on the E14 live probe, not on this dataset: declared limitation L7); `
-        + `wallet BALANCE ledger present on ${balanceLedgerRows}/${bets.length} bets (balanceOk null on ${bets.length - balanceLedgerRows}) — stakeWallet/winningAmountWallet are settle-RESPONSE fields, so this step establishes internal consistency with the formula, NOT what the wallet was credited: declared limitation L5 / R-CREDIT`);
+        + `every captured band is priced inside the plan's span, win chance ${(minBps / 100).toFixed(2)}%–${(maxBps / 100).toFixed(2)}% = ${config_1.PAYOUT_NUMERATOR / maxBps}×–${config_1.PAYOUT_NUMERATOR / minBps}× (${boundFails} outside; a bound on the capture against its plan in src/config.ts: LIQD's own odds limits were not read, declared limitation L7); `
+        + `wallet BALANCE ledger present on ${balanceLedgerRows}/${bets.length} bets (no balance field in the production dice replies): stakeWallet/winningAmountWallet are settle-RESPONSE fields, so this step establishes internal consistency with the formula, NOT what the wallet was credited: declared limitation L5 / R-CREDIT`);
     return [s7, s8, s9, s10];
 }
 
@@ -4597,50 +4789,103 @@ function run(ctx) {
   "tests/steps/phase-d.js": function (module, exports, require, __filename, __dirname) {
 "use strict";
 /**
- * Step 14: Custom Client-Seed Control (Phase D)
- * Phase D uses auditor-chosen client seeds (`pfaudit-…`). Their rolls must recompute exactly,
- * proving the client seed is a genuine, honoured input to the outcome (not ignored/overridden),
- * and that distinct client seeds produce distinct roll streams on the same server seed.
+ * Step 14: Client-Seed Control (DICE-06)
+ *
+ * In every epoch of the production capture the client seed was submitted by the auditor with the
+ * rotation that opened the epoch. Two kinds:
+ *   • 28 epochs (phases A, A+ and C): `audit` + 12 hex characters, drawn from the browser CSPRNG at
+ *     the moment of the rotation, after the commitment for that epoch had been served;
+ *   • 5 epochs (Phase D): a player-set seed with a chosen, recognisable text,
+ *     `pfaudit-prod-dice-d<k>-` + 12 hex characters of the browser CSPRNG, one per epoch. These five
+ *     were drawn when the plan was built and SUBMITTED at the rotation that opened their epoch, after
+ *     the commitment for that epoch had been served. They are not predictable from one another: the
+ *     12 hex characters are fresh CSPRNG output in each.
+ *
+ * The step asserts, from the dataset alone:
+ *   (a) every epoch's seed record names one client seed and every bet of that epoch carries it;
+ *   (b) the 33 client seeds are distinct; the Phase D epochs, and only they, carry the runner's
+ *       player-set mark and the player-set format; Phase D holds at least
+ *       PHASE_D_MIN_DISTINCT_SEEDS distinct seeds;
+ *   (c) the site took what was submitted: the served client seed IS the submitted one in every
+ *       epoch, and the commitment the runner held when it submitted the seed IS the epoch's
+ *       commitment;
+ *   (d) every roll recomputes under that seed, so the seed the player chose is the one LIQD drew
+ *       with (not ignored or overridden), counted separately for Phase D;
+ *   (e) the seed is load-bearing: altering the client seed changes the roll at the rate the outcome
+ *       lattice predicts (1 − 1/10,000 per bet), measured over every bet.
+ * That each seed was submitted AFTER its commitment was served is the capture's own record of its
+ * own ordering (the runner's `drawnAfter` field and the event times), not an independently
+ * authenticated chronology (L18).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.run = run;
 const context_1 = require("./context");
 const rng_1 = require("../../src/rng");
 const config_1 = require("../../src/config");
+/** The auditor's client-seed formats on the production capture. */
+const AUDITOR_SEED = /^audit[0-9a-f]{12}$/;
+const PLAYER_SEED = /^pfaudit-prod-dice-d[1-9]-[0-9a-f]{12}$/;
 function run(ctx) {
-    const { phaseD, seedMap } = ctx;
-    const custom = phaseD.filter(b => /^pfaudit-/.test(b.clientSeed));
-    let checked = 0, fails = 0;
-    for (const b of custom) {
+    const { bets, seeds, seedMap } = ctx;
+    // (a) one client seed per epoch, carried by every bet of the epoch
+    const seedOfEpoch = new Map(seeds.map((s) => [s.epoch, s.clientSeed]));
+    let carried = 0, notCarried = 0;
+    for (const b of bets) {
+        if (seedOfEpoch.get(b.epoch) === b.clientSeed)
+            carried++;
+        else
+            notCarried++;
+    }
+    // (b) distinct seeds; the player-set epochs are exactly the plan's Phase D epochs
+    const distinct = new Set(seeds.map((s) => s.clientSeed)).size;
+    const planPlayer = new Set(config_1.EXPECTED_EPOCHS.filter((e) => e.playerSeeds).map((e) => e.epoch));
+    let kindOk = 0;
+    for (const s of seeds) {
+        const wantPlayer = planPlayer.has(s.epoch);
+        if (s.playerSet === wantPlayer && (wantPlayer ? PLAYER_SEED : AUDITOR_SEED).test(s.clientSeed))
+            kindOk++;
+    }
+    const dSeeds = seeds.filter((s) => planPlayer.has(s.epoch));
+    const dDistinct = new Set(dSeeds.map((s) => s.clientSeed)).size;
+    // (c) the site took the submitted seed, submitted after the epoch's commitment was served
+    const taken = seeds.filter((s) => s.submittedClientSeed === s.clientSeed).length;
+    const after = seeds.filter((s) => s.drawnAfter === s.hashedServerSeed).length;
+    // (d) every roll recomputes under the epoch's client seed; (e) sensitivity over every bet
+    let checked = 0, fails = 0, dChecked = 0, dFails = 0, changed = 0;
+    for (const b of bets) {
         const ss = seedMap.get(b.hashedServerSeed);
         if (!ss)
             continue;
-        const served = Number(b.roll);
-        const local = (0, rng_1.diceRoll)(ss, b.clientSeed, b.nonce) / config_1.SCALE;
-        if (!(0, config_1.servedRollMatches)(served, local))
+        const local = (0, rng_1.diceRoll)(ss, b.clientSeed, b.nonce);
+        const ok = (0, config_1.servedRollMatches)(Number(b.roll), local / config_1.SCALE);
+        if (!ok)
             fails++;
         checked++;
+        if (planPlayer.has(b.epoch)) {
+            dChecked++;
+            if (!ok)
+                dFails++;
+        }
+        if ((0, rng_1.diceRoll)(ss, b.clientSeed + 'x', b.nonce) !== local)
+            changed++;
     }
-    // Client-seed sensitivity: swapping in a different client seed changes the roll (the input is
-    // load-bearing, not cosmetic). Tested over up to 8 distinct Phase-D bets, not one: a single-bet
-    // test has a 1/10,000 false-fail when the altered seed happens to collide.
-    // Sensitivity is established if ANY probed bet's roll changes under the altered client seed.
-    let sensitivityProbes = 0, sensitivityChanges = 0;
-    for (const b of custom) {
-        if (!seedMap.has(b.hashedServerSeed))
-            continue;
-        const ss = seedMap.get(b.hashedServerSeed);
-        const r1 = (0, rng_1.diceRoll)(ss, b.clientSeed, b.nonce) / config_1.SCALE;
-        const r2 = (0, rng_1.diceRoll)(ss, b.clientSeed + 'x', b.nonce) / config_1.SCALE;
-        sensitivityProbes++;
-        if (r1 !== r2)
-            sensitivityChanges++;
-        if (sensitivityProbes >= 8)
-            break;
-    }
-    const sensitivityOk = sensitivityProbes > 0 && sensitivityChanges > 0;
-    const s14 = (0, context_1.step)(14, 'Custom Client-Seed Control', fails === 0 && checked > 0 && sensitivityOk ? 'PASS' : 'FAIL', `${checked}/${custom.length} custom-seed (pfaudit-) bets recompute exactly (${fails} fail); `
-        + `client-seed sensitivity: a different client seed yields a different roll on ${sensitivityChanges}/${sensitivityProbes} probed bets (${sensitivityOk})`);
+    const dBets = bets.filter((b) => planPlayer.has(b.epoch)).length;
+    const expectedChanged = checked * (1 - 1 / config_1.RANGE);
+    // An unused client seed changes 0 rolls; a used one leaves a roll unchanged only on a 1-in-10,000
+    // collision. The bound is half the population: far from both.
+    const sensitivityOk = checked > 0 && changed > checked / 2;
+    const ok = notCarried === 0 && carried === bets.length
+        && seeds.length === config_1.EXPECTED_SEEDS && distinct === seeds.length && kindOk === seeds.length
+        && dSeeds.length === planPlayer.size && dDistinct >= config_1.PHASE_D_MIN_DISTINCT_SEEDS && dDistinct === dSeeds.length
+        && taken === seeds.length && after === seeds.length
+        && fails === 0 && checked === bets.length && checked > 0
+        && dFails === 0 && dChecked === dBets && dChecked > 0 && sensitivityOk;
+    const s14 = (0, context_1.step)(14, 'Client-Seed Control', ok ? 'PASS' : 'FAIL', `${seeds.length} epochs, each under its own client seed submitted by the auditor: ${distinct}/${seeds.length} distinct; ${kindOk}/${seeds.length} of the kind the plan gives the epoch (${seeds.length - dSeeds.length} audit+12-hex seeds drawn from the browser CSPRNG at the rotation, ${dSeeds.length} player-set Phase D seeds pfaudit-prod-dice-d<k>-+12-hex); `
+        + `Phase D: ${dDistinct} distinct player-set seeds (floor ${config_1.PHASE_D_MIN_DISTINCT_SEEDS}), ${dChecked - dFails}/${dBets} Phase D rolls recompute under them (${dFails} fail); `
+        + `${taken}/${seeds.length} epochs served the submitted seed back, and in ${after}/${seeds.length} the commitment the runner held when it submitted the seed is the epoch's commitment; `
+        + `${carried}/${bets.length} bets carry their epoch's client seed (${notCarried} do not); ${checked - fails}/${bets.length} rolls recompute under it (${fails} fail); `
+        + `client-seed sensitivity: appending one character to the client seed changes the roll on ${changed}/${checked} bets (the 10,000-point lattice predicts ${expectedChanged.toFixed(1)}; 0 would mean the seed is not used) (${sensitivityOk}). `
+        + `That each seed was submitted after its commitment was served is the capture's own record of its ordering, not independently authenticated (L18)`);
     return [s14];
 }
 
@@ -4674,11 +4919,11 @@ function run(ctx) {
  *     `serial.n`-less block all pass;
  *   • every POPULATION is required to BE the right population, not merely the right size
  *     (G-BIND). The nine effective-edge rows must be the nine canonical `SIM_EDGE_BANDS`,
- *     distinct; the 134 per-seed rows must carry the dataset's own 134 distinct epochs. A count
- *     is not an identity: nine copies of the easiest band, or 134 copies of one unflagged seed,
+ *     distinct; the per-seed rows must carry the dataset's own distinct epochs, one per seed. A count
+ *     is not an identity: nine copies of the easiest band, or one copy of an unflagged seed per epoch,
  *     would otherwise return a Full Pass;
- *   • every Pass-2 STATISTIC is recomputed from `ctx.seeds` and `ctx.bets` — 134 × 100 HMACs and
- *     one 6,700-roll histogram, well under a second — and compared under the reproduction rule
+ *   • every Pass-2 STATISTIC is recomputed from `ctx.seeds` and `ctx.bets` — 100 HMACs per seed and
+ *     one histogram of the captured rolls, well under a second — and compared under the reproduction rule
  *     below. The artifact cannot report a per-seed p-value, a flag, a χ², or a pooled statistic
  *     that the verifier did not itself reproduce from the pinned dataset;
  *   • the artifact's own `pass` booleans are read ONLY for traceability. If a self-report
@@ -4693,7 +4938,7 @@ function run(ctx) {
  * ── THE RAW STATISTICS, AND THE FORGERY THAT SHOWED WHY THEY NEED SCORING ──────────────────────
  * Everything above re-derives the PINNED and DERIVED fields. Four RAW STATISTICS admit no such
  * treatment, because they are the simulation's actual output and nothing else can produce them:
- * `uniformity.chi2`, `serial.lag1`, `serial.runsZ`, and each band's `simulatedRTP`. A reviewer
+ * `uniformity.chi2`, `serial.lag1`, `serial.runsZ`, and each band's `simulatedRTP`. An attacker
  * rewrote the whole `pass1` block with `uniformity.chi2 = 0` (p = 1.0), `lag1 = 0`, `runsZ = 0`,
  * every band's `simulatedRTP` set exactly equal to theory and every convergence point exactly on
  * theory, then recomputed every derived field with OUR OWN formulas so the re-derivation
@@ -4713,7 +4958,7 @@ function run(ctx) {
  *      real test (the draw is not uniform) and the lower tail rejects a histogram that sits closer
  *      to its expectation than a 2,000,000-draw sample plausibly can. That is an ordinary two-sided
  *      test with an ordinary size (ALPHA_SCREEN, half in each tail) and it is what rejects the
- *      reviewer's chi2 = 0.
+ *      forged chi2 = 0.
  *
  * The pin is NOT the defence here and must not be mistaken for one — anyone who can forge the
  * artifact can re-pin it in the same commit. What survives a re-pinned forgery is the two-sided
@@ -4845,7 +5090,7 @@ function run(ctx) {
     const lag1 = Number(ser.lag1), lag1Z = Number(ser.lag1Z), runsZ = Number(ser.runsZ);
     const lag1ZDerived = lag1 * Math.sqrt(config_1.SIM_SERIAL_DRAWS);
     const runsPDerived = (0, stats_1.twoSidedNormalP)(runsZ); // derived from runsZ (not ser.runsP)
-    // ── SCHEMA VERSION (D3/D4) ───────────────────────────────────────────────────────────────────
+    // ── SCHEMA VERSION ─────────────────────────────────────────────────────────────────────────
     // Schema 1 is the historical artifact: raw statistics only. Schema 2 additionally stores the
     // integer counts behind them, so the runs z becomes RE-DERIVABLE. The old artifact is scored
     // under schema-1 rules and is not re-labelled — a new schema must not be able to masquerade as
@@ -4855,7 +5100,7 @@ function run(ctx) {
     // Runs z from its own cell counts, when the artifact carries them. The DEGENERATE case is zero
     // VARIANCE (every observation on one side of the split) — a property of the sample. `runsZ === 0`
     // is NOT degeneracy: it means the run count landed on its expectation, which is a legitimate and
-    // not especially unlikely outcome, and rejecting it was the D4 defect.
+    // not especially unlikely outcome, and rejecting it would be a defect.
     let runsNote;
     let runsStructureOk = true;
     if (schemaVersion >= 2) {
@@ -4878,7 +5123,7 @@ function run(ctx) {
             + 'outcome and is not treated as evidence of anything';
     }
     // Schema 2 must also carry the threshold it was produced under, and it must be the one the
-    // verifier applies (D7/D17: the shipped schema-1 artifact stores 2.576236081309571, the critical
+    // verifier applies (the shipped schema-1 artifact stores 2.576236081309571, the critical
     // z at the UNCORRECTED α — a stale field the verifier never reads).
     const zCriticalStored = Number(ser.zCritical);
     const zCriticalOk = schemaVersion >= 2 ? agree(zCriticalStored, zCrit) : true;
@@ -4923,7 +5168,7 @@ function run(ctx) {
             && r.tolSE === 5;
         if (!fieldsOk)
             edgeFieldMismatches++;
-        // STRUCTURE, not perfection (D4). A band's simulated RTP is the producer's return for an
+        // STRUCTURE, not perfection. A band's simulated RTP is the producer's return for an
         // INTEGER win count, so the candidate count is recovered and the RTP is then verified against
         // the return that count reconstructs to; schema 2 stores the count and it must then agree with
         // the RTP it is supposed to have produced. What is NOT rejected any more is `simRtp === theo`
@@ -4967,13 +5212,13 @@ function run(ctx) {
         && rc.multiplier === convM && rc.theoreticalRTP === convTheo
         && lastPt !== null && rc.finalRTP === lastPt.rtp && rc.finalRTPRunning === lastPt.rtp
         && convPts.every((pt) => Number.isFinite(Number(pt?.rtp)) && Number.isFinite(Number(pt?.se)));
-    // ── EVERY PLOTTED STANDARD ERROR IS VALIDATED (D3) ──────────────────────────────────────────
+    // ── EVERY PLOTTED STANDARD ERROR IS VALIDATED ───────────────────────────────────────────────
     // Not `isFinite`. Each checkpoint's integer win count is recovered from its own published RTP,
     // the counts are required to be cumulatively consistent across the nested marks, and the SE is
-    // recomputed from (n, rtp, wins, m) and compared bit-for-bit. This is what rejects the reviewer's
+    // recomputed from (n, rtp, wins, m) and compared bit-for-bit. This is what rejects the forged
     // SE = 123456, which passed the old finiteness check and drew an IDENTICAL chart because
     // `src/chart.ts` clamps the ±5·SE ribbon to the plot box. Points sitting exactly on theory are
-    // COUNTED and reported; they are not a rejection (D4).
+    // COUNTED and reported; they are not a rejection.
     const series = (0, sim_checks_1.validateConvergenceSeries)(convPts, convM, convTheo);
     const convPass = convIdentity && series.ok && Number.isFinite(convRtp)
         && Math.abs(convRtp - convTheo) <= 5 * convSe + 1e-4;
@@ -5047,7 +5292,7 @@ function run(ctx) {
     // (f) THE 98-TARGET MEAN — the convergence series the chart draws. Every plotted point is
     // RECOMPUTED from the targets' validated per-mark values (crossTargetPoint: mean RTP and
     // SE = sqrt(Σ SEₜ²)/98) and must equal the stored point exactly, so neither a plotted mean nor a
-    // plotted SE can be edited on its own (D3: `src/chart.ts` clamps the ±5·SE ribbon to the plot box,
+    // plotted SE can be edited on its own (`src/chart.ts` clamps the ±5·SE ribbon to the plot box,
     // so an absurd SE draws the same chart). finalRTP must BE the last point.
     const tc = p1?.targetConvergence ?? {};
     const tcPts = Array.isArray(tc.points) ? tc.points : [];
@@ -5085,10 +5330,10 @@ function run(ctx) {
         // OBSERVED, NOT SCORED. A statistic landing exactly on its theoretical value is an event
         // with positive probability under the null — 0.0020149586 for exactly 40,000 wins in 2,000,000
         // `over 98` bets. It is recorded because it is worth a reader's attention, and it moves nothing.
-        + `; OBSERVED (not scored): ${tgtOnTheory} target row(s), ${edgeOnTheory} effective-edge row(s) and ${series.exactlyOnTheory} convergence point(s) sit exactly on theory, and runsZ is ${runsZ === 0 ? 'exactly 0' : 'nonzero'} — all legitimate outcomes under the null, reported rather than rejected (client QA 2026-09-10, D4)`
+        + `; OBSERVED (not scored): ${tgtOnTheory} target row(s), ${edgeOnTheory} effective-edge row(s) and ${series.exactlyOnTheory} convergence point(s) sit exactly on theory, and runsZ is ${runsZ === 0 ? 'exactly 0' : 'nonzero'} — all legitimate outcomes under the null, reported rather than rejected`
         // DECLARED LIMITATION L1 (now NARROWED by the deterministic producer), and the error budget.
         + `; SCOPE — the raw Pass-1 statistics (uniformity.chi2, serial.lag1, serial.runsZ, each band's and target's simulatedRTP, and the convergence series' own RTP path) are not recomputed inside THIS fast verify (that would re-run 138M draws), but the Pass-1 producer is now DETERMINISTIC — seeded from the pinned SIM_MASTER_SEED — so they are re-derivable by replaying it: npm run test:full regenerates the artifact byte-for-byte and the field diff is empty (DICE-20). A statistic forged SUBTLY is therefore no longer invisible the way it was under fresh entropy (former L1): a re-run reproduces the EXACT committed figures, so test:full exposes any figure that is not what the declared experiment outputs; changing SIM_MASTER_SEED to hand-pick one is a visible source edit that re-rolls every Pass-1 figure at once. What the FAST path still relies on for a reader who does not re-run the producer — that the statistics are STRUCTURALLY possible (integer win counts, cumulative consistency, exact standard errors) and fall inside their screens — is unchanged; that residual is declared limitation L1`
-        + `; ERROR BUDGET — ${sim_checks_1.SCORED_STATISTICAL_PREDICATES.length} scored statistical screens across Steps 16-17: ${sim_checks_1.SCORED_STATISTICAL_PREDICATES.map((s) => `${s.id} ${s.screen} [${s.size}]`).join('; ')}. The α=${config_1.ALPHA} claim describes S1-S3 (family-wise, Bonferroni) ONLY — it is NOT this step's level: Step 16 also scores S4 and S5, so THIS STEP's own union bound is ≈${sim_checks_1.STEP_16_BOUND.toFixed(7)}, and over all ${sim_checks_1.SCORED_STATISTICAL_PREDICATES.length} screens across Steps 16-17 it is ≈${sim_checks_1.FAMILY_WISE_BOUND.toFixed(4)}. Everything else this step rejects on — derived-field reconciliation, population identity, sample-depth pins, integer win counts and their RECONSTRUCTION, cumulative consistency, exact standard errors — is a deterministic identity an honest artifact satisfies with probability 1, so it adds nothing to the budget (unlike the D4 'perfection' rules, which rejected honest outcomes and were unpriced). These sizes are NOMINAL UPPER BOUNDS from asymptotic reference distributions (χ² and normal), not measured failure frequencies, and no honest-run trip rate is claimed from them; the exact binomial S6 is conservative. Repeated fresh simulations could calibrate them and would not prove them`);
+        + `; ERROR BUDGET — ${sim_checks_1.SCORED_STATISTICAL_PREDICATES.length} scored statistical screens across Steps 16-17: ${sim_checks_1.SCORED_STATISTICAL_PREDICATES.map((s) => `${s.id} ${s.screen} [${s.size}]`).join('; ')}. The α=${config_1.ALPHA} claim describes S1-S3 (family-wise, Bonferroni) ONLY — it is NOT this step's level: Step 16 also scores S4 and S5, so THIS STEP's own union bound is ≈${sim_checks_1.STEP_16_BOUND.toFixed(7)}, and over all ${sim_checks_1.SCORED_STATISTICAL_PREDICATES.length} screens across Steps 16-17 it is ≈${sim_checks_1.FAMILY_WISE_BOUND.toFixed(4)}. Everything else this step rejects on — derived-field reconciliation, population identity, sample-depth pins, integer win counts and their RECONSTRUCTION, cumulative consistency, exact standard errors — is a deterministic identity an honest artifact satisfies with probability 1, so it adds nothing to the budget (unlike 'perfection' rules, which reject honest outcomes and are unpriced). These sizes are NOMINAL UPPER BOUNDS from asymptotic reference distributions (χ² and normal), not measured failure frequencies, and no honest-run trip rate is claimed from them; the exact binomial S6 is conservative. Repeated fresh simulations could calibrate them and would not prove them`);
     // ── Step 17: Pass 2 — RE-DERIVE the cherry-pick scan from the dataset ──────────
     const p2 = sim.pass2;
     const p2Available = p2?.available === true;
@@ -5113,7 +5358,7 @@ function run(ctx) {
             && new Set(gotEpochs).size === perSeed.length
             && wantEpochs.every((e, i) => gotEpochs[i] === e);
         // (c) RE-DERIVE every per-seed statistic from the dataset's own revealed seeds.
-        // 134 × 100 HMACs. The artifact is compared to this, never believed.
+        // 100 HMACs per seed. The artifact is compared to this, never believed.
         const seedByEpoch = new Map(ctx.seeds.map((s) => [s.epoch, s]));
         let rowMismatches = 0, firstMismatch = '';
         let flags = 0, recomputedRows = 0;
@@ -5181,7 +5426,7 @@ function run(ctx) {
             console.log(`  [INFO] Step 17 — DICE-22 pooled live-roll uniformity p=${pooledRe.pValue.toFixed(4)} below α=${config_1.ALPHA} (informational: reported, not counted, verdict unchanged)`);
         // ── (f) SERVED-BAND PAYOUT-WEIGHTED RETURN (DICE-21, load-bearing) ──────────────────────────
         // Every revealed seed × SIM_PASS2_NONCES nonces, RE-DERIVED here from the dataset's own revealed
-        // seeds; early window = the captured nonce range (0..W−1), reference = the remainder. The
+        // seeds; early window = the epoch's captured nonce range (0..size−1), reference = the remainder. The
         // statistic is the payout-weighted return of the bands the casino actually served, standardised
         // by its EXACT per-bet mean and variance (a scaled Poisson-binomial across seeds — each pᵢ the
         // served band's exact lattice win-probability discreteWinProbability(band)); the tail is the
@@ -5190,9 +5435,8 @@ function run(ctx) {
         // recomputed and compared with EXACT equality; the aggregate is reconciled and then scored, and a
         // re-derivation mismatch OR an anomalously LOW early return (aggP < α) HARD-FAILS the step.
         const sb = p2.servedBand ?? {};
-        const W2 = config_1.SIM_PASS2_EARLY_WINDOW;
         const sbGeometryOk = Number(sb.nonces) === config_1.SIM_PASS2_NONCES
-            && Number(sb.earlyWindow) === W2 && Number(sb.alpha) === config_1.SIM_PASS2_ALPHA;
+            && Number(sb.earlyBets) === config_1.EXPECTED_BETS && Number(sb.alpha) === config_1.SIM_PASS2_ALPHA;
         const sbPerEpoch = Array.isArray(sb.perEpoch) ? sb.perEpoch : [];
         // Population identity: one row per REVEALED epoch that carries bets, keyed by its commitment hash.
         const wantHashes = [...ctx.seedMap.keys()].filter((h) => (ctx.byHash.get(h) ?? []).length > 0).sort();
@@ -5201,7 +5445,7 @@ function run(ctx) {
             && new Set(gotHashes).size === sbPerEpoch.length
             && wantHashes.every((h, i) => gotHashes[i] === h);
         let sbRowMismatches = 0, sbRecomputedRows = 0, sbFirstMismatch = '';
-        let sbTotalEarlyReturn = 0, sbTotalEarlyExpected = 0, sbTotalEarlyVar = 0, sbBelow = 0, sbAbove = 0;
+        let sbTotalEarlyReturn = 0, sbTotalEarlyExpected = 0, sbTotalEarlyVar = 0, sbBelow = 0, sbAbove = 0, sbTotalEarlyBets = 0;
         for (const row of sbPerEpoch) {
             const hash = String(row.serverSeedHashed);
             const serverSeed = ctx.seedMap.get(hash);
@@ -5213,6 +5457,8 @@ function run(ctx) {
                 continue;
             }
             const clientSeed = epochBets[0].clientSeed;
+            // The early window IS this epoch's captured nonce range: its planned size in src/config.ts.
+            const W2 = (0, config_1.expectedEpochSize)(epochBets[0].epoch);
             const served = new Array(W2);
             for (const b of epochBets)
                 if (b.nonce >= 0 && b.nonce < W2)
@@ -5247,6 +5493,7 @@ function run(ctx) {
                 }
             }
             sbRecomputedRows++;
+            sbTotalEarlyBets += W2;
             const ok = row.earlyReturn === eR && row.earlyExpected === eE && row.earlyVar === eV
                 && row.refReturn === rR && row.refExpected === rE && row.refVar === rV
                 && Number(row.earlyN) === W2 && Number(row.refN) === config_1.SIM_PASS2_NONCES - W2;
@@ -5274,7 +5521,6 @@ function run(ctx) {
         const sbAggZ = sbTotalEarlyVar > 0 ? (sbTotalEarlyReturn - sbTotalEarlyExpected) / Math.sqrt(sbTotalEarlyVar) : 0;
         const sbAggP = (0, stats_1.normalLowerTailP)(sbAggZ);
         const sbZAlpha = (0, stats_1.inverseCriticalZ)(2 * config_1.SIM_PASS2_ALPHA), sbZPower = (0, stats_1.inverseCriticalZ)(2 * 0.20);
-        const sbTotalEarlyBets = sbRecomputedRows * W2;
         const sbMinDetectablePerBetPct = sbTotalEarlyBets > 0
             ? ((sbZAlpha + sbZPower) * Math.sqrt(sbTotalEarlyVar) / sbTotalEarlyBets) * 100 : NaN;
         // The stored aggregates must reconcile with the re-derivation (per-row is exact; the aggregate
@@ -5291,7 +5537,7 @@ function run(ctx) {
         const recomputed17 = servedBandOk && cherryOk && pooledOk;
         const selfReport17 = p2.cherryPickConsistent === true && pooledArt.pass === true;
         const agree17 = (cherryOk && pooledOk && pooledFitOk) === selfReport17;
-        s17 = (0, context_1.step)(17, 'Simulation — Pass 2 (Cherry-Pick)', recomputed17 && agree17 ? 'PASS' : 'FAIL', `DICE-21 served-band return (load-bearing): ${sbRecomputedRows} revealed epochs × ${config_1.SIM_PASS2_NONCES.toLocaleString()} nonces, ALL windows RE-DERIVED from the revealed seeds (early 0–${W2 - 1} = captured range, reference ${W2}–${config_1.SIM_PASS2_NONCES - 1}), ${sbRowMismatches} row mismatch${sbFirstMismatch ? ` (first: ${sbFirstMismatch})` : ''}, epoch identity ${sbEpochsOk ? 'ok' : 'MISMATCH'}, aggregate reconciliation ${sbAggMatch ? 'ok' : 'MISMATCH'}; `
+        s17 = (0, context_1.step)(17, 'Simulation — Pass 2 (Cherry-Pick)', recomputed17 && agree17 ? 'PASS' : 'FAIL', `DICE-21 served-band return (load-bearing): ${sbRecomputedRows} revealed epochs × ${config_1.SIM_PASS2_NONCES.toLocaleString()} nonces, ALL windows RE-DERIVED from the revealed seeds (early window = each epoch's captured nonces 0…size−1, size ${[...new Set(config_1.EXPECTED_EPOCHS.map((e) => e.bets))].sort((x, y) => x - y).join(' / ')} by the plan, ${sbTotalEarlyBets} early cells in all; reference = the rest of the ${config_1.SIM_PASS2_NONCES.toLocaleString()}), ${sbRowMismatches} row mismatch${sbFirstMismatch ? ` (first: ${sbFirstMismatch})` : ''}, epoch identity ${sbEpochsOk ? 'ok' : 'MISMATCH'}, aggregate reconciliation ${sbAggMatch ? 'ok' : 'MISMATCH'}; `
             + `statistic = payout-weighted served-band return standardised by its EXACT per-bet mean and variance (a scaled Poisson-binomial across seeds, each pᵢ the served band's exact lattice win-probability) — EXACT moments, ASYMPTOTIC one-sided normal (CLT) lower tail, NOT an exact-lattice CDF (see MANIFEST.md load-bearing premise / L4): aggregate early z=${sbAggZ.toFixed(3)}, one-sided lower-tail p=${sbAggP.toFixed(4)} vs α=${config_1.SIM_PASS2_ALPHA} → ${sbCherryClean ? 'no return deficit detected at this power' : 'RETURN DEFICIT — CHERRY-PICK SIGNAL'}; the test detects a per-bet return deficit of ${Number.isFinite(sbMinDetectablePerBetPct) ? sbMinDetectablePerBetPct.toFixed(3) : 'n/a'} pp or more at 80% power, so a smaller selection effect would pass; direction split ${sbBelow} below / ${sbEqual} equal / ${sbAbove} above expectation (exact arithmetic) (${servedBandOk ? 'ok' : 'FAIL'}). `
             + `SUPPLEMENTARY draw-uniformity screen: ${n} casino seeds vs dataset ${ctx.seeds.length} (epoch identity ${epochsOk ? 'ok' : 'MISMATCH'}); `
             + `all ${recomputedRows} per-seed χ² windows RE-DERIVED from the revealed seeds (${config_1.SIM_CHERRY_WINDOW}+${config_1.SIM_CHERRY_WINDOW} draws each), ${rowMismatches} row mismatches${firstMismatch ? ` — first: ${firstMismatch}` : ''}; `
@@ -5302,7 +5548,7 @@ function run(ctx) {
             + (agree17 ? '' : ' — DISAGREES with recomputation (artifact self-report tampered?)')
             // DECLARED LIMITATION L4. The supplementary draw-uniformity screen's resolution and blind spot,
             // recomputed here rather than asserted in prose.
-            + `; SCOPE — the served-band return is now the load-bearing return-based DICE-21 statistic; the draw-uniformity screen is retained as a supplementary exact-discrete check needing ${minRejectableFlags} flag(s) to reject at α=${config_1.ALPHA} (P(X≥${minRejectableFlags})=${(0, stats_1.binomialTailP)(n, minRejectableFlags, CHERRY_P0).toFixed(4)}). The served-band tail is asymptotic (CLT) on exact moments, not an exact-lattice CDF — declared L4/load-bearing premise in MANIFEST.md; a single-target-per-epoch re-capture would make the exact CDF tractable. The load-bearing cherry-pick defence remains structural (client-seed-after-commitment)`);
+            + `; SCOPE — the served-band return is now the load-bearing return-based DICE-21 statistic; the draw-uniformity screen is retained as a supplementary exact-discrete check needing ${minRejectableFlags} flag(s) to reject at α=${config_1.ALPHA} (P(X≥${minRejectableFlags})=${(0, stats_1.binomialTailP)(n, minRejectableFlags, CHERRY_P0).toFixed(4)}). The served-band tail is asymptotic (CLT) on exact moments, not an exact-lattice CDF — declared L4/load-bearing premise in MANIFEST.md. The load-bearing cherry-pick defence remains structural (client-seed-after-commitment)`);
     }
     return [s16, s17];
 }
@@ -5315,14 +5561,17 @@ function run(ctx) {
  * pure-arithmetic engine), never read from an operator summary field, and each carries a
  * coverage assertion so a pass over an empty set cannot occur.
  *
- *   18  Bet-Size Invariance      — roll/edge independent of wager (Phase C, $10)
+ *   18  Bet-Size Invariance (Phase C) — the elevated-stake rounds (10.00 USDT on over 50) recompute
+ *                                  like every other round and are paid by the same rule as the same
+ *                                  band at the base stake; at least PHASE_C_MIN_WINS of them won, so
+ *                                  the payout path is exercised, not only the roll
  *   19  Artifact Hash + Value-Domain Integrity — pinned SHA-256 of the dataset AND of the
  *                                  simulation artifacts, plus a value-domain check of every numeric
  *                                  leaf of the committed simulation-results.json / report-figures.json
  *   20  Settlement Determinism   — credited amount fully determined by (roll, band, stake),
  *                                  across all four modes and both win & loss
- *   21  Multiplier Monotonicity  — served multiplier == 99/winChance is strictly decreasing
- *                                  in win chance, spans [minOdds, maxOdds], no inversions
+ *   21  Multiplier Monotonicity  — the quoted multiplier is strictly decreasing in win chance over
+ *                                  the plan's win chances AND over the whole basis-point price grid
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -5370,27 +5619,56 @@ const domains_1 = require("../../src/domains");
 function run(ctx) {
     const { bets, seedMap } = ctx;
     const out = [];
-    // ── Step 18: Bet-Size Invariance ────────────────────────────────────────────
+    // ── Step 18: Bet-Size Invariance (Phase C, DICE-12) ─────────────────────────
+    // Phase C is the elevated-stake phase: ELEVATED_STAKE (10.00 USDT, 100 times the base stake) on
+    // one band with a 50% win chance, so that about half the rounds win and the PAYOUT path is
+    // exercised at the higher stake, not only the roll. Asserted, all exact:
+    //   (a) the phase holds the planned number of rounds (at least PHASE_C_MIN_BETS), every one at
+    //       ELEVATED_STAKE as served, on one band;
+    //   (b) every Phase C roll recomputes from (serverSeed, clientSeed, nonce) alone: diceRoll takes
+    //       exactly three arguments, so no wager can enter the draw;
+    //   (c) at least PHASE_C_MIN_WINS Phase C rounds won, and every one is credited
+    //       floor8(stake × 9900/basisPoints), from the band, never from the served multiplier;
+    //   (d) the SAME band at the base stake (it is one of the Phase A / D settings) carries the same
+    //       served multiplier on its wins and is credited by the same rule, and the two credits stand
+    //       in exactly the ratio of the two stakes.
     {
-        const c = ctx.phaseC;
+        const c = bets.filter((b) => b.phaseId === 'C');
+        const cBands = new Set(c.map((b) => (0, config_1.bandKey)(b.params)));
+        const cStakeOk = c.length > 0 && c.every((b) => String(b.betAmount) === config_1.ELEVATED_STAKE);
         let chk = 0, bad = 0;
         for (const b of c) {
             const ss = seedMap.get(b.hashedServerSeed);
             if (!ss)
                 continue;
             chk++;
-            const served = Number(b.roll);
-            const local = (0, rng_1.diceRoll)(ss, b.clientSeed, b.nonce) / config_1.SCALE;
-            if (!(0, config_1.servedRollMatches)(served, local))
+            if (!(0, config_1.servedRollMatches)(Number(b.roll), (0, rng_1.diceRoll)(ss, b.clientSeed, b.nonce) / config_1.SCALE))
                 bad++;
         }
-        const stakes = [...new Set(bets.map((b) => Number(b.betAmount)))].sort((a, z) => a - z);
-        // Edge for the Phase-C band is identical whatever the stake (diceRoll + edge take no wager).
-        const edgeSame = c.length > 0 ? (0, config_1.effectiveEdge)(c[0].params) : NaN;
-        const ok = chk === c.length && chk > 0 && bad === 0;
-        out.push((0, context_1.step)(18, 'Bet-Size Invariance', ok ? 'PASS' : 'FAIL', `${chk}/${c.length} Phase C bets at $10.00 recompute their roll identically to the $0.10 phases — ${bad} mismatch. ` +
-            `diceRoll takes no wager argument; effective edge for the band is ${(edgeSame * 100).toFixed(4)}% at every stake (stakes present: ${stakes.map((s) => `$${s}`).join(', ')})` +
-            (chk === 0 ? '; COVERAGE FAIL: 0 Phase C bets recomputed' : '')));
+        const cWins = c.filter((b) => b.win);
+        const cCreditOk = cWins.filter((b) => (0, config_1.amountUnits)(b.winningAmount) === (0, config_1.floor8CreditUnits)(b.betAmount, b.params)).length;
+        const cLossOk = c.filter((b) => !b.win && (0, config_1.amountUnits)(b.winningAmount) === 0n).length;
+        // the same band at the base stake
+        const base = bets.filter((b) => b.phaseId !== 'C' && cBands.has((0, config_1.bandKey)(b.params)) && String(b.betAmount) === config_1.BASE_STAKE);
+        const baseWins = base.filter((b) => b.win);
+        const baseCreditOk = baseWins.filter((b) => (0, config_1.amountUnits)(b.winningAmount) === (0, config_1.floor8CreditUnits)(b.betAmount, b.params)).length;
+        const mults = new Set([...cWins, ...baseWins].map((b) => Number(b.multiplier)));
+        const cCredit = cWins.length ? (0, config_1.amountUnits)(cWins[0].winningAmount) : null;
+        const baseCredit = baseWins.length ? (0, config_1.amountUnits)(baseWins[0].winningAmount) : null;
+        const stakeRatio = (0, config_1.amountUnits)(config_1.ELEVATED_STAKE) / (0, config_1.amountUnits)(config_1.BASE_STAKE);
+        const ratioOk = cCredit !== null && baseCredit !== null && cCredit === baseCredit * stakeRatio
+            && (0, config_1.amountUnits)(config_1.ELEVATED_STAKE) % (0, config_1.amountUnits)(config_1.BASE_STAKE) === 0n;
+        const drawArity = rng_1.diceRoll.length;
+        const ok = c.length === config_1.EXPECTED_PHASE_BETS.C && c.length >= config_1.PHASE_C_MIN_BETS && cBands.size === 1 && cStakeOk
+            && chk === c.length && bad === 0 && drawArity === 3
+            && cWins.length >= config_1.PHASE_C_MIN_WINS && cCreditOk === cWins.length && cLossOk === c.length - cWins.length
+            && baseWins.length > 0 && baseCreditOk === baseWins.length && mults.size === 1 && ratioOk;
+        const band = c.length ? c[0].params : null;
+        out.push((0, context_1.step)(18, 'Bet-Size Invariance (Phase C)', ok ? 'PASS' : 'FAIL', `Phase C: ${c.length}/${config_1.EXPECTED_PHASE_BETS.C} rounds (floor ${config_1.PHASE_C_MIN_BETS}) at ${config_1.ELEVATED_STAKE} USDT (${cStakeOk ? 'every one' : 'NOT every one'}), ${stakeRatio}× the base stake ${config_1.BASE_STAKE}, on ${cBands.size} band${band ? ` (${(0, config_1.bandMode)(band)} ${band.lower}, win chance ${(0, config_1.continuousWinChancePct)(band)}%)` : ''}; `
+            + `${chk - bad}/${c.length} rolls recompute from (serverSeed, clientSeed, nonce) alone (diceRoll takes ${drawArity} arguments and no wager); `
+            + `${cWins.length} wins (floor ${config_1.PHASE_C_MIN_WINS}): ${cCreditOk}/${cWins.length} credited floor8(stake × ${config_1.PAYOUT_NUMERATOR}/basisPoints)${cWins.length ? ` = ${cWins[0].winningAmount}` : ''}, ${cLossOk}/${c.length - cWins.length} losses paid 0; `
+            + `the same band at the base stake: ${base.length} rounds in the other phases, ${baseWins.length} wins, ${baseCreditOk}/${baseWins.length} credited by the same rule${baseWins.length ? ` = ${baseWins[0].winningAmount}` : ''}; one served multiplier on the wins at both stakes (${[...mults].join(', ')}×; ${mults.size === 1}); the elevated credit is exactly ${stakeRatio}× the base credit (${ratioOk})`
+            + (c.length === 0 ? '; COVERAGE FAIL: no Phase C rounds' : '')));
     }
     // ── Step 19: Artifact Hash Integrity ────────────────────────────────────────
     // Three artifacts of record, all reconciled here:
@@ -5592,7 +5870,7 @@ function run(ctx) {
             domainBad.push(...(0, domains_1.describeDomainFailures)(rel, r));
         }
         const domainOk = domainBad.length === 0;
-        out.push((0, context_1.step)(19, 'Artifact Hash + Value-Domain Integrity', hashOk && !rfForged && !simForged && domainOk ? 'PASS' : 'FAIL', `SHA-256 of data/dice-master-6700bets.json = ${ctx.datasetSha256.slice(0, 16)}… ${hashOk ? 'matches' : '≠'} the pin ${ctx.expectedDatasetHash.slice(0, 16)}… (loader aborts on mismatch before any step runs); `
+        out.push((0, context_1.step)(19, 'Artifact Hash + Value-Domain Integrity', hashOk && !rfForged && !simForged && domainOk ? 'PASS' : 'FAIL', `SHA-256 of ${config_1.DATASET_FILE} = ${ctx.datasetSha256.slice(0, 16)}… ${hashOk ? 'matches' : '≠'} the pin ${ctx.expectedDatasetHash.slice(0, 16)}… (loader aborts on mismatch before any step runs); `
             + `${simNotes.join('; ')} — the pin proves the scored simulation is the committed one, NOT that its statistics are real (that is Step 16's two-sided uniformity screen plus its structural validation of the win counts and standard errors); `
             + `${rfNote}`
             + `; value domains: ${domainLeaves} numeric leaf/leaves of the committed simulation-results.json and report-figures.json checked against bounds derived from src/config.ts (a leaf out of domain OR with no declared domain fails)`
@@ -5600,48 +5878,23 @@ function run(ctx) {
     }
     // ── Step 20: Settlement Determinism (settlement table) ──────────────────────
     // ANTI-CIRCULAR AND EXACT. The expected credit is built from the auditor's OWN derived
-    // multiplier — pure band arithmetic; the served `multiplier` field is never read here, Step 7 is
-    // what pins that — and settled through the same two-stage rule as Steps 8/10, with ZERO tolerance.
+    // multiplier, pure band arithmetic; the served `multiplier` field is never read here (Step 7 is
+    // what pins that), and settled by the production rule floor8(stake × 9900/basisPoints) with ZERO
+    // tolerance.
     //
-    // ── WHICH DERIVATION, AND WHY IT MATTERS ─────────────────────────────────────────────────────
-    // The multiplier is the rational 9900/basisPoints. Reaching it through
-    // `quotedMultiplier(params)`, the float closed form `(100/winChance%)·(1−edge)`, gives the SAME
-    // NUMBER over the rationals and a DIFFERENT binary64. `continuousWinChancePct` computes
-    // `upper − lower` in binary64, and for many 2-dp bands that lands a fraction of an ULP off, which
-    // survives the divide and then changes the 8-dp stage-1 rounding:
-    //
-    //   over 79.52  → wc 20.480000000000004 → float 4.833984374999999 → round8 4.83398437
-    //                                       → quotient 9900/2048 = 4.833984375 → round8 4.83398438
-    //   over 99.99  → wc 0.010000000000005116 → float 9899.999999994936 → round8 9899.99999999
-    //                                       → quotient 9900/1 = 9900   → round8 9900
-    //
-    // At a $1 stake those are different credits, so a CORRECT operator payout of $9,900.00 would be
-    // rejected as a one-unit discrepancy. Swept exhaustively over every 2-dp band in all four
-    // modes, the two paths disagree on 12,046 bands at exactly three basis points — 1, 2048 and 6144 —
-    // and nowhere else. None of them occurs in this capture, which is why the float path never fires
-    // here; "the data happens not to expose it" is not a reason to keep a wrong comparator, and the
-    // bands concerned include the 9900× extreme a production recapture is meant to probe.
-    //
-    // The expected multiplier is derived from the BAND, never from the served field; what matters is
-    // which exact arithmetic derives it. `PAYOUT_NUMERATOR / payoutBasisPoints(p)` is an
-    // integer-over-integer quotient — the operator's own number system (see `creditResidualSign`).
-    // Regression vectors: `tests/dice/settlementTests.ts`, "Step 20 expected-credit derivation".
-    //
-    // A credit compared against the RAW product `betAmount × quotedMultiplier` at 1e-6 could not see
-    // a wallet- or credit-sized edit either, which is why there is no tolerance here.
-    // `round8(quotedMultiplier(params))` is verified equal to
-    // `round8(servedMultiplier)` on all 2,807 captured wins, so the derived path settles to exactly
-    // the same 8-dp credit as the served path — the equality is exact, not approximate.
+    // WHICH DERIVATION, AND WHY IT MATTERS. The multiplier is the rational 9900/basisPoints. Reaching
+    // it through `quotedMultiplier(params)`, the float closed form `(100/winChance%)·(1−edge)`, gives
+    // the SAME NUMBER over the rationals and can give a DIFFERENT binary64, because
+    // `continuousWinChancePct` computes `upper − lower` in binary64 (an `over 99.99` band gives a
+    // float multiplier of 9899.999999994936 where the quotient is 9900). A credit floored from the
+    // float can therefore land one unit below the correct one. `PAYOUT_NUMERATOR / payoutBasisPoints(p)`
+    // is an integer-over-integer quotient, taken in BigInt by floor8CreditUnits: the operator's own
+    // number system (see `creditResidualSign`). Regression vectors: tests/dice/settlementTests.ts.
     {
         let chk = 0, bad = 0;
         const modesSeen = new Set();
         let wins = 0, losses = 0;
         const fails = [];
-        /** The expected winning multiplier: the integer-basis-point quotient, not the float closed form. */
-        const expectedMultiplier = (p) => {
-            const bps = (0, config_1.payoutBasisPoints)(p);
-            return bps > 0 ? config_1.PAYOUT_NUMERATOR / bps : 0;
-        };
         for (const b of bets) {
             chk++;
             modesSeen.add((0, config_1.bandMode)(b.params));
@@ -5650,17 +5903,17 @@ function run(ctx) {
                 wins++;
             else
                 losses++;
-            const expected = win ? (0, config_1.settledCredit)(Number(b.betAmount), expectedMultiplier(b.params)) : 0;
-            const credited = Number(b.winningAmount);
+            const expected = win ? (0, config_1.floor8CreditUnits)(b.betAmount, b.params) : 0n;
+            const credited = (0, config_1.amountUnits)(b.winningAmount);
             // win flag must match the roll/band rule AND the credit must be the determined amount
             if (win !== !!b.win || credited !== expected) {
                 bad++;
                 if (fails.length < 3)
-                    fails.push(`epoch ${b.epoch} nonce ${b.nonce}: credited ${credited} vs determined ${expected}`);
+                    fails.push(`epoch ${b.epoch} nonce ${b.nonce}: credited ${b.winningAmount} vs determined ${expected} units`);
             }
         }
         const coverOk = modesSeen.size === 4 && wins > 0 && losses > 0;
-        out.push((0, context_1.step)(20, 'Settlement Determinism', bad === 0 && coverOk ? 'PASS' : 'FAIL', `${chk}/${bets.length} bets: outcome (win/loss) and credited amount are fully determined by (roll, band, stake) — credit == ROUND_HALF_EVEN_8(stake × ROUND_8(PAYOUT_NUMERATOR/basisPoints)), the integer-basis-point quotient rather than the float closed form (D16), with zero tolerance — and match the served settlement — ${bad} mismatch` +
+        out.push((0, context_1.step)(20, 'Settlement Determinism', bad === 0 && coverOk ? 'PASS' : 'FAIL', `${chk}/${bets.length} bets: outcome (win/loss) and credited amount are fully determined by (roll, band, stake) — credit == floor8(stake × PAYOUT_NUMERATOR/basisPoints), the exact integer-basis-point quotient, never the served multiplier and never the float closed form, with zero tolerance — and match the served settlement — ${bad} mismatch` +
             (fails.length ? ` (e.g. ${fails.join('; ')})` : '') +
             `; coverage: modes [${[...modesSeen].join(',')}], ${wins} wins / ${losses} losses` +
             (coverOk ? '' : '; COVERAGE FAIL')));
@@ -5686,10 +5939,26 @@ function run(ctx) {
         for (let i = 1; i < sorted.length; i++)
             if (sorted[i][1] >= sorted[i - 1][1] - 1e-12)
                 inversions++;
-        const rangeOk = rangeMin >= config_1.MIN_ODDS && rangeMax <= config_1.MAX_ODDS; // exact bound, no tolerance
-        const spanOk = sorted.length >= 100; // a rich win-chance sweep, not a handful of points
-        out.push((0, context_1.step)(21, 'Multiplier Monotonicity & Range', inversions === 0 && rangeOk && spanOk ? 'PASS' : 'FAIL', `${sorted.length} distinct win-chance points; quoted multiplier (formula 99/winChance, computed from each captured band; on wins Step 7 binds the served value to the same rational, 9900/basisPoints) strictly decreasing in win chance (${inversions} inversions); ` +
-            `quoted multipliers for the captured bands span ${rangeMin.toFixed(4)}×–${rangeMax.toFixed(4)}× within [${config_1.MIN_ODDS}, ${config_1.MAX_ODDS}] (${rangeOk ? 'in range' : 'OUT OF RANGE'})`));
+        // The captured win chances must BE the plan's (src/config.ts EXPECTED_WIN_CHANCES), both ways:
+        // the plan holds a fixed list of win chances, so a count threshold would test nothing.
+        const planWc = [...config_1.EXPECTED_WIN_CHANCES].sort((a, z) => a - z);
+        const spanOk = sorted.length === planWc.length && sorted.every(([wc], i) => wc === planWc[i]);
+        const planMin = config_1.PAYOUT_NUMERATOR / Math.round(planWc[planWc.length - 1] * 100), planMax = config_1.PAYOUT_NUMERATOR / Math.round(planWc[0] * 100);
+        const rangeOk = Math.abs(rangeMin - planMin) < 1e-9 && Math.abs(rangeMax - planMax) < 1e-9;
+        // The same property over the WHOLE price grid, which no capture can cover: the quotient
+        // PAYOUT_NUMERATOR/bp over every basis point of the grid (every band width whose multiplier is
+        // above 1×), strictly decreasing.
+        let gridPoints = 0, gridInversions = 0, prev = Infinity;
+        for (let bp = config_1.PRICE_GRID_MIN_BPS; bp <= config_1.PRICE_GRID_MAX_BPS; bp++) {
+            const m = config_1.PAYOUT_NUMERATOR / bp;
+            gridPoints++;
+            if (!(m < prev) || !(m > 1))
+                gridInversions++;
+            prev = m;
+        }
+        out.push((0, context_1.step)(21, 'Multiplier Monotonicity & Range', inversions === 0 && gridInversions === 0 && gridPoints > 0 && rangeOk && spanOk ? 'PASS' : 'FAIL', `${sorted.length} distinct win-chance points in the capture (${spanOk ? 'exactly' : 'NOT'} the plan's ${planWc.length}: ${planWc.join(', ')}%); quoted multiplier (formula 99/winChance, computed from each captured band; on wins Step 7 binds the served value to the same rational, 9900/basisPoints) strictly decreasing in win chance (${inversions} inversions); `
+            + `over the whole price grid, ${config_1.PAYOUT_NUMERATOR}/basisPoints is strictly decreasing and above 1× across all ${gridPoints} basis points ${config_1.PRICE_GRID_MIN_BPS}…${config_1.PRICE_GRID_MAX_BPS} (${gridInversions} violations); `
+            + `quoted multipliers for the captured bands span ${rangeMin.toFixed(4)}×–${rangeMax.toFixed(4)}×, the plan's ${planMin.toFixed(4)}×–${planMax.toFixed(4)}× (${rangeOk ? 'ok' : 'NOT THE PLAN SPAN'}). LIQD's own odds limits were not read (declared limitation L7)`));
     }
     return out;
 }
@@ -5711,12 +5980,22 @@ function run(ctx) {
         items.push({ label: 'Live bets', detail: 'No bets in dataset' });
         return items;
     }
-    // Realized RTP (informational — variance over 6,700 bets, not the theoretical edge).
-    const totalPayout = bets.reduce((s, b) => s + Number(b.winningAmount), 0);
-    const totalWagered = bets.reduce((s, b) => s + Number(b.betAmount), 0);
+    // Realized RTP (informational: variance over the captured bets, not the theoretical edge), summed
+    // in exact 1e-8 units from the served decimal strings, in total and per phase.
+    const usdt = (u) => `${u / 100000000n}.${String(u % 100000000n).padStart(8, '0')}`;
+    const sums = (list) => {
+        let w = 0n, r = 0n;
+        for (const b of list) {
+            w += (0, config_1.amountUnits)(b.betAmount) ?? 0n;
+            r += (0, config_1.amountUnits)(b.winningAmount) ?? 0n;
+        }
+        return { w, r, pct: w > 0n ? Number(r * 1000000n / w) / 10000 : NaN };
+    };
+    const all = sums(bets);
     items.push({
         label: 'Realized RTP (variance)',
-        detail: `${(totalPayout / totalWagered * 100).toFixed(2)}% ($${totalWagered.toFixed(2)} wagered, $${totalPayout.toFixed(2)} returned over ${bets.length} bets — informational; authoritative edge is the deterministic effective edge, Step 15).`,
+        detail: `${all.pct.toFixed(2)}% (${usdt(all.w)} USDT wagered, ${usdt(all.r)} USDT returned over ${bets.length} bets; informational, a variance illustration only: the edge evidence is the deterministic effective edge, Step 15, and the simulation, Step 16). `
+            + `Per phase: ${config_1.EXPECTED_PHASES.map((ph) => { const x = sums(bets.filter((b) => b.phaseId === ph.id)); return `${ph.id} ${x.pct.toFixed(2)}% (${usdt(x.w)} wagered, ${usdt(x.r)} returned)`; }).join('; ')}.`,
     });
     // Deterministic mean effective edge + per-mode spread (the finding, from arithmetic).
     const modeAgg = {};
@@ -5743,19 +6022,16 @@ function run(ctx) {
     items.push({ label: 'Roll range', detail: `min ${Math.min(...rolls).toFixed(2)}, max ${Math.max(...rolls).toFixed(2)} (ceiling 99.99), mean ${(rolls.reduce((a, b) => a + b, 0) / rolls.length).toFixed(3)}` });
     const wins = bets.filter(b => b.win).length;
     items.push({ label: 'Live win rate', detail: `${wins}/${bets.length} = ${(wins / bets.length * 100).toFixed(2)}% (mixed win chances — informational)` });
-    // Odds limits — surface the config-vs-live-witnessed maxOdds mismatch in the pipeline:
-    // the dataset's own config snapshot (meta.limits) reads maxOdds 99;
-    // the live-witnessed ceiling is 9900× (E14, F-LIMITS). The docs explain it; so does the artifact.
+    // Odds limits: not read from the operator. The production dice replies serve no limits field.
     const mults = bets.map(b => (0, config_1.quotedMultiplier)(b.params));
-    const lim = ctx.meta.limits;
     items.push({
-        label: 'Odds limits (config vs live-witnessed)',
-        detail: `operator config snapshot (meta.limits) minOdds ${lim?.minOdds} maxOdds ${lim?.maxOdds}; live-witnessed MAX_ODDS ${config_1.MAX_ODDS} (E14, F-LIMITS — the config maxOdds ${lim?.maxOdds} is NOT what the server settles); captured multiplier span ${Math.min(...mults).toFixed(4)}×–${Math.max(...mults).toFixed(4)}×`,
+        label: 'Odds limits',
+        detail: `no operator odds or bet-limit configuration is in the production capture (none is served in the dice replies, none was read from the site); captured multiplier span ${Math.min(...mults).toFixed(4)}×–${Math.max(...mults).toFixed(4)}×. What LIQD accepts outside that span was not measured (declared limitation L7).`,
     });
-    // Capture-side self-check fields present and ignored.
+    // Converter-side self-check fields present and ignored.
     items.push({
-        label: 'Capture-side self-check fields',
-        detail: `meta.edgeScan and per-bet/seed self-check flags (localWin, verified, modelMultiplier, commitVerified, …) are present in the dataset but IGNORED by verification — computed at capture time under the superseded inclusive-both-ends band model; every scored figure is re-derived from primitives. See MANIFEST.md#dataset-and-capture and E01 in MANIFEST.md#evidence.`,
+        label: 'Converter-side self-check fields',
+        detail: 'per-bet and per-seed self-check fields written by the converter (localRoll, localWin, verified, commitVerified, chainLinkOk) are present in the dataset but IGNORED by verification; every scored figure is re-derived from primitives. See MANIFEST.md#dataset-and-capture.',
     });
     return items;
 }
@@ -5775,7 +6051,7 @@ function run(ctx) {
  * EVERY run, including a failing one, destroys the evidence of a disagreement.
  * `report-figures.json` is an artifact of record that Step 19 itself scores, so a run
  * that disagreed with the committed evidence would replace the evidence of the disagreement and
- * the next run would pass. A reviewer executed that: FAIL on Node 24, then PASS on the re-run,
+ * the next run would pass. Executed: FAIL on Node 24, then PASS on the re-run,
  * with nothing left to show the first result. Repeated testing must not be able to erase an
  * original disagreement.
  *
@@ -5849,7 +6125,7 @@ const simulation = __importStar(require("./steps/simulation"));
 const liveFit = __importStar(require("./steps/live-fit"));
 const statistical = __importStar(require("./steps/statistical"));
 const standardization = __importStar(require("./steps/standardization"));
-const DATASET_PATH = path.join(__dirname, '../data/dice-master-6700bets.json');
+const DATASET_PATH = path.join(__dirname, '..', config_1.DATASET_FILE);
 // Single-sourced in src/config.ts: declared here AND in src/simulate.ts, the same pin would let
 // the producer and the verifier score different captures.
 const EXPECTED_DATASET_HASH = config_1.DATASET_SHA256;
@@ -5858,7 +6134,7 @@ const OUTPUTS_DIR = path.join(__dirname, '../outputs');
 const RUN_DIR = path.join(OUTPUTS_DIR, 'run');
 /** PF_EMIT=1 (npm run report) is the ONLY thing that rewrites a committed artifact. */
 const EMIT = process.env.PF_EMIT === '1';
-// Refuse an unvalidated runtime BEFORE anything is read, scored or written (D1). An exact-equality
+// Refuse an unvalidated runtime BEFORE anything is read, scored or written. An exact-equality
 // suite on a runtime whose Math.exp differs in the last bit produces a FAIL that says nothing about
 // the casino, and the honest response is to decline the run rather than to widen the comparison.
 (0, runtime_1.assertSupportedRuntime)();
@@ -5871,7 +6147,7 @@ console.log(EMIT
     : '  MODE: verification — committed artifacts are read-only; results go to outputs/run/');
 // ── Dataset presence guard (graceful) ─────────────────────────────────────────
 if (!fs.existsSync(DATASET_PATH)) {
-    console.log('\n  [ERROR] Dataset not found at data/dice-master-6700bets.json');
+    console.log(`\n  [ERROR] Dataset not found at ${config_1.DATASET_FILE}`);
     console.log('  Cannot run verification without the captured master dataset.');
     console.log('\n══════════════════════════════════════════════════════════\n');
     process.exit(1);
@@ -5893,23 +6169,22 @@ for (const b of bets) {
     arr.push(b);
     byHash.set(b.hashedServerSeed, arr);
 }
-const phaseABets = bets.filter(b => b.phase === 'A');
-const phaseBBets = bets.filter(b => b.phase === 'B');
-const phaseCBets = bets.filter(b => b.phase === 'C');
-const phaseDBets = bets.filter(b => b.phase === 'D');
-const phaseEBets = bets.filter(b => b.phase === 'E');
 if (!fs.existsSync(OUTPUTS_DIR))
     fs.mkdirSync(OUTPUTS_DIR, { recursive: true });
 console.log(`  Dataset: ${bets.length} bets | Seeds: ${seeds.length} | SHA-256 verified`);
-console.log(`  Phase A:${phaseABets.length} B:${phaseBBets.length} C:${phaseCBets.length} D:${phaseDBets.length} E:${phaseEBets.length}\n`);
+{
+    const perPhase = new Map();
+    for (const b of bets)
+        perPhase.set(b.phaseId, (perPhase.get(b.phaseId) ?? 0) + 1);
+    console.log(`  Phases: ${[...perPhase].map(([k, n]) => `${k} ${n}`).join(' · ')}\n`);
+}
 const ctx = {
     bets, seeds, seedMap, byHash,
-    phaseA: phaseABets, phaseB: phaseBBets, phaseC: phaseCBets, phaseD: phaseDBets, phaseE: phaseEBets,
     outputsDir: OUTPUTS_DIR,
     datasetSha256: ds.sha256,
     expectedDatasetHash: EXPECTED_DATASET_HASH,
     meta: ds.meta,
-    simArtifact: null, // populated by the simulation step (FIX-3)
+    simArtifact: null, // populated by the simulation step
 };
 // ── Run scored steps ──────────────────────────────────────────────────────────
 const results = [
@@ -5924,6 +6199,14 @@ const results = [
     ...standardization.run(ctx), // Steps 18–21
     ...liveFit.run(ctx), // Step  22
 ];
+// ── Execution completeness (G-EXEC) ────────────────────────────────────────────
+// The verdict below is computed over `results`. A run that executed fewer steps than the suite
+// holds, or steps out of order, must not reach a verdict at all: the step count is compared with
+// EXPECTED_STEPS (src/config.ts), a number from OUTSIDE the results array.
+if (results.length !== config_1.EXPECTED_STEPS || !results.every((r, i) => r.step === i + 1)) {
+    console.error(`\n  [ERROR] executed ${results.length} step(s) [${results.map((r) => r.step).join(', ')}], expected steps 1..${config_1.EXPECTED_STEPS}: no verdict is given for an incomplete run`);
+    process.exit(1);
+}
 // ── Profile labels ──────────────────────────────────────────────────────────────
 // Each scored step says which ProvablyFair.org Dice profile check it implements, so the conformance
 // matrix is DERIVED from the artifact rather than written by hand and left to go stale. The label is
@@ -5999,7 +6282,7 @@ console.log('══════════════════════�
 // outputs/run/diff.json, never in the committed verification-results.json / report-figures.json.
 const runAt = new Date().toISOString();
 const verificationBody = {
-    // The assigned (provisional) audit ID, single-sourced from src/config.ts so it agrees with the
+    // The assigned audit ID, single-sourced from src/config.ts so it agrees with the
     // README/MANIFEST chapters and is machine-checkable (DICE-28 "the audit ID is assigned").
     auditId: config_1.AUDIT_ID,
     verdictQualifier: config_1.VERDICT_QUALIFIER,
@@ -6012,7 +6295,7 @@ const verificationBody = {
         // expected = the pin in this file; actual = the recomputed hash; match must be true
         // (loadDataset already exits(1) on mismatch, so a written file always has match: true).
         dataset: {
-            file: 'data/dice-master-6700bets.json',
+            file: config_1.DATASET_FILE,
             expected: EXPECTED_DATASET_HASH,
             actual: ds.sha256,
             match: ds.sha256 === EXPECTED_DATASET_HASH,
@@ -6065,7 +6348,7 @@ if (EMIT) {
     // ── EXPLICIT REPORT GENERATION (`npm run report`) ───────────────────────────────────────────
     // The only path that rewrites a committed artifact. It is a separate command precisely so that
     // replacing evidence is an act somebody chose, reviewed as a diff, rather than a side effect of
-    // testing (D1).
+    // testing.
     write(OUTPUTS_DIR, VERIFICATION_FILE, verificationBody);
     write(OUTPUTS_DIR, FIGURES_FILE, figuresBody);
     console.log(`  REPORT GENERATION: rewrote outputs/${VERIFICATION_FILE} and outputs/${FIGURES_FILE}`);

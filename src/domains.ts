@@ -23,15 +23,15 @@
  * this game's artifacts contain — every one an honest committed value a naive name-based classifier
  * gets wrong:
  *
- *   `points[].rtp` = 1.0375…              a WINDOW RTP legitimately ABOVE 1 — a short window mean is
- *                                         bounded by the paytable's largest multiplier, not by 1
- *   `serial.lag1` = 0.0027…               an autocorrelation, so [-1, 1] and often negative
+ *   `points[].rtp`                        a WINDOW RTP can legitimately be ABOVE 1: a short window mean is
+ *                                         bounded by the price grid's largest multiplier, not by 1
+ *   `serial.lag1`                         an autocorrelation, so [-1, 1] and often negative
  *   `serial.lag1Z` / `runsZ` / `.z`       signed z-scores, unbounded either way
- *   `cherryPickExpected` = 5.871…         an EXPECTED count, a REAL that is legitimately not an integer
- *   `expectedUpperBoundHits` = 0.4106     an expected count legitimately < 1
- *   `theoreticalEdgePct` = 1.0000…        an edge percent that can be NEGATIVE (player-favourable)
- *   `realizedRtpPct` = 103.56             a realised RTP over a finite sample, legitimately > 100
- *   `netUsdc` = 4.9e-8                     a signed settlement residual, either sign
+ *   `cherryPickExpected`                  an EXPECTED count, a REAL that is legitimately not an integer
+ *   `expectedUpperBoundHits`              an expected count legitimately < 1
+ *   `theoreticalEdgePct`                  an edge percent that can be NEGATIVE (player-favourable)
+ *   `realizedRtpPct`                      a realised RTP over a finite sample, legitimately > 100
+ *   `netUsdt`                             a signed settlement residual, either sign
  *
  * Because a mistake in this table would either wave through a forgery or reject an honest audit,
  * Step 19 (`tests/steps/standardization.ts`) asserts BOTH directions against the committed
@@ -41,10 +41,10 @@
  */
 
 import {
-  RANGE, SCALE, CURSOR, HOUSE_EDGE, MIN_ODDS, MAX_ODDS,
+  RANGE, SCALE, CURSOR, HOUSE_EDGE, PAYOUT_NUMERATOR, PRICE_GRID_MIN_BPS, PRICE_GRID_MAX_BPS,
   SIM_UNIFORMITY_DRAWS, SIM_SERIAL_DRAWS, SIM_EDGE_BETS, SIM_RTP_BETS,
   SIM_TARGETS, SIM_TARGET_BETS, SIM_TARGET_SEED_COUNTER_BASE, SIM_TARGET_SEEDS_EACH,
-  SIM_CHERRY_BINS, SIM_CHERRY_WINDOW, SIM_PASS2_NONCES, SIM_PASS2_EARLY_WINDOW,
+  SIM_CHERRY_BINS, SIM_CHERRY_WINDOW, SIM_PASS2_NONCES,
   EXPECTED_BETS, EXPECTED_SEEDS,
 } from './config';
 
@@ -96,19 +96,22 @@ const BAND_BOUND = realBetween(0, SCALE, 'band bound on the 0..100 axis');
 /** A served roll is draw/SCALE, so it lies in [0, (RANGE-1)/SCALE] = [0, 99.99]. */
 const ROLL_VALUE = realBetween(0, (RANGE - 1) / SCALE, 'a roll value on the 2-dp grid');
 /** A quoted multiplier lies within the operator's declared odds limits. */
-const MULTIPLIER = realBetween(MIN_ODDS, MAX_ODDS, 'quoted multiplier within [MIN_ODDS, MAX_ODDS]');
+/** The price grid's multiplier span: 9900/bp over PRICE_GRID_MIN_BPS … PRICE_GRID_MAX_BPS (src/config.ts). */
+const GRID_MIN_MULT = PAYOUT_NUMERATOR / PRICE_GRID_MAX_BPS;
+const GRID_MAX_MULT = PAYOUT_NUMERATOR / PRICE_GRID_MIN_BPS;
+const MULTIPLIER = realBetween(GRID_MIN_MULT, GRID_MAX_MULT, 'quoted multiplier within the price grid');
 /**
  * The attainable range of any PAYOUT AVERAGE — a theoretical RTP, a simulated RTP, or a WINDOW RTP.
  * A mean of drawn multipliers cannot fall outside 0 and the largest multiplier the game can pay
- * (MAX_ODDS). NOT [0,1]: a short window legitimately averages above 1 (`points[].rtp` = 1.0375). */
-const RTP = realBetween(0, MAX_ODDS, 'attainable payout average in [0, MAX_ODDS]');
+ * (GRID_MAX_MULT). NOT [0,1]: a short window legitimately averages above 1. */
+const RTP = realBetween(0, GRID_MAX_MULT, 'attainable payout average in [0, the largest grid multiplier]');
 /** An RTP expressed as a PERCENT, so 100× the RTP domain — realizedRtpPct = 103.56 is honest. */
-const RTP_PCT = realBetween(0, MAX_ODDS * SCALE, 'attainable payout average as a percent');
+const RTP_PCT = realBetween(0, GRID_MAX_MULT * SCALE, 'attainable payout average as a percent');
 /**
- * A house-edge PERCENT. edge = 1 − RTP with RTP ∈ [0, MAX_ODDS], so as a percent it runs from
- * 100·(1 − MAX_ODDS) (a maximally player-favourable band) up to 100 (a zero-return band). Only the
+ * A house-edge PERCENT. edge = 1 − RTP with RTP ∈ [0, GRID_MAX_MULT], so as a percent it runs from
+ * 100·(1 − GRID_MAX_MULT) (a maximally player-favourable band) up to 100 (a zero-return band). Only the
  * impossible — an edge above 100% — is rejected; a negative edge is a real, disclosable outcome. */
-const EDGE_PCT = realBetween(100 * (1 - MAX_ODDS), 100, 'house edge as a percent');
+const EDGE_PCT = realBetween(100 * (1 - GRID_MAX_MULT), 100, 'house edge as a percent');
 
 // ── The rule table ────────────────────────────────────────────────────────────────────────────────
 
@@ -236,7 +239,7 @@ export function domainRules(): Record<string, Rule[]> {
       // p and alpha are probabilities; the direction counts and epoch count are over the seed
       // population; the detection power is a non-negative pp value.
       { path: /^\.pass2\.servedBand\.nonces$/, domain: exactly(SIM_PASS2_NONCES, 'SIM_PASS2_NONCES') },
-      { path: /^\.pass2\.servedBand\.earlyWindow$/, domain: exactly(SIM_PASS2_EARLY_WINDOW, 'SIM_PASS2_EARLY_WINDOW') },
+      { path: /^\.pass2\.servedBand\.earlyBets$/, domain: exactly(EXPECTED_BETS, 'EXPECTED_BETS (one early cell per captured round)') },
       { path: /^\.pass2\.servedBand\.alpha$/, domain: PROBABILITY },
       { path: /^\.pass2\.servedBand\.epochs$/, domain: SEED_COUNT },
       { path: /^\.pass2\.servedBand\.(totalEarlyReturn|totalEarlyExpected|totalEarlyVar)$/, domain: NONNEG_REAL },
@@ -256,9 +259,9 @@ export function domainRules(): Record<string, Rule[]> {
       { path: /^\.settledRtp\.(belowNominal|aboveNominal|exactlyNominal)$/, domain: BET_COUNT },
       { path: /^\.settledRtp\.(minPct|maxPct|nominalPct)$/, domain: RTP_PCT },
 
-      { path: /^\.settlementResidual\.(roundedDown|roundedUp|exactlyOnProduct|exactTies)$/, domain: BET_COUNT },
-      { path: /^\.settlementResidual\.maxAbsUsdc$/, domain: NONNEG_REAL },
-      { path: /^\.settlementResidual\.netUsdc$/, domain: FINITE },
+      { path: /^\.settlementResidual\.(roundedDown|roundedUp|exactlyOnProduct|floatClosedFormMisses)$/, domain: BET_COUNT },
+      { path: /^\.settlementResidual\.maxAbsUsdt$/, domain: NONNEG_REAL },
+      { path: /^\.settlementResidual\.netUsdt$/, domain: FINITE },
 
       { path: /^\.boundary\.(betsWithReachableUpperBound|betsWithUnreachableUpperBound|observedUpperBoundHits|observedLowerBoundHits|betsWhereBoundaryModelsDisagree|winFlagsReproducedHalfOpen|winFlagsReproducedInclusiveBothEnds)$/, domain: BET_COUNT },
       { path: /^\.boundary\.expectedUpperBoundHits$/, domain: EXPECTED_OVER_BETS },
@@ -268,15 +271,20 @@ export function domainRules(): Record<string, Rule[]> {
       { path: /^\.cherryPickPower\.expectedFlags$/, domain: EXPECTED_OVER_SEEDS },
       { path: /^\.cherryPickPower\.minRejectableFlags$/, domain: SEED_COUNT },
 
-      { path: /^\.phaseD\.(firstEpoch|lastEpoch)$/, domain: EPOCH_IDX },
-      { path: /^\.phaseD\.epochs$/, domain: SEED_COUNT },
-      { path: /^\.phaseD\.bets$/, domain: BET_COUNT },
-      { path: /^\.phaseD\.(stakedUsdc|paidUsdc|expectedUsdc)$/, domain: NONNEG_REAL },
-      { path: /^\.phaseD\.z$/, domain: FINITE },
-
-      { path: /^\.live\.(wageredUsdc|returnedUsdc)$/, domain: NONNEG_REAL },
+      { path: /^\.live\.(wageredUsdt|returnedUsdt)$/, domain: NONNEG_REAL },
       { path: /^\.live\.realizedRtpPct$/, domain: RTP_PCT },
       { path: /^\.live\.meanRoll$/, domain: ROLL_VALUE },
+
+      // per-phase aggregates: counts over the audited population, served stakes and amounts, class counts
+      { path: /^\.phases\.[^.]+\.(bets|wins|fewestPerClass|mostPerClass)$/, domain: BET_COUNT },
+      { path: /^\.phases\.[^.]+\.epochs$/, domain: SEED_COUNT },
+      { path: /^\.phases\.[^.]+\.classes$/, domain: intAtMost(4 * RANGE, '(mode × basis-point) classes') },
+      { path: /^\.phases\.[^.]+\.(stakeUsdt|wageredUsdt|returnedUsdt)$/, domain: NONNEG_REAL },
+      { path: /^\.phases\.[^.]+\.realizedRtpPct$/, domain: RTP_PCT },
+      { path: /^\.modes\.(under|over|inside|outside)$/, domain: BET_COUNT },
+      { path: /^\.verifier\.(replies|equalServedRound)$/, domain: BET_COUNT },
+      { path: /^\.playerSeeds\.(epochs|distinct)$/, domain: SEED_COUNT },
+      { path: /^\.playerSeeds\.bets$/, domain: BET_COUNT },
     ],
   };
 }

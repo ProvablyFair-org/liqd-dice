@@ -10,9 +10,9 @@
  * TWO failure modes that pull in opposite directions and are answered together.
  *
  * AN SE THAT IS A NUMBER IS NOT THEREBY THE RIGHT NUMBER.
- * A convergence block that asserts `Number.isFinite(pt.se)` and nothing else accepts anything: a
- * reviewer changed the first plotted standard error from 0.03127046289391956 to 123456, re-pinned
- * the artifact, and the suite returned a Full Pass. The chart does not catch it either:
+ * A convergence block that asserts `Number.isFinite(pt.se)` and nothing else accepts anything:
+ * changing the first plotted standard error from 0.03127046289391956 to 123456 and re-pinning
+ * the artifact returned a Full Pass. The chart does not catch it either:
  * `src/chart.ts` clamps the ±5·SE ribbon to the plot box (`Math.min(ymax, …)`), so an absurd SE
  * and a correct one draw the same band. All seven plotted standard errors are otherwise
  * unvalidated numbers in a published figure.
@@ -135,7 +135,7 @@ export function crossTargetTheory(theo: readonly number[]): number {
  * ── WHY A RESIDUAL CAP IS THE WRONG ANSWER ─────────────────────────────────────────────────────
  *
  * ROUNDING the quotient and accepting anything within RECONSTRUCTION_MAX_RESIDUAL of an integer
- * does the opposite of its job. A reviewer set the `over 98` band's RTP to
+ * does the opposite of its job. Setting the `over 98` band's RTP to
  * 0.99000495 — which is 40,000.2 wins in 2,000,000 bets at 49.5× — recomputed every derived field
  * and re-pinned the artifact, and `npm test` returned 21/21, exit 0: the cap let a published RTP
  * stand that NO win count produces, because 0.2 is inside 0.25. A win count is a count.

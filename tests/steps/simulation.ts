@@ -25,11 +25,11 @@
  *     `serial.n`-less block all pass;
  *   • every POPULATION is required to BE the right population, not merely the right size
  *     (G-BIND). The nine effective-edge rows must be the nine canonical `SIM_EDGE_BANDS`,
- *     distinct; the 134 per-seed rows must carry the dataset's own 134 distinct epochs. A count
- *     is not an identity: nine copies of the easiest band, or 134 copies of one unflagged seed,
+ *     distinct; the per-seed rows must carry the dataset's own distinct epochs, one per seed. A count
+ *     is not an identity: nine copies of the easiest band, or one copy of an unflagged seed per epoch,
  *     would otherwise return a Full Pass;
- *   • every Pass-2 STATISTIC is recomputed from `ctx.seeds` and `ctx.bets` — 134 × 100 HMACs and
- *     one 6,700-roll histogram, well under a second — and compared under the reproduction rule
+ *   • every Pass-2 STATISTIC is recomputed from `ctx.seeds` and `ctx.bets` — 100 HMACs per seed and
+ *     one histogram of the captured rolls, well under a second — and compared under the reproduction rule
  *     below. The artifact cannot report a per-seed p-value, a flag, a χ², or a pooled statistic
  *     that the verifier did not itself reproduce from the pinned dataset;
  *   • the artifact's own `pass` booleans are read ONLY for traceability. If a self-report
@@ -44,7 +44,7 @@
  * ── THE RAW STATISTICS, AND THE FORGERY THAT SHOWED WHY THEY NEED SCORING ──────────────────────
  * Everything above re-derives the PINNED and DERIVED fields. Four RAW STATISTICS admit no such
  * treatment, because they are the simulation's actual output and nothing else can produce them:
- * `uniformity.chi2`, `serial.lag1`, `serial.runsZ`, and each band's `simulatedRTP`. A reviewer
+ * `uniformity.chi2`, `serial.lag1`, `serial.runsZ`, and each band's `simulatedRTP`. An attacker
  * rewrote the whole `pass1` block with `uniformity.chi2 = 0` (p = 1.0), `lag1 = 0`, `runsZ = 0`,
  * every band's `simulatedRTP` set exactly equal to theory and every convergence point exactly on
  * theory, then recomputed every derived field with OUR OWN formulas so the re-derivation
@@ -64,7 +64,7 @@
  *      real test (the draw is not uniform) and the lower tail rejects a histogram that sits closer
  *      to its expectation than a 2,000,000-draw sample plausibly can. That is an ordinary two-sided
  *      test with an ordinary size (ALPHA_SCREEN, half in each tail) and it is what rejects the
- *      reviewer's chi2 = 0.
+ *      forged chi2 = 0.
  *
  * The pin is NOT the defence here and must not be mistaken for one — anyone who can forge the
  * artifact can re-pin it in the same commit. What survives a re-pinned forgery is the two-sided
@@ -109,7 +109,7 @@ import {
   RANGE, SCALE, CURSOR, HOUSE_EDGE, ALPHA, ALPHA_SCREEN, ALPHA_SCREENS,
   SIM_UNIFORMITY_DRAWS, SIM_SERIAL_DRAWS, SIM_EDGE_BETS, SIM_RTP_BETS, SIM_RTP_MARKS,
   SIM_EDGE_BANDS, SIM_RTP_STRATEGY, SIM_CHERRY_BINS, SIM_CHERRY_WINDOW, SIM_CHERRY_SEED_ALPHA,
-  SIM_PASS2_NONCES, SIM_PASS2_EARLY_WINDOW, SIM_PASS2_ALPHA,
+  SIM_PASS2_NONCES, SIM_PASS2_ALPHA, EXPECTED_BETS, EXPECTED_EPOCHS, expectedEpochSize,
   SIM_TARGETS, SIM_TARGET_BETS, SIM_TARGET_MARKS, SIM_TARGET_SEED_COUNTER_BASE, SIM_TARGET_SEEDS_EACH,
   bandKey, theoreticalRTP, quotedMultiplier, discreteWinProbability, diceWin, servedReturnSign,
 } from '../../src/config';
@@ -184,7 +184,7 @@ export function run(ctx: VerifyContext): StepResult[] {
   const lag1ZDerived = lag1 * Math.sqrt(SIM_SERIAL_DRAWS);
   const runsPDerived = twoSidedNormalP(runsZ);                 // derived from runsZ (not ser.runsP)
 
-  // ── SCHEMA VERSION (D3/D4) ───────────────────────────────────────────────────────────────────
+  // ── SCHEMA VERSION ─────────────────────────────────────────────────────────────────────────
   // Schema 1 is the historical artifact: raw statistics only. Schema 2 additionally stores the
   // integer counts behind them, so the runs z becomes RE-DERIVABLE. The old artifact is scored
   // under schema-1 rules and is not re-labelled — a new schema must not be able to masquerade as
@@ -195,7 +195,7 @@ export function run(ctx: VerifyContext): StepResult[] {
   // Runs z from its own cell counts, when the artifact carries them. The DEGENERATE case is zero
   // VARIANCE (every observation on one side of the split) — a property of the sample. `runsZ === 0`
   // is NOT degeneracy: it means the run count landed on its expectation, which is a legitimate and
-  // not especially unlikely outcome, and rejecting it was the D4 defect.
+  // not especially unlikely outcome, and rejecting it would be a defect.
   let runsNote: string;
   let runsStructureOk = true;
   if (schemaVersion >= 2) {
@@ -218,7 +218,7 @@ export function run(ctx: VerifyContext): StepResult[] {
   }
 
   // Schema 2 must also carry the threshold it was produced under, and it must be the one the
-  // verifier applies (D7/D17: the shipped schema-1 artifact stores 2.576236081309571, the critical
+  // verifier applies (the shipped schema-1 artifact stores 2.576236081309571, the critical
   // z at the UNCORRECTED α — a stale field the verifier never reads).
   const zCriticalStored = Number(ser.zCritical);
   const zCriticalOk = schemaVersion >= 2 ? agree(zCriticalStored, zCrit) : true;
@@ -263,7 +263,7 @@ export function run(ctx: VerifyContext): StepResult[] {
       && r.deltaSE === Math.abs(simRtp - theo) / se
       && r.tolSE === 5;
     if (!fieldsOk) edgeFieldMismatches++;
-    // STRUCTURE, not perfection (D4). A band's simulated RTP is the producer's return for an
+    // STRUCTURE, not perfection. A band's simulated RTP is the producer's return for an
     // INTEGER win count, so the candidate count is recovered and the RTP is then verified against
     // the return that count reconstructs to; schema 2 stores the count and it must then agree with
     // the RTP it is supposed to have produced. What is NOT rejected any more is `simRtp === theo`
@@ -305,13 +305,13 @@ export function run(ctx: VerifyContext): StepResult[] {
     && lastPt !== null && rc.finalRTP === lastPt.rtp && rc.finalRTPRunning === lastPt.rtp
     && convPts.every((pt) => Number.isFinite(Number(pt?.rtp)) && Number.isFinite(Number(pt?.se)));
 
-  // ── EVERY PLOTTED STANDARD ERROR IS VALIDATED (D3) ──────────────────────────────────────────
+  // ── EVERY PLOTTED STANDARD ERROR IS VALIDATED ───────────────────────────────────────────────
   // Not `isFinite`. Each checkpoint's integer win count is recovered from its own published RTP,
   // the counts are required to be cumulatively consistent across the nested marks, and the SE is
-  // recomputed from (n, rtp, wins, m) and compared bit-for-bit. This is what rejects the reviewer's
+  // recomputed from (n, rtp, wins, m) and compared bit-for-bit. This is what rejects the forged
   // SE = 123456, which passed the old finiteness check and drew an IDENTICAL chart because
   // `src/chart.ts` clamps the ±5·SE ribbon to the plot box. Points sitting exactly on theory are
-  // COUNTED and reported; they are not a rejection (D4).
+  // COUNTED and reported; they are not a rejection.
   const series = validateConvergenceSeries(convPts, convM, convTheo);
   const convPass = convIdentity && series.ok && Number.isFinite(convRtp)
     && Math.abs(convRtp - convTheo) <= 5 * convSe + 1e-4;
@@ -375,7 +375,7 @@ export function run(ctx: VerifyContext): StepResult[] {
   // (f) THE 98-TARGET MEAN — the convergence series the chart draws. Every plotted point is
   // RECOMPUTED from the targets' validated per-mark values (crossTargetPoint: mean RTP and
   // SE = sqrt(Σ SEₜ²)/98) and must equal the stored point exactly, so neither a plotted mean nor a
-  // plotted SE can be edited on its own (D3: `src/chart.ts` clamps the ±5·SE ribbon to the plot box,
+  // plotted SE can be edited on its own (`src/chart.ts` clamps the ±5·SE ribbon to the plot box,
   // so an absurd SE draws the same chart). finalRTP must BE the last point.
   const tc = p1?.targetConvergence ?? {};
   const tcPts: any[] = Array.isArray(tc.points) ? tc.points : [];
@@ -417,10 +417,10 @@ export function run(ctx: VerifyContext): StepResult[] {
     // OBSERVED, NOT SCORED. A statistic landing exactly on its theoretical value is an event
     // with positive probability under the null — 0.0020149586 for exactly 40,000 wins in 2,000,000
     // `over 98` bets. It is recorded because it is worth a reader's attention, and it moves nothing.
-    + `; OBSERVED (not scored): ${tgtOnTheory} target row(s), ${edgeOnTheory} effective-edge row(s) and ${series.exactlyOnTheory} convergence point(s) sit exactly on theory, and runsZ is ${runsZ === 0 ? 'exactly 0' : 'nonzero'} — all legitimate outcomes under the null, reported rather than rejected (client QA 2026-09-10, D4)`
+    + `; OBSERVED (not scored): ${tgtOnTheory} target row(s), ${edgeOnTheory} effective-edge row(s) and ${series.exactlyOnTheory} convergence point(s) sit exactly on theory, and runsZ is ${runsZ === 0 ? 'exactly 0' : 'nonzero'} — all legitimate outcomes under the null, reported rather than rejected`
     // DECLARED LIMITATION L1 (now NARROWED by the deterministic producer), and the error budget.
     + `; SCOPE — the raw Pass-1 statistics (uniformity.chi2, serial.lag1, serial.runsZ, each band's and target's simulatedRTP, and the convergence series' own RTP path) are not recomputed inside THIS fast verify (that would re-run 138M draws), but the Pass-1 producer is now DETERMINISTIC — seeded from the pinned SIM_MASTER_SEED — so they are re-derivable by replaying it: npm run test:full regenerates the artifact byte-for-byte and the field diff is empty (DICE-20). A statistic forged SUBTLY is therefore no longer invisible the way it was under fresh entropy (former L1): a re-run reproduces the EXACT committed figures, so test:full exposes any figure that is not what the declared experiment outputs; changing SIM_MASTER_SEED to hand-pick one is a visible source edit that re-rolls every Pass-1 figure at once. What the FAST path still relies on for a reader who does not re-run the producer — that the statistics are STRUCTURALLY possible (integer win counts, cumulative consistency, exact standard errors) and fall inside their screens — is unchanged; that residual is declared limitation L1`
-    + `; ERROR BUDGET — ${SCORED_STATISTICAL_PREDICATES.length} scored statistical screens across Steps 16-17: ${SCORED_STATISTICAL_PREDICATES.map((s) => `${s.id} ${s.screen} [${s.size}]`).join('; ')}. The α=${ALPHA} claim describes S1-S3 (family-wise, Bonferroni) ONLY — it is NOT this step's level: Step 16 also scores S4 and S5, so THIS STEP's own union bound is ≈${STEP_16_BOUND.toFixed(7)}, and over all ${SCORED_STATISTICAL_PREDICATES.length} screens across Steps 16-17 it is ≈${FAMILY_WISE_BOUND.toFixed(4)}. Everything else this step rejects on — derived-field reconciliation, population identity, sample-depth pins, integer win counts and their RECONSTRUCTION, cumulative consistency, exact standard errors — is a deterministic identity an honest artifact satisfies with probability 1, so it adds nothing to the budget (unlike the D4 'perfection' rules, which rejected honest outcomes and were unpriced). These sizes are NOMINAL UPPER BOUNDS from asymptotic reference distributions (χ² and normal), not measured failure frequencies, and no honest-run trip rate is claimed from them; the exact binomial S6 is conservative. Repeated fresh simulations could calibrate them and would not prove them`,
+    + `; ERROR BUDGET — ${SCORED_STATISTICAL_PREDICATES.length} scored statistical screens across Steps 16-17: ${SCORED_STATISTICAL_PREDICATES.map((s) => `${s.id} ${s.screen} [${s.size}]`).join('; ')}. The α=${ALPHA} claim describes S1-S3 (family-wise, Bonferroni) ONLY — it is NOT this step's level: Step 16 also scores S4 and S5, so THIS STEP's own union bound is ≈${STEP_16_BOUND.toFixed(7)}, and over all ${SCORED_STATISTICAL_PREDICATES.length} screens across Steps 16-17 it is ≈${FAMILY_WISE_BOUND.toFixed(4)}. Everything else this step rejects on — derived-field reconciliation, population identity, sample-depth pins, integer win counts and their RECONSTRUCTION, cumulative consistency, exact standard errors — is a deterministic identity an honest artifact satisfies with probability 1, so it adds nothing to the budget (unlike 'perfection' rules, which reject honest outcomes and are unpriced). These sizes are NOMINAL UPPER BOUNDS from asymptotic reference distributions (χ² and normal), not measured failure frequencies, and no honest-run trip rate is claimed from them; the exact binomial S6 is conservative. Repeated fresh simulations could calibrate them and would not prove them`,
   );
 
   // ── Step 17: Pass 2 — RE-DERIVE the cherry-pick scan from the dataset ──────────
@@ -450,7 +450,7 @@ export function run(ctx: VerifyContext): StepResult[] {
       && wantEpochs.every((e, i) => gotEpochs[i] === e);
 
     // (c) RE-DERIVE every per-seed statistic from the dataset's own revealed seeds.
-    // 134 × 100 HMACs. The artifact is compared to this, never believed.
+    // 100 HMACs per seed. The artifact is compared to this, never believed.
     const seedByEpoch = new Map(ctx.seeds.map((s) => [s.epoch, s]));
     let rowMismatches = 0, firstMismatch = '';
     let flags = 0, recomputedRows = 0;
@@ -515,7 +515,7 @@ export function run(ctx: VerifyContext): StepResult[] {
 
     // ── (f) SERVED-BAND PAYOUT-WEIGHTED RETURN (DICE-21, load-bearing) ──────────────────────────
     // Every revealed seed × SIM_PASS2_NONCES nonces, RE-DERIVED here from the dataset's own revealed
-    // seeds; early window = the captured nonce range (0..W−1), reference = the remainder. The
+    // seeds; early window = the epoch's captured nonce range (0..size−1), reference = the remainder. The
     // statistic is the payout-weighted return of the bands the casino actually served, standardised
     // by its EXACT per-bet mean and variance (a scaled Poisson-binomial across seeds — each pᵢ the
     // served band's exact lattice win-probability discreteWinProbability(band)); the tail is the
@@ -524,9 +524,8 @@ export function run(ctx: VerifyContext): StepResult[] {
     // recomputed and compared with EXACT equality; the aggregate is reconciled and then scored, and a
     // re-derivation mismatch OR an anomalously LOW early return (aggP < α) HARD-FAILS the step.
     const sb = p2.servedBand ?? {};
-    const W2 = SIM_PASS2_EARLY_WINDOW;
     const sbGeometryOk = Number(sb.nonces) === SIM_PASS2_NONCES
-      && Number(sb.earlyWindow) === W2 && Number(sb.alpha) === SIM_PASS2_ALPHA;
+      && Number(sb.earlyBets) === EXPECTED_BETS && Number(sb.alpha) === SIM_PASS2_ALPHA;
     const sbPerEpoch: Array<Record<string, number | string>> = Array.isArray(sb.perEpoch) ? sb.perEpoch : [];
     // Population identity: one row per REVEALED epoch that carries bets, keyed by its commitment hash.
     const wantHashes = [...ctx.seedMap.keys()].filter((h) => (ctx.byHash.get(h) ?? []).length > 0).sort();
@@ -536,7 +535,7 @@ export function run(ctx: VerifyContext): StepResult[] {
       && wantHashes.every((h, i) => gotHashes[i] === h);
 
     let sbRowMismatches = 0, sbRecomputedRows = 0, sbFirstMismatch = '';
-    let sbTotalEarlyReturn = 0, sbTotalEarlyExpected = 0, sbTotalEarlyVar = 0, sbBelow = 0, sbAbove = 0;
+    let sbTotalEarlyReturn = 0, sbTotalEarlyExpected = 0, sbTotalEarlyVar = 0, sbBelow = 0, sbAbove = 0, sbTotalEarlyBets = 0;
     for (const row of sbPerEpoch) {
       const hash = String(row.serverSeedHashed);
       const serverSeed = ctx.seedMap.get(hash);
@@ -547,6 +546,8 @@ export function run(ctx: VerifyContext): StepResult[] {
         continue;
       }
       const clientSeed = epochBets[0].clientSeed;
+      // The early window IS this epoch's captured nonce range: its planned size in src/config.ts.
+      const W2 = expectedEpochSize(epochBets[0].epoch);
       const served: DiceParams[] = new Array(W2);
       for (const b of epochBets) if (b.nonce >= 0 && b.nonce < W2) served[b.nonce] = b.params;
       let lastSeen = served.find((x) => x) ?? epochBets[0].params;
@@ -566,6 +567,7 @@ export function run(ctx: VerifyContext): StepResult[] {
         else         { rR += ret; rE += eRet; rV += vRet; }
       }
       sbRecomputedRows++;
+      sbTotalEarlyBets += W2;
       const ok = row.earlyReturn === eR && row.earlyExpected === eE && row.earlyVar === eV
         && row.refReturn === rR && row.refExpected === rE && row.refVar === rV
         && Number(row.earlyN) === W2 && Number(row.refN) === SIM_PASS2_NONCES - W2;
@@ -587,7 +589,6 @@ export function run(ctx: VerifyContext): StepResult[] {
     const sbAggZ = sbTotalEarlyVar > 0 ? (sbTotalEarlyReturn - sbTotalEarlyExpected) / Math.sqrt(sbTotalEarlyVar) : 0;
     const sbAggP = normalLowerTailP(sbAggZ);
     const sbZAlpha = inverseCriticalZ(2 * SIM_PASS2_ALPHA), sbZPower = inverseCriticalZ(2 * 0.20);
-    const sbTotalEarlyBets = sbRecomputedRows * W2;
     const sbMinDetectablePerBetPct = sbTotalEarlyBets > 0
       ? ((sbZAlpha + sbZPower) * Math.sqrt(sbTotalEarlyVar) / sbTotalEarlyBets) * 100 : NaN;
     // The stored aggregates must reconcile with the re-derivation (per-row is exact; the aggregate
@@ -608,7 +609,7 @@ export function run(ctx: VerifyContext): StepResult[] {
 
     s17 = step(17, 'Simulation — Pass 2 (Cherry-Pick)',
       recomputed17 && agree17 ? 'PASS' : 'FAIL',
-      `DICE-21 served-band return (load-bearing): ${sbRecomputedRows} revealed epochs × ${SIM_PASS2_NONCES.toLocaleString()} nonces, ALL windows RE-DERIVED from the revealed seeds (early 0–${W2 - 1} = captured range, reference ${W2}–${SIM_PASS2_NONCES - 1}), ${sbRowMismatches} row mismatch${sbFirstMismatch ? ` (first: ${sbFirstMismatch})` : ''}, epoch identity ${sbEpochsOk ? 'ok' : 'MISMATCH'}, aggregate reconciliation ${sbAggMatch ? 'ok' : 'MISMATCH'}; `
+      `DICE-21 served-band return (load-bearing): ${sbRecomputedRows} revealed epochs × ${SIM_PASS2_NONCES.toLocaleString()} nonces, ALL windows RE-DERIVED from the revealed seeds (early window = each epoch's captured nonces 0…size−1, size ${[...new Set(EXPECTED_EPOCHS.map((e) => e.bets))].sort((x, y) => x - y).join(' / ')} by the plan, ${sbTotalEarlyBets} early cells in all; reference = the rest of the ${SIM_PASS2_NONCES.toLocaleString()}), ${sbRowMismatches} row mismatch${sbFirstMismatch ? ` (first: ${sbFirstMismatch})` : ''}, epoch identity ${sbEpochsOk ? 'ok' : 'MISMATCH'}, aggregate reconciliation ${sbAggMatch ? 'ok' : 'MISMATCH'}; `
       + `statistic = payout-weighted served-band return standardised by its EXACT per-bet mean and variance (a scaled Poisson-binomial across seeds, each pᵢ the served band's exact lattice win-probability) — EXACT moments, ASYMPTOTIC one-sided normal (CLT) lower tail, NOT an exact-lattice CDF (see MANIFEST.md load-bearing premise / L4): aggregate early z=${sbAggZ.toFixed(3)}, one-sided lower-tail p=${sbAggP.toFixed(4)} vs α=${SIM_PASS2_ALPHA} → ${sbCherryClean ? 'no return deficit detected at this power' : 'RETURN DEFICIT — CHERRY-PICK SIGNAL'}; the test detects a per-bet return deficit of ${Number.isFinite(sbMinDetectablePerBetPct) ? sbMinDetectablePerBetPct.toFixed(3) : 'n/a'} pp or more at 80% power, so a smaller selection effect would pass; direction split ${sbBelow} below / ${sbEqual} equal / ${sbAbove} above expectation (exact arithmetic) (${servedBandOk ? 'ok' : 'FAIL'}). `
       + `SUPPLEMENTARY draw-uniformity screen: ${n} casino seeds vs dataset ${ctx.seeds.length} (epoch identity ${epochsOk ? 'ok' : 'MISMATCH'}); `
       + `all ${recomputedRows} per-seed χ² windows RE-DERIVED from the revealed seeds (${SIM_CHERRY_WINDOW}+${SIM_CHERRY_WINDOW} draws each), ${rowMismatches} row mismatches${firstMismatch ? ` — first: ${firstMismatch}` : ''}; `
@@ -619,7 +620,7 @@ export function run(ctx: VerifyContext): StepResult[] {
       + (agree17 ? '' : ' — DISAGREES with recomputation (artifact self-report tampered?)')
       // DECLARED LIMITATION L4. The supplementary draw-uniformity screen's resolution and blind spot,
       // recomputed here rather than asserted in prose.
-      + `; SCOPE — the served-band return is now the load-bearing return-based DICE-21 statistic; the draw-uniformity screen is retained as a supplementary exact-discrete check needing ${minRejectableFlags} flag(s) to reject at α=${ALPHA} (P(X≥${minRejectableFlags})=${binomialTailP(n, minRejectableFlags, CHERRY_P0).toFixed(4)}). The served-band tail is asymptotic (CLT) on exact moments, not an exact-lattice CDF — declared L4/load-bearing premise in MANIFEST.md; a single-target-per-epoch re-capture would make the exact CDF tractable. The load-bearing cherry-pick defence remains structural (client-seed-after-commitment)`,
+      + `; SCOPE — the served-band return is now the load-bearing return-based DICE-21 statistic; the draw-uniformity screen is retained as a supplementary exact-discrete check needing ${minRejectableFlags} flag(s) to reject at α=${ALPHA} (P(X≥${minRejectableFlags})=${binomialTailP(n, minRejectableFlags, CHERRY_P0).toFixed(4)}). The served-band tail is asymptotic (CLT) on exact moments, not an exact-lattice CDF — declared L4/load-bearing premise in MANIFEST.md. The load-bearing cherry-pick defence remains structural (client-seed-after-commitment)`,
     );
   }
 

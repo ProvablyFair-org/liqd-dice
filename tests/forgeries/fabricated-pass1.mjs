@@ -1,4 +1,4 @@
-// Reviewer A's counterexample, executed: fabricate a PERFECT Pass 1 that reconciles with every
+// Counterexample, executed: fabricate a PERFECT Pass 1 that reconciles with every
 // derived-field re-derivation the verifier performs, then re-pin SIMULATION_SHA256 so the forgery
 // is scored by the statistical guards rather than stopped by a hash.
 //

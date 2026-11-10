@@ -6,7 +6,7 @@ import type { StepResult } from './context';
 import { step } from './context';
 import type { VerifyContext } from './context';
 import { commitHash, diceRoll } from '../../src/rng';
-import { servedRollMatches, EXPECTED_EPOCH_SIZE, SCALE } from '../../src/config';
+import { servedRollMatches, EXPECTED_SEEDS, EXPECTED_CAPTURES, EXPECTED_EPOCHS, SCALE } from '../../src/config';
 
 export function run(ctx: VerifyContext): StepResult[] {
   const { seeds, byHash, bets, seedMap } = ctx;
@@ -20,57 +20,66 @@ export function run(ctx: VerifyContext): StepResult[] {
     checked++;
   }
   const s1 = step(1, 'Seed Hash Integrity',
-    fails === 0 && checked === seeds.length ? 'PASS' : 'FAIL',
-    `${checked}/${seeds.length} revealed seeds checked; SHA-256(utf8(serverSeed)) == hashedServerSeed; ${fails} mismatches`,
+    fails === 0 && checked === seeds.length && checked === EXPECTED_SEEDS ? 'PASS' : 'FAIL',
+    `${checked}/${EXPECTED_SEEDS} revealed seeds checked (the audited epoch count, src/config.ts); SHA-256(utf8(serverSeed)) == hashedServerSeed; ${fails} mismatches`,
   );
 
   // ── Step 2: Next-seed pre-commitment chain ──────────────────────────────────
+  // The dataset holds EXPECTED_CAPTURES capture files. Inside a file every epoch's
+  // nextHashedServerSeed must BE the next epoch's commitment. Between files there is no link to
+  // check: the account's seed pair kept rotating in between (rounds outside this dataset), so each
+  // file is anchored by its own pre-capture pair instead.
+  //
+  // PRE-CAPTURE LINK, one per file. The in-file transitions show the chain was never broken DURING
+  // a file, but on their own they say nothing about the file's first epoch: its commitment is simply
+  // the first thing the file saw. Each file also carries `preCapture`, the seed pair that was active
+  // BEFORE its first bet, with its own revealed server seed and its `nextHashedServerSeed`. Two
+  // checks turn that into evidence: the pre-capture seed must hash to its own commitment, and its
+  // `nextHashedServerSeed` must BE the commitment of the file's first epoch. Together they place
+  // that commitment EARLIER IN THE CHAIN than the file's first bet.
+  //
+  // WHAT IT IS NOT. A hash chain orders records; it does not date them. This establishes that the
+  // first epoch's commitment was already fixed by a record the capture holds from before the first
+  // bet, as recorded BY THE CAPTURE. The anchor for "before" is the auditor's own capture record,
+  // not an independently authenticated timestamp, so the detail string below says "conditional on
+  // the attested chronology" and names limitation L18.
   const byEpoch = [...seeds].sort((a, b) => a.epoch - b.epoch);
+  const captures = Array.isArray(ctx.meta.captures) ? ctx.meta.captures : [];
   let promoChecked = 0, promoFails = 0;
   for (let i = 0; i + 1 < byEpoch.length; i++) {
+    if (byEpoch[i].capture !== byEpoch[i + 1].capture) continue;      // a file boundary: no in-dataset link
     promoChecked++;
     if (byEpoch[i].nextHashedServerSeed !== byEpoch[i + 1].hashedServerSeed) promoFails++;
   }
-  const expectedTransitions = seeds.length - 1;
-
-  // PRE-CAPTURE LINK. The 133 in-capture transitions show the chain was never
-  // broken DURING the capture, but on their own they say nothing about epoch 0: its commitment is
-  // simply the first thing the capture saw. The dataset also carries `meta.preCapture` — the seed
-  // pair that was active BEFORE the first bet, with its own revealed server seed and its
-  // `nextHashedServerSeed`. Two checks turn that into evidence: the pre-capture seed must hash to
-  // its own commitment, and its `nextHashedServerSeed` must BE epoch 0's commitment. Together they
-  // place epoch 0's commitment EARLIER IN THE CHAIN than the first bet's epoch. Without them the
-  // field sits in the dataset and is read by nothing.
-  //
-  // WHAT IT IS NOT. A hash chain orders records; it does not date
-  // them. This establishes that epoch 0's commitment was already fixed by a record the capture holds
-  // from before the first bet — as recorded BY THE CAPTURE. The anchor for "before" is the auditor's
-  // own capture record, not an independently authenticated timestamp, so the detail string below
-  // says "conditional on the attested chronology" and names limitation L18. Wording such as
-  // "the operator could not have chosen it after seeing a bet" would claim more than a matching
-  // hash can carry.
-  const pre = ctx.meta.preCapture as
-    { hashedServerSeed?: string; revealedServerSeed?: string; nextHashedServerSeed?: string } | null | undefined;
-  const epoch0 = byEpoch[0];
-  let preState: string;
-  let preOk = false;
-  if (!pre || !pre.hashedServerSeed || !pre.revealedServerSeed || !pre.nextHashedServerSeed) {
-    preState = 'no meta.preCapture record — epoch 0\'s commitment has no pre-capture witness';
-  } else {
+  const expectedTransitions = EXPECTED_SEEDS - EXPECTED_CAPTURES;
+  let preOkCount = 0, crossLinked = 0;
+  const preNotes: string[] = [];
+  for (const c of captures) {
+    const pre = c.preCapture;
+    const first = byEpoch.find((s) => s.capture === c.index);
+    if (!pre || !pre.hashedServerSeed || !pre.revealedServerSeed || !pre.nextHashedServerSeed || !first) {
+      preNotes.push(`file ${c.index}: no pre-capture record`);
+      continue;
+    }
     const preCommitOk = commitHash(pre.revealedServerSeed) === pre.hashedServerSeed;
-    const preLinkOk = pre.nextHashedServerSeed === epoch0.hashedServerSeed;
-    preOk = preCommitOk && preLinkOk;
-    preState = preOk
-      ? 'pre-capture link verified: the pair the capture recorded before the first bet reveals a seed that hashes to its own commitment, and its nextHashedServerSeed IS epoch 0\'s commitment — so epoch 0\'s commitment was already fixed by an EARLIER LINK IN THE CHAIN. A hash chain orders records, it does not date them: that this link predates the first bet is the auditor\'s capture record — an ASSUMED premise, not independently authenticated timing (declared limitation L18), so the no-post-hoc-choice reading of it is CONDITIONAL on that attested chronology'
-      : `pre-capture link BROKEN (commitment ${preCommitOk ? 'ok' : 'MISMATCH'}, link to epoch 0 ${preLinkOk ? 'ok' : 'MISMATCH'})`;
+    const preLinkOk = pre.nextHashedServerSeed === first.hashedServerSeed;
+    if (preCommitOk && preLinkOk) preOkCount++;
+    else preNotes.push(`file ${c.index}: commitment ${preCommitOk ? 'ok' : 'MISMATCH'}, link to epoch ${first.epoch} ${preLinkOk ? 'ok' : 'MISMATCH'}`);
+    // Measured, not required: does the previous file's last next-hash reach this file?
+    const prevLast = [...byEpoch].reverse().find((s) => s.capture === c.index - 1);
+    if (prevLast && (prevLast.nextHashedServerSeed === pre.hashedServerSeed || prevLast.nextHashedServerSeed === first.hashedServerSeed)) crossLinked++;
   }
+  const preOk = captures.length === EXPECTED_CAPTURES && preOkCount === EXPECTED_CAPTURES;
 
   const s2 = step(2, 'Next-Seed Pre-Commitment Chain',
     promoFails === 0 && promoChecked === expectedTransitions && preOk ? 'PASS' : 'FAIL',
     (promoFails === 0
-      ? `${promoChecked}/${expectedTransitions} transitions: nextHashedServerSeed == next epoch's hashedServerSeed (chain INTACT)`
+      ? `${promoChecked}/${expectedTransitions} in-file transitions: nextHashedServerSeed == next epoch's hashedServerSeed (chain INTACT inside each of the ${EXPECTED_CAPTURES} capture files)`
       : `${promoChecked - promoFails}/${expectedTransitions} match; ${promoFails} mismatch`)
-    + `; ${preState}`,
+    + `; pre-capture link ${preOkCount}/${EXPECTED_CAPTURES}: the pair each file recorded before its first bet reveals a seed that hashes to its own commitment, and its nextHashedServerSeed IS the commitment of the file's first epoch`
+    + (preNotes.length ? ` (${preNotes.join('; ')})` : '')
+    + `; ${crossLinked}/${EXPECTED_CAPTURES - 1} file-to-file links are in the dataset (the last next-hash of one file is not the next file's pre-capture pair or first commitment: the account's seed pair rotated in between, outside this dataset, so each file stands on its own anchor)`
+    + '. A hash chain orders records, it does not date them: that each anchor predates its file\'s first bet is the auditor\'s capture record, an ASSUMED premise, not independently authenticated timing (declared limitation L18), so the no-post-hoc-choice reading of it is CONDITIONAL on that attested chronology',
   );
 
   // ── Step 3: Hash consistency within epoch ────────────────────────────────────
@@ -123,8 +132,8 @@ export function run(ctx: VerifyContext): StepResult[] {
     // Interior contiguity alone cannot see bets withheld BEFORE the first or AFTER the last
     // recorded nonce. The three bounds below have DIFFERENT evidentiary weight:
     //   • leading  — operator-sourced (the rotate response's post-rotation nonce), a real guard;
-    //   • epoch size — the capture placed exactly meta.epochSize bets per pair, so a short epoch
-    //                  exposes a dropped bet ANYWHERE (interior or last), a real invariant;
+    //   • epoch size — the plan (src/config.ts EXPECTED_EPOCHS) fixes the rounds of every epoch, so
+    //                  a short epoch exposes a dropped bet ANYWHERE (interior or last), a real invariant;
     //   • trailing — operator-witnessed ONLY if operatorBetCount was captured; otherwise nonceEnd
     //                is the auditor's OWN last recorded nonce and can be checked for internal
     //                consistency only. Trailing withholding is not observable client-side (R-ORPHAN).
@@ -135,16 +144,24 @@ export function run(ctx: VerifyContext): StepResult[] {
       if (seedEntry.nonceStart != null && minNonce !== seedEntry.nonceStart) {
         hardFailures.push(`Epoch ${epochNum}: first observed nonce ${minNonce} != operator post-rotation nonce ${seedEntry.nonceStart} (leading bets withheld?)`);
       }
-      // G-BIND: the epoch size comes from src/config.ts, NOT from
-      // `ctx.meta.epochSize`. Read from the header, this guard catches only an INCOHERENT forgery —
-      // a reviewer dropped nonces 30–49 from every epoch, set `meta.epochSize = 30`, and the line
-      // agreed with the shrunken data. Against a coherent shrink a header-sourced bound is not an
-      // invariant at all.
-      if (epochBets.length !== EXPECTED_EPOCH_SIZE) {
-        hardFailures.push(`Epoch ${epochNum}: ${epochBets.length} bets != audited epoch size ${EXPECTED_EPOCH_SIZE} (src/config.ts)`);
-      }
-      if (ctx.meta.epochSize !== EXPECTED_EPOCH_SIZE) {
-        hardFailures.push(`Epoch ${epochNum}: dataset header epochSize ${ctx.meta.epochSize} != audited epoch size ${EXPECTED_EPOCH_SIZE}`);
+      // G-BIND: the epoch size comes from src/config.ts (EXPECTED_EPOCHS, one row per epoch), NOT
+      // from the dataset. Read from the dataset, this guard catches only an INCOHERENT forgery:
+      // drop the trailing nonces of every epoch, rewrite the header and every seed record to match,
+      // and a dataset-sourced size agrees with the shrunken data. Against a coherent shrink a
+      // dataset-sourced bound is not an invariant at all.
+      const plan = EXPECTED_EPOCHS[epochNum];
+      if (!plan) {
+        hardFailures.push(`Epoch ${epochNum}: not in the audited plan (src/config.ts EXPECTED_EPOCHS)`);
+      } else {
+        if (epochBets.length !== plan.bets) {
+          hardFailures.push(`Epoch ${epochNum}: ${epochBets.length} bets != audited epoch size ${plan.bets} (src/config.ts)`);
+        }
+        if (seedEntry.plannedBets !== plan.bets) {
+          hardFailures.push(`Epoch ${epochNum}: seed record plannedBets ${seedEntry.plannedBets} != audited epoch size ${plan.bets}`);
+        }
+        if (maxNonce !== plan.bets - 1 && missing.length === 0) {
+          hardFailures.push(`Epoch ${epochNum}: last nonce ${maxNonce} != audited epoch size ${plan.bets} - 1`);
+        }
       }
       if (seedEntry.operatorBetCount != null) {
         if (maxNonce !== seedEntry.operatorBetCount - 1) {
@@ -174,7 +191,8 @@ export function run(ctx: VerifyContext): StepResult[] {
     epochsChecked++;
   }
 
-  if (epochsChecked !== seeds.length) hardFailures.push(`coverage: audited ${epochsChecked}/${seeds.length} epochs`);
+  if (epochsChecked !== seeds.length || epochsChecked !== EXPECTED_SEEDS) hardFailures.push(`coverage: audited ${epochsChecked}/${EXPECTED_SEEDS} epochs`);
+  const planSizeOk = [...byHash.values()].filter((eb) => eb.length === EXPECTED_EPOCHS[eb[0].epoch]?.bets).length;
   let s4status: 'PASS' | 'FLAG' | 'FAIL';
   let s4detail: string;
   // A reconstructable capture-retry gap is a FLAG with origin = capture — NEVER a PASS. Profile
@@ -182,7 +200,7 @@ export function run(ctx: VerifyContext): StepResult[] {
   // log attributes to an auditor-side retry, where the revealed seed reconstructs every recorded
   // bet, is disclosed with a limitation row and counted, but is verdict-neutral (origin = capture
   // is not scored against the game). Returning PASS here would erase the disclosure. On THIS capture
-  // every epoch is fully contiguous 0..49 so the branch does not fire, but the mechanism is present
+  // every epoch is fully contiguous so the branch does not fire, but the mechanism is present
   // so a future capture that DID retry is disclosed rather than absorbed.
   let s4origin: 'capture' | 'operator' | undefined;
   if (hardFailures.length > 0) {
@@ -194,7 +212,7 @@ export function run(ctx: VerifyContext): StepResult[] {
     s4detail = `LIMITATION ROW (origin = capture, verdict class unchanged): ${epochsChecked} epochs, single client seed each, nonces otherwise contiguous; ${disclosedGaps.length} nonce gap${disclosedGaps.length === 1 ? '' : 's'} attributable to an auditor-side capture retry — the revealed seed reconstructs every recorded bet in the affected epoch, so no operator draw is withheld or unverifiable, but the gap is DISCLOSED not passed over (${disclosedGaps.join('; ')}). An operator-side gap or repeat would be a HARD FAIL; this is not one.`;
   } else {
     s4status = 'PASS';
-    s4detail = `${epochsChecked} epochs: single client seed each, ${EXPECTED_EPOCH_SIZE} distinct contiguous nonces 0..${EXPECTED_EPOCH_SIZE - 1} (no interior gaps, no reuse); first nonce == nonceStart (capture default 0 — not operator-witnessed in this capture) in ${epochsChecked}/${seeds.length}; ${EXPECTED_EPOCH_SIZE}/${EXPECTED_EPOCH_SIZE} bets per epoch, epoch size bound to src/config.ts not to the dataset header (G-BIND); `
+    s4detail = `${epochsChecked} epochs: single client seed each, distinct contiguous nonces 0..size−1 with the size the plan gives each epoch (${[...new Set(EXPECTED_EPOCHS.map((e) => e.bets))].sort((x, y) => x - y).join(' / ')} rounds; no interior gaps, no reuse); first nonce == nonceStart in ${epochsChecked}/${seeds.length} (the leading bound: the post-rotation nonce served by the rotation reply that opened the epoch); ${planSizeOk}/${EXPECTED_SEEDS} epochs hold exactly their planned number of bets, the size bound to src/config.ts not to the dataset (G-BIND); `
       + (trailingAuditorRecorded
         ? 'trailing bound is auditor-recorded (no operator end counter in this capture); trailing withholding is not observable client-side, see R-ORPHAN and declared limitation L13 in MANIFEST.md'
         : 'trailing bound operator-witnessed via operatorBetCount');

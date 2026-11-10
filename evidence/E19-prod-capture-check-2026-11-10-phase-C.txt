@@ -1,0 +1,24 @@
+liqd-dice-prod-capture-2026-11-10T10-37-36-842Z.ndjson
+LIQD dice PROD capture check: ALL CHECKS PASS
+  PASS  file                           715 lines, 0 unreadable, SHA-256 5f4fbf8d2eb5be618998d032564aa29863a5cd8ed2adaca1f507b1e3d9eccad8
+  PASS  secret scan                    clean (JWT, e-mail, public IPv4, secret-looking keys, also inside reply bodies)
+  PASS  plan                           liqd.com (https://liqd.com), 2 epochs, 235 rounds in phases C 235 at 10.00000000 USDT (currencyId 3); every phase at or above its floor; runner dice-prod-capture-runner 2026-11-03 build 3d2038fe26a7
+  PASS  pre-capture anchor             active 3aba6e0d02a3... read and revealed before any bet: commit OK, link OK
+  PASS  epoch commitments              2/2 epochs: sha256(revealed server seed) = the hash committed before its first round (2 closed by a rotation)
+  PASS  chain                          2/2: each epoch's next hash is the hash active after its rotation
+  PASS  client seeds                   2/2 submitted client seeds accepted; 2/2 drawn after the commitment they were used under was published
+  PASS  bet count                      235 rounds recorded (cap 235), 0 recorded twice; 235 rounds started; 0 reply lost; 0 refused and skipped
+  PASS  round seeds                    seed hash 235/235 (235 served in the reply, the rest carry none); client seed 235/235 (235 served); nonce sequence 235/235
+  PASS  phases                         every round records its phase, phase id and the phase's stake 235/235; rounds per phase C 235/235
+  PASS  request = served               band params, the phase's stake and idempotency key served as requested 235/235; stake = the phase's stake (0.10 / 10.00) 235/235
+  PASS  roll (src/rng.ts)              roll recomputed from the revealed seed 235/235; win by the half-open band rule 235/235
+  PASS  multiplier (9900/bps)          served multiplier === 9900 / basis points on a win, 0 on a loss 235/235
+  PASS  payout                         winningAmount = floor8(stake x 9900 / bps), prod's round-down (7 Nov: 2268/2268 wins) 235/235; wallet fields 235/235; won/lost 235/235
+  PASS  coverage                       1/1 settings reached; rounds per setting 235..235
+  PASS  verifier replies               235/235 rounds have a verify reply (HTTP 200, the expected shape); 0 other replies stored (refusals, kept as received)
+  PASS  verifier requests              request = the round's revealed inputs 235/235; POST https://liqd.com/api/v1/originals/dice/verify 235/235
+  PASS  verifier = served round        echo 235/235; roll 235/235, win 235/235, multiplier 235/235 equal the served round; roll = the src/rng.ts recompute 235/235
+  ----  run record                     refusals 0, re-sent after a stop 0, lost replies 0, skipped 0, gaps 0, resume checks 0, steps 0, stops 0
+  ----  money                          staked 2350.00000000 USDT, paid 2494.80000000, net 144.80000000 (live rounds illustrate variance only)
+  ----  window                         rounds 2026-11-10T10:28:44.974Z .. 2026-11-10T10:33:47.376Z; verify replies dated Tue, 10 Nov 2026 10:33:48 GMT .. Tue, 10 Nov 2026 10:37:36 GMT
+  PASS  export redaction               1 IP address(es) replaced by "[ip redacted]" in the exported copy (IPv4 1, IPv6 0; in line 1 (meta)); 1 marker(s) found in the file

@@ -1,5 +1,5 @@
 /**
- * The supported runtime is declared, and this is where a reviewer finds out about it early.
+ * The supported runtime is declared, and this is where anyone running the package finds out about it early.
  *
  * ── WHY ────────────────────────────────────────────────────────────────────────────────────────
  * The pristine package passes on Node v22.23.1 and FAILS on Node 24 — one probability differing by
@@ -34,7 +34,7 @@ describe('supported runtime', () => {
   });
 
   it('rejects the runtimes the package was NOT validated on', () => {
-    assert.strictEqual(isSupportedRuntime('24.13.1'), false, 'a Node 24 version string — the major the D1 failure was reported on');
+    assert.strictEqual(isSupportedRuntime('24.13.1'), false, 'a Node 24 version string — the major the runtime failure was reported on');
     assert.strictEqual(isSupportedRuntime('20.11.0'), false, 'the runtime the old README advertised');
     assert.strictEqual(isSupportedRuntime('23.0.0'), false);
     assert.strictEqual(isSupportedRuntime('22.0.0'), true);

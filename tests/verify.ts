@@ -10,7 +10,7 @@
  * EVERY run, including a failing one, destroys the evidence of a disagreement.
  * `report-figures.json` is an artifact of record that Step 19 itself scores, so a run
  * that disagreed with the committed evidence would replace the evidence of the disagreement and
- * the next run would pass. A reviewer executed that: FAIL on Node 24, then PASS on the re-run,
+ * the next run would pass. Executed: FAIL on Node 24, then PASS on the re-run,
  * with nothing left to show the first result. Repeated testing must not be able to erase an
  * original disagreement.
  *
@@ -34,7 +34,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { loadDataset } from '../src/loader';
-import { DATASET_SHA256, SIMULATION_SHA256, SIMULATION_HTML_SHA256, AUDIT_ID, VERDICT_QUALIFIER } from '../src/config';
+import { DATASET_SHA256, DATASET_FILE, SIMULATION_SHA256, SIMULATION_HTML_SHA256, AUDIT_ID, VERDICT_QUALIFIER, EXPECTED_STEPS } from '../src/config';
 import { computeReportFigures } from '../src/report-figures';
 import { assertSupportedRuntime, VALIDATED_RUNTIME } from '../src/runtime';
 import { fieldDiff, beyondTolerance, maxima, DIFF_ATOL, DIFF_RTOL } from '../src/diff';
@@ -56,7 +56,7 @@ import * as liveFit     from './steps/live-fit';
 import * as statistical from './steps/statistical';
 import * as standardization from './steps/standardization';
 
-const DATASET_PATH        = path.join(__dirname, '../data/dice-master-6700bets.json');
+const DATASET_PATH        = path.join(__dirname, '..', DATASET_FILE);
 // Single-sourced in src/config.ts: declared here AND in src/simulate.ts, the same pin would let
 // the producer and the verifier score different captures.
 const EXPECTED_DATASET_HASH = DATASET_SHA256;
@@ -66,7 +66,7 @@ const RUN_DIR             = path.join(OUTPUTS_DIR, 'run');
 /** PF_EMIT=1 (npm run report) is the ONLY thing that rewrites a committed artifact. */
 const EMIT                = process.env.PF_EMIT === '1';
 
-// Refuse an unvalidated runtime BEFORE anything is read, scored or written (D1). An exact-equality
+// Refuse an unvalidated runtime BEFORE anything is read, scored or written. An exact-equality
 // suite on a runtime whose Math.exp differs in the last bit produces a FAIL that says nothing about
 // the casino, and the honest response is to decline the run rather than to widen the comparison.
 assertSupportedRuntime();
@@ -81,7 +81,7 @@ console.log(EMIT
 
 // ── Dataset presence guard (graceful) ─────────────────────────────────────────
 if (!fs.existsSync(DATASET_PATH)) {
-  console.log('\n  [ERROR] Dataset not found at data/dice-master-6700bets.json');
+  console.log(`\n  [ERROR] Dataset not found at ${DATASET_FILE}`);
   console.log('  Cannot run verification without the captured master dataset.');
   console.log('\n══════════════════════════════════════════════════════════\n');
   process.exit(1);
@@ -106,25 +106,22 @@ for (const b of bets) {
   byHash.set(b.hashedServerSeed, arr);
 }
 
-const phaseABets = bets.filter(b => b.phase === 'A');
-const phaseBBets = bets.filter(b => b.phase === 'B');
-const phaseCBets = bets.filter(b => b.phase === 'C');
-const phaseDBets = bets.filter(b => b.phase === 'D');
-const phaseEBets = bets.filter(b => b.phase === 'E');
-
 if (!fs.existsSync(OUTPUTS_DIR)) fs.mkdirSync(OUTPUTS_DIR, { recursive: true });
 
 console.log(`  Dataset: ${bets.length} bets | Seeds: ${seeds.length} | SHA-256 verified`);
-console.log(`  Phase A:${phaseABets.length} B:${phaseBBets.length} C:${phaseCBets.length} D:${phaseDBets.length} E:${phaseEBets.length}\n`);
+{
+  const perPhase = new Map<string, number>();
+  for (const b of bets) perPhase.set(b.phaseId, (perPhase.get(b.phaseId) ?? 0) + 1);
+  console.log(`  Phases: ${[...perPhase].map(([k, n]) => `${k} ${n}`).join(' · ')}\n`);
+}
 
 const ctx: VerifyContext = {
   bets, seeds, seedMap, byHash,
-  phaseA: phaseABets, phaseB: phaseBBets, phaseC: phaseCBets, phaseD: phaseDBets, phaseE: phaseEBets,
   outputsDir: OUTPUTS_DIR,
   datasetSha256: ds.sha256,
   expectedDatasetHash: EXPECTED_DATASET_HASH,
   meta: ds.meta,
-  simArtifact: null,   // populated by the simulation step (FIX-3)
+  simArtifact: null,   // populated by the simulation step
 };
 
 // ── Run scored steps ──────────────────────────────────────────────────────────
@@ -141,6 +138,15 @@ const results = [
   ...standardization.run(ctx),// Steps 18–21
   ...liveFit.run(ctx),        // Step  22
 ];
+
+// ── Execution completeness (G-EXEC) ────────────────────────────────────────────
+// The verdict below is computed over `results`. A run that executed fewer steps than the suite
+// holds, or steps out of order, must not reach a verdict at all: the step count is compared with
+// EXPECTED_STEPS (src/config.ts), a number from OUTSIDE the results array.
+if (results.length !== EXPECTED_STEPS || !results.every((r, i) => r.step === i + 1)) {
+  console.error(`\n  [ERROR] executed ${results.length} step(s) [${results.map((r) => r.step).join(', ')}], expected steps 1..${EXPECTED_STEPS}: no verdict is given for an incomplete run`);
+  process.exit(1);
+}
 
 // ── Profile labels ──────────────────────────────────────────────────────────────
 // Each scored step says which ProvablyFair.org Dice profile check it implements, so the conformance
@@ -221,7 +227,7 @@ console.log('══════════════════════�
 // outputs/run/diff.json, never in the committed verification-results.json / report-figures.json.
 const runAt = new Date().toISOString();
 const verificationBody = {
-  // The assigned (provisional) audit ID, single-sourced from src/config.ts so it agrees with the
+  // The assigned audit ID, single-sourced from src/config.ts so it agrees with the
   // README/MANIFEST chapters and is machine-checkable (DICE-28 "the audit ID is assigned").
   auditId: AUDIT_ID,
   verdictQualifier: VERDICT_QUALIFIER,
@@ -234,7 +240,7 @@ const verificationBody = {
     // expected = the pin in this file; actual = the recomputed hash; match must be true
     // (loadDataset already exits(1) on mismatch, so a written file always has match: true).
     dataset: {
-      file: 'data/dice-master-6700bets.json',
+      file: DATASET_FILE,
       expected: EXPECTED_DATASET_HASH,
       actual: ds.sha256,
       match: ds.sha256 === EXPECTED_DATASET_HASH,
@@ -287,7 +293,7 @@ if (EMIT) {
   // ── EXPLICIT REPORT GENERATION (`npm run report`) ───────────────────────────────────────────
   // The only path that rewrites a committed artifact. It is a separate command precisely so that
   // replacing evidence is an act somebody chose, reviewed as a diff, rather than a side effect of
-  // testing (D1).
+  // testing.
   write(OUTPUTS_DIR, VERIFICATION_FILE, verificationBody);
   write(OUTPUTS_DIR, FIGURES_FILE, figuresBody);
   console.log(`  REPORT GENERATION: rewrote outputs/${VERIFICATION_FILE} and outputs/${FIGURES_FILE}`);

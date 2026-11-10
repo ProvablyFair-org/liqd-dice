@@ -1,4 +1,4 @@
-// Client QA round 5 (2026-09-11, blocker 1), executed: publish an `over 98` effective-edge row whose
+// Executed: publish an `over 98` effective-edge row whose
 // simulatedRTP corresponds to a FRACTIONAL number of wins.
 //
 //     0.99000495 × 2,000,000 / 49.5 = 40,000.2 wins
@@ -21,7 +21,7 @@ import crypto from 'node:crypto';
 const repo = process.argv[2];
 if (!repo) { console.error('usage: node fractional-win-count.mjs <sandboxRepo>'); process.exit(2); }
 
-const FORGED_RTP = 0.99000495;          // the reviewer's value, verbatim
+const FORGED_RTP = 0.99000495;          // the forged value
 const TARGET_LABEL = 'over 98';
 
 const simPath = path.join(repo, 'outputs/simulation-results.json');

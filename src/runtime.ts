@@ -2,10 +2,10 @@
  * The SUPPORTED RUNTIME, declared in code and enforced before any scored step runs.
  *
  * ── WHY THIS FILE EXISTS ────────────────────────────────────────────────────────────────────────
- * A reviewer extracted the pristine package twice. On Node v22.23.1 it returned 21/21 Full Pass. On
+ * The pristine package was extracted twice. On Node v22.23.1 it returned 21/21 Full Pass. On
  * a Node 24 release it FAILED, because one probability differed by a single ULP.
  *
- * WHICH PROBABILITY. The field the reviewer reported is
+ * WHICH PROBABILITY. The field reported is
  * `cherryPickPower.pAtMinRejectable` in `outputs/report-figures.json` — a BINOMIAL upper-tail
  * probability, `binomialTailP` in `src/stats.ts`, whose every term carries a `p ** i` and a
  * `(1 - p) ** (n - i)`. ECMAScript leaves the `**` operator implementation-approximated exactly as
@@ -30,8 +30,8 @@
  * WHAT WAS ACTUALLY EXECUTED. Every figure in this package was produced on the runtime named in
  * VALIDATED_RUNTIME below. Node 24 was NOT re-tested by this repository, before or after the fix —
  * the pin exists precisely so that an untested runtime is refused rather than silently scored. The
- * failing run is the reviewer's report, not our observation: our record of it names v24.13.1, the
- * reviewer has since also cited a different Node 24 patch release, and this package deliberately
+ * failing run is an external report, not our observation: our record of it names v24.13.1, the
+ * report has since also cited a different Node 24 patch release, and this package deliberately
  * does not restate a patch version it did not witness. What the pin acts on is the MAJOR, and Node
  * 24 is what both reports agree on. Declared as limitation L17.
  */

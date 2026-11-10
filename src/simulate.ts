@@ -4,7 +4,7 @@
  * The dice outcome is a SINGLE bias-free draw in [0, 10000) at cursor 0, scaled /100 to a
  * roll in [0.00, 99.99] (src/rng.ts diceRoll). A bet wins if the roll lies inside (or, when
  * `inverted`, outside) the HALF-OPEN band [lower, upper) — lower inclusive, upper
- * exclusive, pinned by the operator-verifier boundary probes (E13). There is no
+ * exclusive, witnessed by the production verifier boundary probes (evidence E17). There is no
  * per-tile / sequence structure — the RNG null is simply "the draw is uniform on 0..9999 and serially
  * independent", which is a proper single-outcome multinomial, so standard chi² (df = bins−1)
  * is the correct test here.
@@ -29,7 +29,7 @@
  *
  * Pass 2 — casino seeds from the captured dataset's revealed serverSeeds. TWO screens:
  *   (a) SERVED-BAND PAYOUT-WEIGHTED RETURN (DICE-21, load-bearing): every revealed seed replayed for
- *       SIM_PASS2_NONCES nonces; early window = the captured nonce range (0..49), reference = the
+ *       SIM_PASS2_NONCES nonces; early window = the epoch's captured nonce range (0..size−1), reference = the
  *       remainder; the statistic is the payout-weighted return of the bands the casino actually
  *       served, standardised by its EXACT per-bet mean and variance (a scaled Poisson-binomial across
  *       seeds, each pᵢ the served band's exact lattice win-probability), read against the one-sided
@@ -72,10 +72,10 @@ import { createHmac } from 'node:crypto';
 import { diceRoll, generateProvablyFairNumber } from './rng';
 import { chiSquaredTest, lag1Autocorrelation, runsTest, inverseCriticalZ, binomialTailP, normalLowerTailP } from './stats';
 import {
-  RANGE, CURSOR, SCALE, HOUSE_EDGE, ALPHA, ALPHA_SCREEN, DATASET_SHA256,
+  RANGE, CURSOR, SCALE, HOUSE_EDGE, ALPHA, ALPHA_SCREEN, DATASET_SHA256, DATASET_FILE,
   SIM_UNIFORMITY_DRAWS, SIM_SERIAL_DRAWS, SIM_EDGE_BETS, SIM_RTP_BETS, SIM_RTP_MARKS,
   SIM_EDGE_BANDS, SIM_RTP_STRATEGY, SIM_CHERRY_BINS, SIM_CHERRY_WINDOW, SIM_CHERRY_SEED_ALPHA,
-  SIM_PASS2_NONCES, SIM_PASS2_EARLY_WINDOW, SIM_PASS2_ALPHA,
+  SIM_PASS2_NONCES, SIM_PASS2_ALPHA, expectedEpochSize,
   SIM_MASTER_SEED, SIM_TARGETS, SIM_TARGET_BETS, SIM_TARGET_MARKS, SIM_TARGET_SEED_COUNTER_BASE, SIM_TARGET_SEEDS_EACH,
   quotedMultiplier, discreteWinProbability, theoreticalRTP, diceWin, servedReturnSign,
 } from './config';
@@ -299,7 +299,7 @@ function pass1() {
 // Uses the revealed server seeds from the dataset (loaded lazily to avoid a hard dep when
 // the dataset path is not present; simulation is still meaningful from Pass 1 alone).
 function pass2() {
-  const dsPath = path.join(__dirname, '../data/dice-master-6700bets.json');
+  const dsPath = path.join(__dirname, '..', DATASET_FILE);
   if (!fs.existsSync(dsPath)) return { available: false as const };
   const ds = loadDataset(dsPath, EXPECTED_DATASET_HASH);   // SHA-256-guarded (aborts on tamper)
   const seeds: { epoch: number; serverSeed: string | null; clientSeed: string }[] = ds.seeds;
@@ -356,14 +356,13 @@ function pass2() {
 
   // ── SERVED-BAND PAYOUT-WEIGHTED RETURN (DICE-21, load-bearing) ────────────────────────────────
   // Every revealed seed replayed for SIM_PASS2_NONCES nonces. Early window = the captured nonce
-  // range (0..W−1, the 50 served nonces); reference = the remainder. Statistic = the payout-weighted
+  // range of that epoch (0..size−1, the nonces actually served); reference = the remainder. Statistic = the payout-weighted
   // return of the bands the casino actually served, standardised by its EXACT per-bet mean/variance
   // (a scaled Poisson-binomial across seeds); the tail is the one-sided normal (CLT) lower tail. Each
   // pᵢ is discreteWinProbability(band) — the band's EXACT lattice win-probability. This producer emits
   // per-epoch ROWS; Step 17 (tests/steps/simulation.ts) RE-DERIVES every window from the revealed seed
   // and compares with exact equality, so a forged row has nothing to hide behind. See src/config.ts
   // SIM_PASS2_* for what is exact (the moments) vs asymptotic (the tail).
-  const W2 = SIM_PASS2_EARLY_WINDOW;
   const betsByHash = new Map<string, typeof ds.bets>();
   for (const b of ds.bets) {
     const arr = betsByHash.get(b.hashedServerSeed);
@@ -385,7 +384,9 @@ function pass2() {
     const serverSeed = seedByHash.get(hash)!.serverSeed!;
     const epochBets = betsByHash.get(hash)!.slice().sort((a, b) => a.nonce - b.nonce);
     const clientSeed = epochBets[0].clientSeed;
-    // Served band per early-window nonce (LIQD nonces are 0-based and contiguous 0..49). A missing
+    // The early window IS this epoch's captured nonce range: its planned size in src/config.ts.
+    const W2 = expectedEpochSize(epochBets[0].epoch);
+    // Served band per early-window nonce (LIQD nonces are 0-based and contiguous). A missing
     // early nonce falls back to the nearest served band so the tiled reference window stays defined.
     const served: DiceParams[] = new Array(W2);
     for (const b of epochBets) if (b.nonce >= 0 && b.nonce < W2) served[b.nonce] = b.params;
@@ -425,12 +426,12 @@ function pass2() {
   const aggEarlyZ = totalEarlyVar > 0 ? (totalEarlyReturn - totalEarlyExpected) / Math.sqrt(totalEarlyVar) : 0;
   const aggEarlyP = normalLowerTailP(aggEarlyZ);                     // one-sided lower tail (fixed in code; specified after the capture)
   const zAlpha = inverseCriticalZ(2 * SIM_PASS2_ALPHA), zPower = inverseCriticalZ(2 * 0.20);
-  const totalEarlyBets = perEpoch.length * W2;
+  const totalEarlyBets = perEpoch.reduce((a, r) => a + r.earlyN, 0);
   const minDetectablePerBetPct = totalEarlyBets > 0
     ? ((zAlpha + zPower) * Math.sqrt(totalEarlyVar) / totalEarlyBets) * 100 : NaN;
   const servedBand = {
     nonces: SIM_PASS2_NONCES,
-    earlyWindow: W2,
+    earlyBets: totalEarlyBets,
     alpha: SIM_PASS2_ALPHA,
     epochs: perEpoch.length,
     totalEarlyReturn, totalEarlyExpected, totalEarlyVar,

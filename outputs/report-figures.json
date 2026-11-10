@@ -1,57 +1,112 @@
 {
-  "datasetSha256": "ca1a181a9b4c89a1823e15fe71603b7a5e2267382c134873d80cba536d3aef34",
-  "bets": 6700,
-  "wins": 2807,
+  "datasetSha256": "b5357d37d4c65b26e04915ddc8d59d2b8d144f81a51242f278080a1a2d8b8697",
+  "bets": 5935,
+  "wins": 2622,
   "settledRtp": {
-    "belowNominal": 2742,
-    "aboveNominal": 2687,
-    "exactlyNominal": 1271,
-    "minPct": 98.999994912,
-    "maxPct": 99.000005204,
+    "belowNominal": 1650,
+    "aboveNominal": 0,
+    "exactlyNominal": 4285,
+    "minPct": 98.999992,
+    "maxPct": 99.00000000000001,
     "nominalPct": 99,
     "anyAtOrAbove100": false
   },
   "settlementResidual": {
-    "roundedDown": 1341,
-    "roundedUp": 1316,
-    "exactlyOnProduct": 150,
-    "maxAbsUsdc": 5.49818341957503e-9,
-    "netUsdc": 4.9077862406754466e-8,
-    "exactTies": 274
+    "roundedDown": 1102,
+    "roundedUp": 0,
+    "exactlyOnProduct": 1520,
+    "maxAbsUsdt": 8.163265306122449e-9,
+    "netUsdt": -0.000005788806907378331,
+    "floatClosedFormMisses": 29
   },
   "boundary": {
-    "betsWithReachableUpperBound": 4106,
-    "betsWithUnreachableUpperBound": 2594,
-    "expectedUpperBoundHits": 0.4106,
+    "betsWithReachableUpperBound": 4546,
+    "betsWithUnreachableUpperBound": 1389,
+    "expectedUpperBoundHits": 0.4546,
     "observedUpperBoundHits": 0,
-    "observedLowerBoundHits": 2,
+    "observedLowerBoundHits": 0,
     "betsWhereBoundaryModelsDisagree": 0,
-    "winFlagsReproducedHalfOpen": 6700,
-    "winFlagsReproducedInclusiveBothEnds": 6700
+    "winFlagsReproducedHalfOpen": 5935,
+    "winFlagsReproducedInclusiveBothEnds": 5935
   },
   "cherryPickPower": {
-    "seeds": 134,
+    "seeds": 33,
     "nullFlagRate": 0.04381476839059315,
-    "expectedFlags": 5.8711789643394825,
-    "minRejectableFlags": 13,
-    "pAtMinRejectable": 0.006184317372720253,
+    "expectedFlags": 1.445887356889574,
+    "minRejectableFlags": 6,
+    "pAtMinRejectable": 0.002820796077846398,
     "alpha": 0.01,
     "seedAlphaNominal": 0.05
   },
-  "phaseD": {
-    "firstEpoch": 124,
-    "lastEpoch": 133,
-    "epochs": 10,
-    "bets": 500,
-    "stakedUsdc": 50.00000000000044,
-    "paidUsdc": 48.932393480000016,
-    "expectedUsdc": 49.49999999999947,
-    "z": -0.13962285582048553
-  },
   "live": {
-    "wageredUsdc": 2650.0000000000223,
-    "returnedUsdc": 2744.362367300002,
-    "realizedRtpPct": 103.56084404905582,
-    "meanRoll": 49.79604776119394
+    "wageredUsdt": 2920,
+    "returnedUsdt": 3062.00572969,
+    "realizedRtpPct": 104.8632099208904,
+    "meanRoll": 50.17001010951973
+  },
+  "phases": {
+    "A": {
+      "bets": 5000,
+      "epochs": 25,
+      "wins": 2268,
+      "stakeUsdt": 0.1,
+      "wageredUsdt": 500,
+      "returnedUsdt": 497.82905831,
+      "realizedRtpPct": 99.565811662,
+      "classes": 40,
+      "fewestPerClass": 99,
+      "mostPerClass": 200
+    },
+    "D": {
+      "bets": 500,
+      "epochs": 5,
+      "wins": 226,
+      "stakeUsdt": 0.1,
+      "wageredUsdt": 50,
+      "returnedUsdt": 49.57667138,
+      "realizedRtpPct": 99.15334276,
+      "classes": 40,
+      "fewestPerClass": 10,
+      "mostPerClass": 20
+    },
+    "A+": {
+      "bets": 200,
+      "epochs": 1,
+      "wins": 2,
+      "stakeUsdt": 0.1,
+      "wageredUsdt": 20,
+      "returnedUsdt": 19.8,
+      "realizedRtpPct": 99,
+      "classes": 4,
+      "fewestPerClass": 50,
+      "mostPerClass": 50
+    },
+    "C": {
+      "bets": 235,
+      "epochs": 2,
+      "wins": 126,
+      "stakeUsdt": 10,
+      "wageredUsdt": 2350,
+      "returnedUsdt": 2494.8,
+      "realizedRtpPct": 106.16170212765958,
+      "classes": 1,
+      "fewestPerClass": 235,
+      "mostPerClass": 235
+    }
+  },
+  "modes": {
+    "under": 1150,
+    "over": 1387,
+    "inside": 1148,
+    "outside": 2250
+  },
+  "verifier": {
+    "replies": 5935,
+    "equalServedRound": 5935
+  },
+  "playerSeeds": {
+    "epochs": 5,
+    "distinct": 5,
+    "bets": 500
   }
 }

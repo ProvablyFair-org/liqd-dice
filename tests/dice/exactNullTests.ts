@@ -1,11 +1,10 @@
 /**
  * The exact discrete null behind Pass 2 (src/exact-chi2.ts), and its INDEPENDENT re-derivation.
  *
- * WHY IT IS EXACT. Scoring each epoch against a 10,000-replicate parametric bootstrap redrawn on
- * every run makes the flag count itself random: the same 134 seeds produce 9, 10 or 11 flags, and
- * at 11 the verifier's binomial tail crosses its threshold, so a clean `npm test` fails Step 17
- * about 6% of the time and additionally prints "DISAGREES with recomputation (tampered?)" because
- * the producer's self-report was written under a different draw of the same null.
+ * WHY IT IS EXACT. Scoring each epoch against a parametric bootstrap redrawn on every run would
+ * make the flag count itself random: the same seeds would produce a different number of flags from
+ * run to run, a clean `npm test` could cross the binomial threshold by chance, and the producer's
+ * self-report, written under a different draw of the same null, would disagree with the verifier.
  *
  * The statistic is discrete, so the null needs no sampling at all. `src/exact-chi2.ts` enumerates
  * every partition of 50 into at most 20 parts and accumulates exact BigInt assignment counts. The

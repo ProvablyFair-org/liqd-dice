@@ -7,3 +7,4 @@ outputs/run/
 !outputs/simulation-results.json
 !outputs/report-figures.json
 !outputs/rtp-claim-table.json
+!outputs/rtp-convergence.html

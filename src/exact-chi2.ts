@@ -8,7 +8,7 @@
  * a sampled null.
  *
  * WHY THIS EXISTS. A sampled null — a parametric bootstrap drawn inside `simulate.ts` — is
- * resampled on every run, so the SAME 134 revealed seeds yield a different flag count from one
+ * resampled on every run, so the SAME revealed seeds would yield a different flag count from one
  * rerun to the next, and at the high end the verifier's binomial tail falls below its threshold:
  * a fresh `npm test` fails Step 17 intermittently and additionally prints "DISAGREES with
  * recomputation (tampered?)", because the producer's self-report was written under a different

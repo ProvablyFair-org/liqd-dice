@@ -1,0 +1,856 @@
+{
+  "record": "LIQD production verify endpoint, dice band-boundary probes",
+  "endpoint": "POST https://liqd.com/api/v1/originals/dice/verify",
+  "date": "2026-11-09",
+  "method": "Logged out, no account, no cookies, no bet. Each request carries a server seed LIQD had already revealed in the 7 November 2026 production capture, the client seed of that epoch, a nonce and a band. The nonces were found offline with the package RNG: settled nonces of epoch 0 whose roll gives two bounds (set S, with controls that move the bound by 0.01), unsettled nonces whose roll is exactly 25.00 and 75.00 (set R), and the two settled rounds of the capture that rolled 0.00 and 99.99 (set E). One call re-sends a verify request of the capture itself (sanity). Minimum 2 s between calls.",
+  "source": {
+    "rawLog": {
+      "file": "probes-dice.jsonl",
+      "sha256": "a8a310f4864611d9e194589f09cffdd96f138f8e2d9713dabc0eb81c7d22897b",
+      "records": 26,
+      "answered200": 23
+    },
+    "probePlan": {
+      "file": "dice-probes.json",
+      "sha256": "6a98a2932fcab7508189d2df9ae329526b625be9b0b47e29cacf0159f4b18a47",
+      "probes": 22
+    },
+    "notAnswered": [
+      {
+        "id": "dice-sanity-1",
+        "transport": "fetch",
+        "sentAt": "2026-11-09T19:50:30.027Z",
+        "status": 403,
+        "error": null
+      },
+      {
+        "id": "dice-sanity-1",
+        "transport": "impit",
+        "sentAt": "2026-11-09T19:50:36.732Z",
+        "status": null,
+        "error": "Error: Failed to get Array length on RequestInit.headers"
+      },
+      {
+        "id": "dice-sanity-1",
+        "transport": "impit",
+        "sentAt": "2026-11-09T19:50:43.548Z",
+        "status": null,
+        "error": "TimeoutError: Request timeout (15000 ms) exceeded."
+      }
+    ],
+    "note": "The three records not answered with HTTP 200 are attempts at the sanity call: a plain fetch answered 403 by a Cloudflare challenge page, a client-library error before any request was made, and a 15 s timeout. Whether the timed-out request reached the server is not known. They are listed here and not copied."
+  },
+  "search": {
+    "seeds": 25,
+    "settledNoncesScanned": 5000,
+    "S": {
+      "a": {
+        "epoch": 0,
+        "serverSeed": "3085a86bd812800c76ae7d81191955b2",
+        "clientSeed": "audit8f7ccfa4326c",
+        "nonce": 7,
+        "rollHundredths": 2886,
+        "roll": 28.86,
+        "settled": true
+      },
+      "b": {
+        "epoch": 0,
+        "serverSeed": "3085a86bd812800c76ae7d81191955b2",
+        "clientSeed": "audit8f7ccfa4326c",
+        "nonce": 4,
+        "rollHundredths": 7122,
+        "roll": 71.22,
+        "settled": true
+      },
+      "evaluated": 13
+    },
+    "R": {
+      "lowerTarget": 25,
+      "upperTarget": 75,
+      "unsettledRange": [
+        200,
+        20199
+      ],
+      "evaluatedForLower": 5260,
+      "evaluatedForUpper": 15117,
+      "a": {
+        "epoch": 9,
+        "serverSeed": "edd81eacc3dd5564aa0c26709b918299",
+        "clientSeed": "auditf6f5365ea141",
+        "nonce": 410,
+        "rollHundredths": 2500,
+        "roll": 25,
+        "settled": false
+      },
+      "b": {
+        "epoch": 16,
+        "serverSeed": "e42be262c0afeb4e3700d1a90580b266",
+        "clientSeed": "audit82cc2056621a",
+        "nonce": 804,
+        "rollHundredths": 7500,
+        "roll": 75,
+        "settled": false
+      }
+    },
+    "E": {
+      "roll0": {
+        "epoch": 17,
+        "serverSeed": "f8a011e47813188caa965e5e0f4c925d",
+        "clientSeed": "audit28f0a5faf51b",
+        "nonce": 117,
+        "rollHundredths": 0,
+        "roll": 0,
+        "settled": true
+      },
+      "roll9999": {
+        "epoch": 18,
+        "serverSeed": "76f6cbe2ac74cda67b021b9f70d0084a",
+        "clientSeed": "audit216e8ae924ba",
+        "nonce": 177,
+        "rollHundredths": 9999,
+        "roll": 99.99,
+        "settled": true
+      },
+      "evaluatedFor0": "settled census",
+      "evaluatedFor9999": "settled census"
+    }
+  },
+  "probes": [
+    {
+      "id": "dice-sanity-1",
+      "set": "sanity",
+      "onBound": null,
+      "mode": null,
+      "pair": {
+        "epoch": 0,
+        "nonce": 0,
+        "settled": true
+      },
+      "sentAt": "2026-11-09T19:51:08.546Z",
+      "receivedAt": "2026-11-09T19:51:09.208Z",
+      "params": {
+        "lower": 0,
+        "upper": 2,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 97.67,
+        "win": false,
+        "multiplier": 0
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"3085a86bd812800c76ae7d81191955b2\",\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":0,\"params\":{\"lower\":0,\"upper\":2,\"inverted\":false}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:09 GMT",
+      "bodySha256": "2098cc992b967f483158d6d0708cf86dd99bc9d149ffa40b819262ea47ca6f47",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":0},\"derivationParams\":{\"lower\":0,\"upper\":2,\"inverted\":false},\"outcome\":{\"roll\":97.67,\"win\":false,\"multiplier\":0}}"
+    },
+    {
+      "id": "S-1",
+      "set": "S",
+      "onBound": "roll==lower",
+      "mode": "over",
+      "pair": {
+        "epoch": 0,
+        "nonce": 7,
+        "settled": true
+      },
+      "sentAt": "2026-11-09T19:51:18.089Z",
+      "receivedAt": "2026-11-09T19:51:19.826Z",
+      "params": {
+        "lower": 28.86,
+        "upper": 100,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 28.86,
+        "win": true,
+        "multiplier": 1.3916221535001405
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"3085a86bd812800c76ae7d81191955b2\",\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":7,\"params\":{\"lower\":28.86,\"upper\":100,\"inverted\":false}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:19 GMT",
+      "bodySha256": "cc2877554ac1e7d5e84ec66dcdf75c8e94601927a4f2473c6ed55639ca3953f2",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":7},\"derivationParams\":{\"lower\":28.86,\"upper\":100,\"inverted\":false},\"outcome\":{\"roll\":28.86,\"win\":true,\"multiplier\":1.3916221535001405}}"
+    },
+    {
+      "id": "S-2",
+      "set": "S",
+      "onBound": "roll==lower",
+      "mode": "inside",
+      "pair": {
+        "epoch": 0,
+        "nonce": 7,
+        "settled": true
+      },
+      "sentAt": "2026-11-09T19:51:20.090Z",
+      "receivedAt": "2026-11-09T19:51:20.337Z",
+      "params": {
+        "lower": 28.86,
+        "upper": 71.22,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 28.86,
+        "win": true,
+        "multiplier": 2.3371104815864023
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"3085a86bd812800c76ae7d81191955b2\",\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":7,\"params\":{\"lower\":28.86,\"upper\":71.22,\"inverted\":false}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:20 GMT",
+      "bodySha256": "755fcbe156a6bc4a1f846c75fb6b9e2e2eb674104a6cc48e20f92f9580a4747a",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":7},\"derivationParams\":{\"lower\":28.86,\"upper\":71.22,\"inverted\":false},\"outcome\":{\"roll\":28.86,\"win\":true,\"multiplier\":2.3371104815864023}}"
+    },
+    {
+      "id": "S-3",
+      "set": "S",
+      "onBound": "roll==lower",
+      "mode": "outside",
+      "pair": {
+        "epoch": 0,
+        "nonce": 7,
+        "settled": true
+      },
+      "sentAt": "2026-11-09T19:51:22.091Z",
+      "receivedAt": "2026-11-09T19:51:22.365Z",
+      "params": {
+        "lower": 28.86,
+        "upper": 71.22,
+        "inverted": true
+      },
+      "outcome": {
+        "roll": 28.86,
+        "win": false,
+        "multiplier": 0
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"3085a86bd812800c76ae7d81191955b2\",\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":7,\"params\":{\"lower\":28.86,\"upper\":71.22,\"inverted\":true}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:22 GMT",
+      "bodySha256": "e5ac1152618231817a078a3190e1c5516a675af835c7a9a6714d76ac1df3bd49",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":7},\"derivationParams\":{\"lower\":28.86,\"upper\":71.22,\"inverted\":true},\"outcome\":{\"roll\":28.86,\"win\":false,\"multiplier\":0}}"
+    },
+    {
+      "id": "S-4",
+      "set": "S",
+      "onBound": "roll==upper",
+      "mode": "under",
+      "pair": {
+        "epoch": 0,
+        "nonce": 4,
+        "settled": true
+      },
+      "sentAt": "2026-11-09T19:51:24.092Z",
+      "receivedAt": "2026-11-09T19:51:24.358Z",
+      "params": {
+        "lower": 0,
+        "upper": 71.22,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 71.22,
+        "win": false,
+        "multiplier": 0
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"3085a86bd812800c76ae7d81191955b2\",\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":4,\"params\":{\"lower\":0,\"upper\":71.22,\"inverted\":false}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:24 GMT",
+      "bodySha256": "f5846fc9008f3701913eb30ee1142a357925b4d0edf7fd6947f43e8c68938c6e",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":4},\"derivationParams\":{\"lower\":0,\"upper\":71.22,\"inverted\":false},\"outcome\":{\"roll\":71.22,\"win\":false,\"multiplier\":0}}"
+    },
+    {
+      "id": "S-5",
+      "set": "S",
+      "onBound": "roll==upper",
+      "mode": "inside",
+      "pair": {
+        "epoch": 0,
+        "nonce": 4,
+        "settled": true
+      },
+      "sentAt": "2026-11-09T19:51:26.094Z",
+      "receivedAt": "2026-11-09T19:51:26.368Z",
+      "params": {
+        "lower": 28.86,
+        "upper": 71.22,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 71.22,
+        "win": false,
+        "multiplier": 0
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"3085a86bd812800c76ae7d81191955b2\",\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":4,\"params\":{\"lower\":28.86,\"upper\":71.22,\"inverted\":false}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:26 GMT",
+      "bodySha256": "1ae5631a0095e5379d9accde021caa2771cb079a5c781320df527ccf053d4f57",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":4},\"derivationParams\":{\"lower\":28.86,\"upper\":71.22,\"inverted\":false},\"outcome\":{\"roll\":71.22,\"win\":false,\"multiplier\":0}}"
+    },
+    {
+      "id": "S-6",
+      "set": "S",
+      "onBound": "roll==upper",
+      "mode": "outside",
+      "pair": {
+        "epoch": 0,
+        "nonce": 4,
+        "settled": true
+      },
+      "sentAt": "2026-11-09T19:51:28.095Z",
+      "receivedAt": "2026-11-09T19:51:28.323Z",
+      "params": {
+        "lower": 28.86,
+        "upper": 71.22,
+        "inverted": true
+      },
+      "outcome": {
+        "roll": 71.22,
+        "win": true,
+        "multiplier": 1.717557251908397
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"3085a86bd812800c76ae7d81191955b2\",\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":4,\"params\":{\"lower\":28.86,\"upper\":71.22,\"inverted\":true}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:28 GMT",
+      "bodySha256": "622bbdae0514ed09f67c050e1ab07631cba751aed9aeec113fd45005bb0c54ca",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":4},\"derivationParams\":{\"lower\":28.86,\"upper\":71.22,\"inverted\":true},\"outcome\":{\"roll\":71.22,\"win\":true,\"multiplier\":1.717557251908397}}"
+    },
+    {
+      "id": "S-7",
+      "set": "S",
+      "onBound": "control: lower = roll+0.01",
+      "mode": "over",
+      "pair": {
+        "epoch": 0,
+        "nonce": 7,
+        "settled": true
+      },
+      "sentAt": "2026-11-09T19:51:30.096Z",
+      "receivedAt": "2026-11-09T19:51:30.352Z",
+      "params": {
+        "lower": 28.87,
+        "upper": 100,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 28.86,
+        "win": false,
+        "multiplier": 0
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"3085a86bd812800c76ae7d81191955b2\",\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":7,\"params\":{\"lower\":28.87,\"upper\":100,\"inverted\":false}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:30 GMT",
+      "bodySha256": "29a5f6e038b11e9aaf1a76fd70ec51244eab10289b65509a558a6423a617e5fc",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":7},\"derivationParams\":{\"lower\":28.87,\"upper\":100,\"inverted\":false},\"outcome\":{\"roll\":28.86,\"win\":false,\"multiplier\":0}}"
+    },
+    {
+      "id": "S-8",
+      "set": "S",
+      "onBound": "control: lower = roll+0.01",
+      "mode": "inside",
+      "pair": {
+        "epoch": 0,
+        "nonce": 7,
+        "settled": true
+      },
+      "sentAt": "2026-11-09T19:51:32.097Z",
+      "receivedAt": "2026-11-09T19:51:32.328Z",
+      "params": {
+        "lower": 28.87,
+        "upper": 71.22,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 28.86,
+        "win": false,
+        "multiplier": 0
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"3085a86bd812800c76ae7d81191955b2\",\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":7,\"params\":{\"lower\":28.87,\"upper\":71.22,\"inverted\":false}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:32 GMT",
+      "bodySha256": "190adf96fde6e33115b052296173419aa28af546935262d58e1f78d96535dd1a",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":7},\"derivationParams\":{\"lower\":28.87,\"upper\":71.22,\"inverted\":false},\"outcome\":{\"roll\":28.86,\"win\":false,\"multiplier\":0}}"
+    },
+    {
+      "id": "S-9",
+      "set": "S",
+      "onBound": "control: lower = roll+0.01",
+      "mode": "outside",
+      "pair": {
+        "epoch": 0,
+        "nonce": 7,
+        "settled": true
+      },
+      "sentAt": "2026-11-09T19:51:34.098Z",
+      "receivedAt": "2026-11-09T19:51:34.327Z",
+      "params": {
+        "lower": 28.87,
+        "upper": 71.22,
+        "inverted": true
+      },
+      "outcome": {
+        "roll": 28.86,
+        "win": true,
+        "multiplier": 1.7172593235039029
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"3085a86bd812800c76ae7d81191955b2\",\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":7,\"params\":{\"lower\":28.87,\"upper\":71.22,\"inverted\":true}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:34 GMT",
+      "bodySha256": "c8b53d30ea6af852abbc7615169c80fcccd6e08345b55e57396dd7af24fc342d",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":7},\"derivationParams\":{\"lower\":28.87,\"upper\":71.22,\"inverted\":true},\"outcome\":{\"roll\":28.86,\"win\":true,\"multiplier\":1.7172593235039029}}"
+    },
+    {
+      "id": "S-10",
+      "set": "S",
+      "onBound": "control: upper = roll+0.01",
+      "mode": "under",
+      "pair": {
+        "epoch": 0,
+        "nonce": 4,
+        "settled": true
+      },
+      "sentAt": "2026-11-09T19:51:36.100Z",
+      "receivedAt": "2026-11-09T19:51:36.385Z",
+      "params": {
+        "lower": 0,
+        "upper": 71.23,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 71.22,
+        "win": true,
+        "multiplier": 1.3898638214235575
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"3085a86bd812800c76ae7d81191955b2\",\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":4,\"params\":{\"lower\":0,\"upper\":71.23,\"inverted\":false}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:36 GMT",
+      "bodySha256": "445c18ecda6be1c19a51fb7bc0babb8287c88c2ed48b502b647ee783bb7f75d2",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":4},\"derivationParams\":{\"lower\":0,\"upper\":71.23,\"inverted\":false},\"outcome\":{\"roll\":71.22,\"win\":true,\"multiplier\":1.3898638214235575}}"
+    },
+    {
+      "id": "S-11",
+      "set": "S",
+      "onBound": "control: upper = roll+0.01",
+      "mode": "inside",
+      "pair": {
+        "epoch": 0,
+        "nonce": 4,
+        "settled": true
+      },
+      "sentAt": "2026-11-09T19:51:38.100Z",
+      "receivedAt": "2026-11-09T19:51:38.341Z",
+      "params": {
+        "lower": 28.86,
+        "upper": 71.23,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 71.22,
+        "win": true,
+        "multiplier": 2.3365588860042483
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"3085a86bd812800c76ae7d81191955b2\",\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":4,\"params\":{\"lower\":28.86,\"upper\":71.23,\"inverted\":false}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:38 GMT",
+      "bodySha256": "588d9e38c5f6da55463359956c9e8e468e8b7acc9a9289de9da257f093c51693",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":4},\"derivationParams\":{\"lower\":28.86,\"upper\":71.23,\"inverted\":false},\"outcome\":{\"roll\":71.22,\"win\":true,\"multiplier\":2.3365588860042483}}"
+    },
+    {
+      "id": "S-12",
+      "set": "S",
+      "onBound": "control: upper = roll+0.01",
+      "mode": "outside",
+      "pair": {
+        "epoch": 0,
+        "nonce": 4,
+        "settled": true
+      },
+      "sentAt": "2026-11-09T19:51:40.102Z",
+      "receivedAt": "2026-11-09T19:51:40.348Z",
+      "params": {
+        "lower": 28.86,
+        "upper": 71.23,
+        "inverted": true
+      },
+      "outcome": {
+        "roll": 71.22,
+        "win": false,
+        "multiplier": 0
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"3085a86bd812800c76ae7d81191955b2\",\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":4,\"params\":{\"lower\":28.86,\"upper\":71.23,\"inverted\":true}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:40 GMT",
+      "bodySha256": "415dc7d84bf847266a797bcde26dd6d8330be09391eb28c799dd9dcff321762b",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"audit8f7ccfa4326c\",\"nonce\":4},\"derivationParams\":{\"lower\":28.86,\"upper\":71.23,\"inverted\":true},\"outcome\":{\"roll\":71.22,\"win\":false,\"multiplier\":0}}"
+    },
+    {
+      "id": "R-1",
+      "set": "R",
+      "onBound": "roll==lower",
+      "mode": "over",
+      "pair": {
+        "epoch": 9,
+        "nonce": 410,
+        "settled": false
+      },
+      "sentAt": "2026-11-09T19:51:42.124Z",
+      "receivedAt": "2026-11-09T19:51:42.367Z",
+      "params": {
+        "lower": 25,
+        "upper": 100,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 25,
+        "win": true,
+        "multiplier": 1.32
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"edd81eacc3dd5564aa0c26709b918299\",\"clientSeed\":\"auditf6f5365ea141\",\"nonce\":410,\"params\":{\"lower\":25,\"upper\":100,\"inverted\":false}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:42 GMT",
+      "bodySha256": "e80e3521cb9dca45bfb59f87c92364e74c37d01f0044cd8eec60179ac41f47cd",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"auditf6f5365ea141\",\"nonce\":410},\"derivationParams\":{\"lower\":25,\"upper\":100,\"inverted\":false},\"outcome\":{\"roll\":25,\"win\":true,\"multiplier\":1.32}}"
+    },
+    {
+      "id": "R-2",
+      "set": "R",
+      "onBound": "roll==lower",
+      "mode": "inside",
+      "pair": {
+        "epoch": 9,
+        "nonce": 410,
+        "settled": false
+      },
+      "sentAt": "2026-11-09T19:51:44.127Z",
+      "receivedAt": "2026-11-09T19:51:44.353Z",
+      "params": {
+        "lower": 25,
+        "upper": 75,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 25,
+        "win": true,
+        "multiplier": 1.98
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"edd81eacc3dd5564aa0c26709b918299\",\"clientSeed\":\"auditf6f5365ea141\",\"nonce\":410,\"params\":{\"lower\":25,\"upper\":75,\"inverted\":false}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:44 GMT",
+      "bodySha256": "6fa24cc437ef96ae14c440be6289b8ebc83059a05b09055d546f05d3bc9b8e1d",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"auditf6f5365ea141\",\"nonce\":410},\"derivationParams\":{\"lower\":25,\"upper\":75,\"inverted\":false},\"outcome\":{\"roll\":25,\"win\":true,\"multiplier\":1.98}}"
+    },
+    {
+      "id": "R-3",
+      "set": "R",
+      "onBound": "roll==lower",
+      "mode": "outside",
+      "pair": {
+        "epoch": 9,
+        "nonce": 410,
+        "settled": false
+      },
+      "sentAt": "2026-11-09T19:51:46.129Z",
+      "receivedAt": "2026-11-09T19:51:46.379Z",
+      "params": {
+        "lower": 25,
+        "upper": 75,
+        "inverted": true
+      },
+      "outcome": {
+        "roll": 25,
+        "win": false,
+        "multiplier": 0
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"edd81eacc3dd5564aa0c26709b918299\",\"clientSeed\":\"auditf6f5365ea141\",\"nonce\":410,\"params\":{\"lower\":25,\"upper\":75,\"inverted\":true}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:46 GMT",
+      "bodySha256": "65411ea8b31d0ac44028ae62ea4e5e9fd5d7f694e8942314de26538a276b223e",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"auditf6f5365ea141\",\"nonce\":410},\"derivationParams\":{\"lower\":25,\"upper\":75,\"inverted\":true},\"outcome\":{\"roll\":25,\"win\":false,\"multiplier\":0}}"
+    },
+    {
+      "id": "R-4",
+      "set": "R",
+      "onBound": "roll==upper",
+      "mode": "under",
+      "pair": {
+        "epoch": 16,
+        "nonce": 804,
+        "settled": false
+      },
+      "sentAt": "2026-11-09T19:51:48.131Z",
+      "receivedAt": "2026-11-09T19:51:48.450Z",
+      "params": {
+        "lower": 0,
+        "upper": 75,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 75,
+        "win": false,
+        "multiplier": 0
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"e42be262c0afeb4e3700d1a90580b266\",\"clientSeed\":\"audit82cc2056621a\",\"nonce\":804,\"params\":{\"lower\":0,\"upper\":75,\"inverted\":false}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:48 GMT",
+      "bodySha256": "cca9c58f7ff079d4920b2c4b959810ba5900d54719651139caa200f4c4e631bb",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"audit82cc2056621a\",\"nonce\":804},\"derivationParams\":{\"lower\":0,\"upper\":75,\"inverted\":false},\"outcome\":{\"roll\":75,\"win\":false,\"multiplier\":0}}"
+    },
+    {
+      "id": "R-5",
+      "set": "R",
+      "onBound": "roll==upper",
+      "mode": "inside",
+      "pair": {
+        "epoch": 16,
+        "nonce": 804,
+        "settled": false
+      },
+      "sentAt": "2026-11-09T19:51:50.133Z",
+      "receivedAt": "2026-11-09T19:51:50.384Z",
+      "params": {
+        "lower": 25,
+        "upper": 75,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 75,
+        "win": false,
+        "multiplier": 0
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"e42be262c0afeb4e3700d1a90580b266\",\"clientSeed\":\"audit82cc2056621a\",\"nonce\":804,\"params\":{\"lower\":25,\"upper\":75,\"inverted\":false}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:50 GMT",
+      "bodySha256": "7adf3c95c25632993668ca5a9c2d5b886714be226a37ee6c0a2bb80f4006e879",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"audit82cc2056621a\",\"nonce\":804},\"derivationParams\":{\"lower\":25,\"upper\":75,\"inverted\":false},\"outcome\":{\"roll\":75,\"win\":false,\"multiplier\":0}}"
+    },
+    {
+      "id": "R-6",
+      "set": "R",
+      "onBound": "roll==upper",
+      "mode": "outside",
+      "pair": {
+        "epoch": 16,
+        "nonce": 804,
+        "settled": false
+      },
+      "sentAt": "2026-11-09T19:51:52.133Z",
+      "receivedAt": "2026-11-09T19:51:52.358Z",
+      "params": {
+        "lower": 25,
+        "upper": 75,
+        "inverted": true
+      },
+      "outcome": {
+        "roll": 75,
+        "win": true,
+        "multiplier": 1.98
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"e42be262c0afeb4e3700d1a90580b266\",\"clientSeed\":\"audit82cc2056621a\",\"nonce\":804,\"params\":{\"lower\":25,\"upper\":75,\"inverted\":true}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:52 GMT",
+      "bodySha256": "5f6a6f62db5b2d6d516cb1821c277e2947e2a55f9abf5b4f39c4b0059fb76b48",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"audit82cc2056621a\",\"nonce\":804},\"derivationParams\":{\"lower\":25,\"upper\":75,\"inverted\":true},\"outcome\":{\"roll\":75,\"win\":true,\"multiplier\":1.98}}"
+    },
+    {
+      "id": "E-1",
+      "set": "E",
+      "onBound": "roll==lower (0.00, range floor)",
+      "mode": "under",
+      "pair": {
+        "epoch": 17,
+        "nonce": 117,
+        "settled": true
+      },
+      "sentAt": "2026-11-09T19:51:54.134Z",
+      "receivedAt": "2026-11-09T19:51:54.513Z",
+      "params": {
+        "lower": 0,
+        "upper": 75,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 0,
+        "win": true,
+        "multiplier": 1.32
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"f8a011e47813188caa965e5e0f4c925d\",\"clientSeed\":\"audit28f0a5faf51b\",\"nonce\":117,\"params\":{\"lower\":0,\"upper\":75,\"inverted\":false}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:54 GMT",
+      "bodySha256": "a2b11c811c8050f25d02d1d07d263d508e2669c188afea07b51e2c8bbdb3735a",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"audit28f0a5faf51b\",\"nonce\":117},\"derivationParams\":{\"lower\":0,\"upper\":75,\"inverted\":false},\"outcome\":{\"roll\":0,\"win\":true,\"multiplier\":1.32}}"
+    },
+    {
+      "id": "E-2",
+      "set": "E",
+      "onBound": "roll==99.99 (ceiling), upper 100",
+      "mode": "over",
+      "pair": {
+        "epoch": 18,
+        "nonce": 177,
+        "settled": true
+      },
+      "sentAt": "2026-11-09T19:51:56.137Z",
+      "receivedAt": "2026-11-09T19:51:56.377Z",
+      "params": {
+        "lower": 25,
+        "upper": 100,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 99.99,
+        "win": true,
+        "multiplier": 1.32
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"76f6cbe2ac74cda67b021b9f70d0084a\",\"clientSeed\":\"audit216e8ae924ba\",\"nonce\":177,\"params\":{\"lower\":25,\"upper\":100,\"inverted\":false}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:56 GMT",
+      "bodySha256": "ec6439d1d8276782f00b0836d9268e449ca4d996a2f14f8e64bd01119cbc5eb8",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"audit216e8ae924ba\",\"nonce\":177},\"derivationParams\":{\"lower\":25,\"upper\":100,\"inverted\":false},\"outcome\":{\"roll\":99.99,\"win\":true,\"multiplier\":1.32}}"
+    },
+    {
+      "id": "E-3",
+      "set": "E",
+      "onBound": "roll==upper (99.99)",
+      "mode": "inside",
+      "pair": {
+        "epoch": 18,
+        "nonce": 177,
+        "settled": true
+      },
+      "sentAt": "2026-11-09T19:51:58.139Z",
+      "receivedAt": "2026-11-09T19:51:58.406Z",
+      "params": {
+        "lower": 25,
+        "upper": 99.99,
+        "inverted": false
+      },
+      "outcome": {
+        "roll": 99.99,
+        "win": false,
+        "multiplier": 0
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"76f6cbe2ac74cda67b021b9f70d0084a\",\"clientSeed\":\"audit216e8ae924ba\",\"nonce\":177,\"params\":{\"lower\":25,\"upper\":99.99,\"inverted\":false}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:51:58 GMT",
+      "bodySha256": "7468bc9f2ff5fd5dac940c3a0238627cb2c1a8dca392c11c0aa7a8129a189926",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"audit216e8ae924ba\",\"nonce\":177},\"derivationParams\":{\"lower\":25,\"upper\":99.99,\"inverted\":false},\"outcome\":{\"roll\":99.99,\"win\":false,\"multiplier\":0}}"
+    },
+    {
+      "id": "E-4",
+      "set": "E",
+      "onBound": "roll==upper (99.99)",
+      "mode": "outside",
+      "pair": {
+        "epoch": 18,
+        "nonce": 177,
+        "settled": true
+      },
+      "sentAt": "2026-11-09T19:52:00.141Z",
+      "receivedAt": "2026-11-09T19:52:00.387Z",
+      "params": {
+        "lower": 25,
+        "upper": 99.99,
+        "inverted": true
+      },
+      "outcome": {
+        "roll": 99.99,
+        "win": true,
+        "multiplier": 3.9584166333466615
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://liqd.com/api/v1/originals/dice/verify",
+        "body": "{\"serverSeed\":\"76f6cbe2ac74cda67b021b9f70d0084a\",\"clientSeed\":\"audit216e8ae924ba\",\"nonce\":177,\"params\":{\"lower\":25,\"upper\":99.99,\"inverted\":true}}"
+      },
+      "status": 200,
+      "date": "Mon, 09 Nov 2026 19:52:00 GMT",
+      "bodySha256": "67326f677d660eb2e64793b9ed7517b02d403a5788a70cdecaa9e2f256dc0d54",
+      "body": "{\"gameType\":\"dice\",\"seeds\":{\"clientSeed\":\"audit216e8ae924ba\",\"nonce\":177},\"derivationParams\":{\"lower\":25,\"upper\":99.99,\"inverted\":true},\"outcome\":{\"roll\":99.99,\"win\":true,\"multiplier\":3.9584166333466615}}"
+    }
+  ]
+}

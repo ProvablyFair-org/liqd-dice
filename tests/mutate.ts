@@ -59,7 +59,7 @@ interface Mutation {
   expect?: string;
   survivor?: boolean;
   /**
-   * RTP FIGURE OVERSTATED route (FIXPASS2 C3, 2026-10-14). `regen: true` does, in the sandbox, what an
+   * RTP FIGURE OVERSTATED route (since 2026-10-14). `regen: true` does, in the sandbox, what an
    * auditor does after a change to the paytable or to the published figure: re-write
    * outputs/rtp-claim-table.json (`ts-node src/rtp-settings.ts`), re-pin RTP_CLAIM_TABLE_SHA256, and
    * re-emit the scored record (`PF_EMIT=1`), so the run that is judged reproduces its own committed
@@ -92,7 +92,7 @@ const REPO = path.join(__dirname, '..');
 //                                   deletes 2,680 records, doctors the header and re-pins the SHA.
 //                                   Each is a committed script under `tests/forgeries/`. These are
 //                                   the two forgeries that returned a clean 21/21 Full Pass under
-//                                   external review, so they are the most important entries
+//                                   forged evidence, so they are the most important entries
 //                                   in the registry — and a find/replace harness cannot run them.
 //                                   `npm run mutate` does, and it is the runner of record for them.
 //   tests/mutation-survivors.json — mutations the suite provably CANNOT see, each with the reason.
@@ -121,7 +121,7 @@ const MUTABLE = [
   // Added 2026-10-14 (C3 regen entries): the rule table, its pin, and every record a PF_EMIT run writes.
   'src/rtp-settings.ts',
   'outputs/rtp-claim-table.json',
-  'data/dice-master-6700bets.json',
+  'data/dice-prod-5935bets.json',
   'outputs/simulation-results.json',
   'outputs/rtp-convergence.html',
   'outputs/report-figures.json',
@@ -141,7 +141,7 @@ function repin(): void {
   const cfgPath = path.join(sandbox, 'src/config.ts');
   let cfg = fs.readFileSync(cfgPath, 'utf8');
   const pins: [RegExp, string][] = [
-    [/(export const DATASET_SHA256 = ')[0-9a-f]{64}(')/, 'data/dice-master-6700bets.json'],
+    [/(export const DATASET_SHA256 = ')[0-9a-f]{64}(')/, 'data/dice-prod-5935bets.json'],
     [/(export const SIMULATION_SHA256 = ')[0-9a-f]{64}(')/, 'outputs/simulation-results.json'],
     [/(export const SIMULATION_HTML_SHA256 = ')[0-9a-f]{64}(')/, 'outputs/rtp-convergence.html'],
   ];

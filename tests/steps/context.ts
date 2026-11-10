@@ -42,17 +42,12 @@ export interface VerifyContext {
   seedMap: Map<string, string>;
   /** hashedServerSeed → bets in that epoch. */
   byHash: Map<string, Bet[]>;
-  phaseA: Bet[];   // 5,000 — random target across all four modes
-  phaseB: Bet[];   // 1,000 — high-multiplier tail (over 98 / over 99 — 99×, top of capture)
-  phaseC: Bet[];   //   200 — $10 stake, over(50) — stake independence
-  phaseD: Bet[];   //   500 — custom pfaudit- client seeds, random target
-  phaseE: Bet[];   //   (unused for dice; kept for framework compatibility)
   outputsDir: string;
   /** Recomputed SHA-256 of the loaded dataset file. */
   datasetSha256: string;
   /** The dataset hash pinned in verify.ts (the integrity anchor). */
   expectedDatasetHash: string;
-  /** Declared phase config (bets/amount/reveals) — for stake/label parity steps. */
+  /** The dataset header: reconciled against src/config.ts, never used as the plan. */
   meta: import('../../src/types').Dataset['meta'];
   /**
    * Populated by the simulation step when it reads outputs/simulation-results.json:

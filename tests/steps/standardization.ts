@@ -3,14 +3,17 @@
  * pure-arithmetic engine), never read from an operator summary field, and each carries a
  * coverage assertion so a pass over an empty set cannot occur.
  *
- *   18  Bet-Size Invariance      — roll/edge independent of wager (Phase C, $10)
+ *   18  Bet-Size Invariance (Phase C) — the elevated-stake rounds (10.00 USDT on over 50) recompute
+ *                                  like every other round and are paid by the same rule as the same
+ *                                  band at the base stake; at least PHASE_C_MIN_WINS of them won, so
+ *                                  the payout path is exercised, not only the roll
  *   19  Artifact Hash + Value-Domain Integrity — pinned SHA-256 of the dataset AND of the
  *                                  simulation artifacts, plus a value-domain check of every numeric
  *                                  leaf of the committed simulation-results.json / report-figures.json
  *   20  Settlement Determinism   — credited amount fully determined by (roll, band, stake),
  *                                  across all four modes and both win & loss
- *   21  Multiplier Monotonicity  — served multiplier == 99/winChance is strictly decreasing
- *                                  in win chance, spans [minOdds, maxOdds], no inversions
+ *   21  Multiplier Monotonicity  — the quoted multiplier is strictly decreasing in win chance over
+ *                                  the plan's win chances AND over the whole basis-point price grid
  */
 
 import * as fs from 'fs';
@@ -20,33 +23,62 @@ import { step } from './context';
 import { computeReportFigures } from '../../src/report-figures';
 import type { StepResult, VerifyContext } from './context';
 import { diceRoll } from '../../src/rng';
-import { quotedMultiplier, payoutBasisPoints, PAYOUT_NUMERATOR, effectiveEdge, diceWin, bandMode, continuousWinChancePct, settledCredit, servedRollMatches, SCALE, MIN_ODDS, MAX_ODDS, SIMULATION_SHA256, SIMULATION_HTML_SHA256 } from '../../src/config';
+import { quotedMultiplier, payoutBasisPoints, PAYOUT_NUMERATOR, diceWin, bandMode, bandKey, continuousWinChancePct, floor8CreditUnits, amountUnits, servedRollMatches, SCALE, PRICE_GRID_MIN_BPS, PRICE_GRID_MAX_BPS, SIMULATION_SHA256, SIMULATION_HTML_SHA256, DATASET_FILE, BASE_STAKE, ELEVATED_STAKE, EXPECTED_PHASE_BETS, EXPECTED_WIN_CHANCES, PHASE_C_MIN_BETS, PHASE_C_MIN_WINS } from '../../src/config';
 import { domainRules, validateDomains, describeDomainFailures } from '../../src/domains';
 
 export function run(ctx: VerifyContext): StepResult[] {
   const { bets, seedMap } = ctx;
   const out: StepResult[] = [];
 
-  // ── Step 18: Bet-Size Invariance ────────────────────────────────────────────
+  // ── Step 18: Bet-Size Invariance (Phase C, DICE-12) ─────────────────────────
+  // Phase C is the elevated-stake phase: ELEVATED_STAKE (10.00 USDT, 100 times the base stake) on
+  // one band with a 50% win chance, so that about half the rounds win and the PAYOUT path is
+  // exercised at the higher stake, not only the roll. Asserted, all exact:
+  //   (a) the phase holds the planned number of rounds (at least PHASE_C_MIN_BETS), every one at
+  //       ELEVATED_STAKE as served, on one band;
+  //   (b) every Phase C roll recomputes from (serverSeed, clientSeed, nonce) alone: diceRoll takes
+  //       exactly three arguments, so no wager can enter the draw;
+  //   (c) at least PHASE_C_MIN_WINS Phase C rounds won, and every one is credited
+  //       floor8(stake × 9900/basisPoints), from the band, never from the served multiplier;
+  //   (d) the SAME band at the base stake (it is one of the Phase A / D settings) carries the same
+  //       served multiplier on its wins and is credited by the same rule, and the two credits stand
+  //       in exactly the ratio of the two stakes.
   {
-    const c = ctx.phaseC;
+    const c = bets.filter((b) => b.phaseId === 'C');
+    const cBands = new Set(c.map((b) => bandKey(b.params)));
+    const cStakeOk = c.length > 0 && c.every((b) => String(b.betAmount) === ELEVATED_STAKE);
     let chk = 0, bad = 0;
     for (const b of c) {
       const ss = seedMap.get(b.hashedServerSeed);
       if (!ss) continue;
       chk++;
-      const served = Number(b.roll);
-      const local = diceRoll(ss, b.clientSeed, b.nonce) / SCALE;
-      if (!servedRollMatches(served, local)) bad++;
+      if (!servedRollMatches(Number(b.roll), diceRoll(ss, b.clientSeed, b.nonce) / SCALE)) bad++;
     }
-    const stakes = [...new Set(bets.map((b) => Number(b.betAmount)))].sort((a, z) => a - z);
-    // Edge for the Phase-C band is identical whatever the stake (diceRoll + edge take no wager).
-    const edgeSame = c.length > 0 ? effectiveEdge(c[0].params) : NaN;
-    const ok = chk === c.length && chk > 0 && bad === 0;
-    out.push(step(18, 'Bet-Size Invariance', ok ? 'PASS' : 'FAIL',
-      `${chk}/${c.length} Phase C bets at $10.00 recompute their roll identically to the $0.10 phases — ${bad} mismatch. ` +
-      `diceRoll takes no wager argument; effective edge for the band is ${(edgeSame * 100).toFixed(4)}% at every stake (stakes present: ${stakes.map((s) => `$${s}`).join(', ')})` +
-      (chk === 0 ? '; COVERAGE FAIL: 0 Phase C bets recomputed' : '')));
+    const cWins = c.filter((b) => b.win);
+    const cCreditOk = cWins.filter((b) => amountUnits(b.winningAmount) === floor8CreditUnits(b.betAmount, b.params)).length;
+    const cLossOk = c.filter((b) => !b.win && amountUnits(b.winningAmount) === 0n).length;
+    // the same band at the base stake
+    const base = bets.filter((b) => b.phaseId !== 'C' && cBands.has(bandKey(b.params)) && String(b.betAmount) === BASE_STAKE);
+    const baseWins = base.filter((b) => b.win);
+    const baseCreditOk = baseWins.filter((b) => amountUnits(b.winningAmount) === floor8CreditUnits(b.betAmount, b.params)).length;
+    const mults = new Set([...cWins, ...baseWins].map((b) => Number(b.multiplier)));
+    const cCredit = cWins.length ? amountUnits(cWins[0].winningAmount) : null;
+    const baseCredit = baseWins.length ? amountUnits(baseWins[0].winningAmount) : null;
+    const stakeRatio = amountUnits(ELEVATED_STAKE)! / amountUnits(BASE_STAKE)!;
+    const ratioOk = cCredit !== null && baseCredit !== null && cCredit === baseCredit * stakeRatio
+      && amountUnits(ELEVATED_STAKE)! % amountUnits(BASE_STAKE)! === 0n;
+    const drawArity = diceRoll.length;
+    const ok = c.length === EXPECTED_PHASE_BETS.C && c.length >= PHASE_C_MIN_BETS && cBands.size === 1 && cStakeOk
+      && chk === c.length && bad === 0 && drawArity === 3
+      && cWins.length >= PHASE_C_MIN_WINS && cCreditOk === cWins.length && cLossOk === c.length - cWins.length
+      && baseWins.length > 0 && baseCreditOk === baseWins.length && mults.size === 1 && ratioOk;
+    const band = c.length ? c[0].params : null;
+    out.push(step(18, 'Bet-Size Invariance (Phase C)', ok ? 'PASS' : 'FAIL',
+      `Phase C: ${c.length}/${EXPECTED_PHASE_BETS.C} rounds (floor ${PHASE_C_MIN_BETS}) at ${ELEVATED_STAKE} USDT (${cStakeOk ? 'every one' : 'NOT every one'}), ${stakeRatio}× the base stake ${BASE_STAKE}, on ${cBands.size} band${band ? ` (${bandMode(band)} ${band.lower}, win chance ${continuousWinChancePct(band)}%)` : ''}; `
+      + `${chk - bad}/${c.length} rolls recompute from (serverSeed, clientSeed, nonce) alone (diceRoll takes ${drawArity} arguments and no wager); `
+      + `${cWins.length} wins (floor ${PHASE_C_MIN_WINS}): ${cCreditOk}/${cWins.length} credited floor8(stake × ${PAYOUT_NUMERATOR}/basisPoints)${cWins.length ? ` = ${cWins[0].winningAmount}` : ''}, ${cLossOk}/${c.length - cWins.length} losses paid 0; `
+      + `the same band at the base stake: ${base.length} rounds in the other phases, ${baseWins.length} wins, ${baseCreditOk}/${baseWins.length} credited by the same rule${baseWins.length ? ` = ${baseWins[0].winningAmount}` : ''}; one served multiplier on the wins at both stakes (${[...mults].join(', ')}×; ${mults.size === 1}); the elevated credit is exactly ${stakeRatio}× the base credit (${ratioOk})`
+      + (c.length === 0 ? '; COVERAGE FAIL: no Phase C rounds' : '')));
   }
 
   // ── Step 19: Artifact Hash Integrity ────────────────────────────────────────
@@ -237,7 +269,7 @@ export function run(ctx: VerifyContext): StepResult[] {
     const domainOk = domainBad.length === 0;
 
     out.push(step(19, 'Artifact Hash + Value-Domain Integrity', hashOk && !rfForged && !simForged && domainOk ? 'PASS' : 'FAIL',
-      `SHA-256 of data/dice-master-6700bets.json = ${ctx.datasetSha256.slice(0, 16)}… ${hashOk ? 'matches' : '≠'} the pin ${ctx.expectedDatasetHash.slice(0, 16)}… (loader aborts on mismatch before any step runs); `
+      `SHA-256 of ${DATASET_FILE} = ${ctx.datasetSha256.slice(0, 16)}… ${hashOk ? 'matches' : '≠'} the pin ${ctx.expectedDatasetHash.slice(0, 16)}… (loader aborts on mismatch before any step runs); `
       + `${simNotes.join('; ')} — the pin proves the scored simulation is the committed one, NOT that its statistics are real (that is Step 16's two-sided uniformity screen plus its structural validation of the win counts and standard errors); `
       + `${rfNote}`
       + `; value domains: ${domainLeaves} numeric leaf/leaves of the committed simulation-results.json and report-figures.json checked against bounds derived from src/config.ts (a leaf out of domain OR with no declared domain fails)`
@@ -246,62 +278,37 @@ export function run(ctx: VerifyContext): StepResult[] {
 
   // ── Step 20: Settlement Determinism (settlement table) ──────────────────────
   // ANTI-CIRCULAR AND EXACT. The expected credit is built from the auditor's OWN derived
-  // multiplier — pure band arithmetic; the served `multiplier` field is never read here, Step 7 is
-  // what pins that — and settled through the same two-stage rule as Steps 8/10, with ZERO tolerance.
+  // multiplier, pure band arithmetic; the served `multiplier` field is never read here (Step 7 is
+  // what pins that), and settled by the production rule floor8(stake × 9900/basisPoints) with ZERO
+  // tolerance.
   //
-  // ── WHICH DERIVATION, AND WHY IT MATTERS ─────────────────────────────────────────────────────
-  // The multiplier is the rational 9900/basisPoints. Reaching it through
-  // `quotedMultiplier(params)`, the float closed form `(100/winChance%)·(1−edge)`, gives the SAME
-  // NUMBER over the rationals and a DIFFERENT binary64. `continuousWinChancePct` computes
-  // `upper − lower` in binary64, and for many 2-dp bands that lands a fraction of an ULP off, which
-  // survives the divide and then changes the 8-dp stage-1 rounding:
-  //
-  //   over 79.52  → wc 20.480000000000004 → float 4.833984374999999 → round8 4.83398437
-  //                                       → quotient 9900/2048 = 4.833984375 → round8 4.83398438
-  //   over 99.99  → wc 0.010000000000005116 → float 9899.999999994936 → round8 9899.99999999
-  //                                       → quotient 9900/1 = 9900   → round8 9900
-  //
-  // At a $1 stake those are different credits, so a CORRECT operator payout of $9,900.00 would be
-  // rejected as a one-unit discrepancy. Swept exhaustively over every 2-dp band in all four
-  // modes, the two paths disagree on 12,046 bands at exactly three basis points — 1, 2048 and 6144 —
-  // and nowhere else. None of them occurs in this capture, which is why the float path never fires
-  // here; "the data happens not to expose it" is not a reason to keep a wrong comparator, and the
-  // bands concerned include the 9900× extreme a production recapture is meant to probe.
-  //
-  // The expected multiplier is derived from the BAND, never from the served field; what matters is
-  // which exact arithmetic derives it. `PAYOUT_NUMERATOR / payoutBasisPoints(p)` is an
-  // integer-over-integer quotient — the operator's own number system (see `creditResidualSign`).
-  // Regression vectors: `tests/dice/settlementTests.ts`, "Step 20 expected-credit derivation".
-  //
-  // A credit compared against the RAW product `betAmount × quotedMultiplier` at 1e-6 could not see
-  // a wallet- or credit-sized edit either, which is why there is no tolerance here.
-  // `round8(quotedMultiplier(params))` is verified equal to
-  // `round8(servedMultiplier)` on all 2,807 captured wins, so the derived path settles to exactly
-  // the same 8-dp credit as the served path — the equality is exact, not approximate.
+  // WHICH DERIVATION, AND WHY IT MATTERS. The multiplier is the rational 9900/basisPoints. Reaching
+  // it through `quotedMultiplier(params)`, the float closed form `(100/winChance%)·(1−edge)`, gives
+  // the SAME NUMBER over the rationals and can give a DIFFERENT binary64, because
+  // `continuousWinChancePct` computes `upper − lower` in binary64 (an `over 99.99` band gives a
+  // float multiplier of 9899.999999994936 where the quotient is 9900). A credit floored from the
+  // float can therefore land one unit below the correct one. `PAYOUT_NUMERATOR / payoutBasisPoints(p)`
+  // is an integer-over-integer quotient, taken in BigInt by floor8CreditUnits: the operator's own
+  // number system (see `creditResidualSign`). Regression vectors: tests/dice/settlementTests.ts.
   {
     let chk = 0, bad = 0;
     const modesSeen = new Set<string>(); let wins = 0, losses = 0;
     const fails: string[] = [];
-    /** The expected winning multiplier: the integer-basis-point quotient, not the float closed form. */
-    const expectedMultiplier = (p: typeof bets[number]['params']) => {
-      const bps = payoutBasisPoints(p);
-      return bps > 0 ? PAYOUT_NUMERATOR / bps : 0;
-    };
     for (const b of bets) {
       chk++;
       modesSeen.add(bandMode(b.params));
       const win = diceWin(Number(b.roll), b.params);
       if (win) wins++; else losses++;
-      const expected = win ? settledCredit(Number(b.betAmount), expectedMultiplier(b.params)) : 0;
-      const credited = Number(b.winningAmount);
+      const expected = win ? floor8CreditUnits(b.betAmount, b.params) : 0n;
+      const credited = amountUnits(b.winningAmount);
       // win flag must match the roll/band rule AND the credit must be the determined amount
       if (win !== !!b.win || credited !== expected) {
-        bad++; if (fails.length < 3) fails.push(`epoch ${b.epoch} nonce ${b.nonce}: credited ${credited} vs determined ${expected}`);
+        bad++; if (fails.length < 3) fails.push(`epoch ${b.epoch} nonce ${b.nonce}: credited ${b.winningAmount} vs determined ${expected} units`);
       }
     }
     const coverOk = modesSeen.size === 4 && wins > 0 && losses > 0;
     out.push(step(20, 'Settlement Determinism', bad === 0 && coverOk ? 'PASS' : 'FAIL',
-      `${chk}/${bets.length} bets: outcome (win/loss) and credited amount are fully determined by (roll, band, stake) — credit == ROUND_HALF_EVEN_8(stake × ROUND_8(PAYOUT_NUMERATOR/basisPoints)), the integer-basis-point quotient rather than the float closed form (D16), with zero tolerance — and match the served settlement — ${bad} mismatch` +
+      `${chk}/${bets.length} bets: outcome (win/loss) and credited amount are fully determined by (roll, band, stake) — credit == floor8(stake × PAYOUT_NUMERATOR/basisPoints), the exact integer-basis-point quotient, never the served multiplier and never the float closed form, with zero tolerance — and match the served settlement — ${bad} mismatch` +
       (fails.length ? ` (e.g. ${fails.join('; ')})` : '') +
       `; coverage: modes [${[...modesSeen].join(',')}], ${wins} wins / ${losses} losses` +
       (coverOk ? '' : '; COVERAGE FAIL')));
@@ -323,11 +330,26 @@ export function run(ctx: VerifyContext): StepResult[] {
     const sorted = [...pts.entries()].sort((a, z) => a[0] - z[0]);
     let inversions = 0;
     for (let i = 1; i < sorted.length; i++) if (sorted[i][1] >= sorted[i - 1][1] - 1e-12) inversions++;
-    const rangeOk = rangeMin >= MIN_ODDS && rangeMax <= MAX_ODDS;   // exact bound, no tolerance
-    const spanOk = sorted.length >= 100;      // a rich win-chance sweep, not a handful of points
-    out.push(step(21, 'Multiplier Monotonicity & Range', inversions === 0 && rangeOk && spanOk ? 'PASS' : 'FAIL',
-      `${sorted.length} distinct win-chance points; quoted multiplier (formula 99/winChance, computed from each captured band; on wins Step 7 binds the served value to the same rational, 9900/basisPoints) strictly decreasing in win chance (${inversions} inversions); ` +
-      `quoted multipliers for the captured bands span ${rangeMin.toFixed(4)}×–${rangeMax.toFixed(4)}× within [${MIN_ODDS}, ${MAX_ODDS}] (${rangeOk ? 'in range' : 'OUT OF RANGE'})`));
+    // The captured win chances must BE the plan's (src/config.ts EXPECTED_WIN_CHANCES), both ways:
+    // the plan holds a fixed list of win chances, so a count threshold would test nothing.
+    const planWc = [...EXPECTED_WIN_CHANCES].sort((a, z) => a - z);
+    const spanOk = sorted.length === planWc.length && sorted.every(([wc], i) => wc === planWc[i]);
+    const planMin = PAYOUT_NUMERATOR / Math.round(planWc[planWc.length - 1] * 100), planMax = PAYOUT_NUMERATOR / Math.round(planWc[0] * 100);
+    const rangeOk = Math.abs(rangeMin - planMin) < 1e-9 && Math.abs(rangeMax - planMax) < 1e-9;
+    // The same property over the WHOLE price grid, which no capture can cover: the quotient
+    // PAYOUT_NUMERATOR/bp over every basis point of the grid (every band width whose multiplier is
+    // above 1×), strictly decreasing.
+    let gridPoints = 0, gridInversions = 0, prev = Infinity;
+    for (let bp = PRICE_GRID_MIN_BPS; bp <= PRICE_GRID_MAX_BPS; bp++) {
+      const m = PAYOUT_NUMERATOR / bp;
+      gridPoints++;
+      if (!(m < prev) || !(m > 1)) gridInversions++;
+      prev = m;
+    }
+    out.push(step(21, 'Multiplier Monotonicity & Range', inversions === 0 && gridInversions === 0 && gridPoints > 0 && rangeOk && spanOk ? 'PASS' : 'FAIL',
+      `${sorted.length} distinct win-chance points in the capture (${spanOk ? 'exactly' : 'NOT'} the plan's ${planWc.length}: ${planWc.join(', ')}%); quoted multiplier (formula 99/winChance, computed from each captured band; on wins Step 7 binds the served value to the same rational, 9900/basisPoints) strictly decreasing in win chance (${inversions} inversions); `
+      + `over the whole price grid, ${PAYOUT_NUMERATOR}/basisPoints is strictly decreasing and above 1× across all ${gridPoints} basis points ${PRICE_GRID_MIN_BPS}…${PRICE_GRID_MAX_BPS} (${gridInversions} violations); `
+      + `quoted multipliers for the captured bands span ${rangeMin.toFixed(4)}×–${rangeMax.toFixed(4)}×, the plan's ${planMin.toFixed(4)}×–${planMax.toFixed(4)}× (${rangeOk ? 'ok' : 'NOT THE PLAN SPAN'}). LIQD's own odds limits were not read (declared limitation L7)`));
   }
 
   return out;

@@ -1,6 +1,6 @@
-// The client's D2 counterexample, executed — and the four sibling cases it exposed.
+// A malformed report artifact, executed — and the four sibling cases it exposed.
 //
-// FINDING (client QA 2026-09-10, D2): a required report artifact containing the literal bytes
+// FINDING (2026-09-10): a required report artifact containing the literal bytes
 // `{not JSON` passed all 21 verification steps. The `JSON.parse` throw was swallowed, which left
 // the stored dataset hash empty, which fell into the "computed from a different dataset" branch,
 // which was classified as STALE — a benign condition that "this run regenerates". The verifier
@@ -9,7 +9,7 @@
 // This script runs the five cases the rewritten Step 19 has to separate, and asserts for each:
 //   1. `npm run verify` exits NON-ZERO;
 //   2. the artifact's bytes are UNCHANGED afterwards — verification does not rewrite the evidence
-//      it is evaluating (D1), so a second run sees the same input and fails the same way;
+//      it is evaluating, so a second run sees the same input and fails the same way;
 //   3. outputs/verification-results.json is likewise untouched.
 // The malformed-JSON case is run TWICE to demonstrate the "running twice fails twice" property
 // directly, and is left in place so the battery's own verify run is a third failure, attributed to

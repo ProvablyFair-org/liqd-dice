@@ -6,7 +6,7 @@
  * `outputs/report-figures.json` at the end of every run — including a FAILING run — would let a
  * run that disagreed with the committed evidence destroy the evidence of the disagreement, and
  * the next run would compare the repo against the file the failing run had just written, and
- * pass. That is not hypothetical: a reviewer executed exactly that on Node 24 — fail, then pass,
+ * pass. That is not hypothetical: it was executed on Node 24 — fail, then pass,
  * with no trace of the first outcome.
  *
  * Verification therefore writes nothing into the committed paths. It writes this run's results — pass or

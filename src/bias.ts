@@ -15,7 +15,7 @@ import { RANGE } from './config';
  * Every other RNG step proves the draw REPRODUCES — that the roll recorded is the roll the declared
  * algorithm computes from the revealed seed. None of them asks whether that algorithm draws the
  * 10,000 lattice points EQUALLY. If the accepted window `[0, maxFair)` did not hold a WHOLE number
- * of ranges, the low residues would be over-represented, and every one of the 6,700 exact
+ * of ranges, the low residues would be over-represented, and every one of the exact
  * recomputations in Step 5 would be an exact recomputation of a BIASED draw — Step 5 recomputes the
  * roll against the same helper, so it cannot see the bias on its own.
  *
@@ -29,7 +29,7 @@ import { RANGE } from './config';
  * is returned too, as the profile asks when rejection sampling is the mechanism.
  *
  * NOTE this is an ARITHMETIC property of the audit module's constants — it holds for
- * every possible seed, not only the 6,700 captured. It does NOT exercise the operator-side reject
+ * every possible seed, not only the captured ones. It does NOT exercise the operator-side reject
  * branch, which no captured bet's first chunk reached (declared limitation L11, unchanged).
  *
  * Returned as numbers, never as a sentence: the profile's floor is 2^-32 and a reader has to be able
