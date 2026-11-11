@@ -121,7 +121,7 @@ const MUTABLE = [
   // Added 2026-10-14 (C3 regen entries): the rule table, its pin, and every record a PF_EMIT run writes.
   'src/rtp-settings.ts',
   'outputs/rtp-claim-table.json',
-  'data/dice-prod-5935bets.json',
+  'data/dice-prod-5936bets.json',
   'outputs/simulation-results.json',
   'outputs/rtp-convergence.html',
   'outputs/report-figures.json',
@@ -141,7 +141,7 @@ function repin(): void {
   const cfgPath = path.join(sandbox, 'src/config.ts');
   let cfg = fs.readFileSync(cfgPath, 'utf8');
   const pins: [RegExp, string][] = [
-    [/(export const DATASET_SHA256 = ')[0-9a-f]{64}(')/, 'data/dice-prod-5935bets.json'],
+    [/(export const DATASET_SHA256 = ')[0-9a-f]{64}(')/, 'data/dice-prod-5936bets.json'],
     [/(export const SIMULATION_SHA256 = ')[0-9a-f]{64}(')/, 'outputs/simulation-results.json'],
     [/(export const SIMULATION_HTML_SHA256 = ')[0-9a-f]{64}(')/, 'outputs/rtp-convergence.html'],
   ];

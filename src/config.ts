@@ -19,9 +19,10 @@
  *
  * LIMITS. No odds or bet-limit configuration is served in the production dice replies, and none was
  * read from the site. What is audited is what was played: win chances 1% to 98% (99× down to
- * 9900/9800 = 1.0102…×). The price grid the model covers is every band width that has a win chance
- * and a multiplier above 1× (PRICE_GRID_MIN_BPS … PRICE_GRID_MAX_BPS); which of those widths outside
- * 1%–98% production accepts was not measured (limitation L7).
+ * 9900/9800 = 1.0102…×) and one round at 0.01% (9900×, Phase X), whose pricing LIQD's verifier also
+ * returns (evidence E20). The price grid the model covers is every band width that has a win chance
+ * and a multiplier above 1× (PRICE_GRID_MIN_BPS … PRICE_GRID_MAX_BPS); which of the widths between
+ * 0.02% and 0.99% and above 98% production accepts was not measured (limitation L7).
  */
 export const RANGE = 10000;        // integer draw domain 0..9999
 export const CURSOR = 0;           // fixed HMAC cursor for the single dice draw
@@ -48,14 +49,13 @@ export const SIM_RTP_BETS = 20_000_000;
 /** The sample sizes the convergence series must contain, in order. */
 export const SIM_RTP_MARKS: readonly number[] = [1_000, 10_000, 100_000, 1_000_000, 5_000_000, 10_000_000, SIM_RTP_BETS];
 /**
- * EDGE CONVERGENCE ON 98 TARGETS (DICE-20), added 22 October 2026 to standardize on the design of
- * the Duel dice audit (`v1.0.0`): 98 targets × 1,000,000 bets each. Duel's targets are "roll over
- * 2.00 … over 99.00"; on LIQD the same targets are the over-mode bands [X, 100) for X = 2, 3, …, 99
+ * EDGE CONVERGENCE ON 98 TARGETS (DICE-20): 98 targets × 1,000,000 bets each, "roll over
+ * 2.00 … over 99.00"; on LIQD these are the over-mode bands [X, 100) for X = 2, 3, …, 99
  * (win chance 98% … 1%, 1.0102× … 99×: the span of win chances the production capture played). Each target
  * is scored within 5·SE + 1e-4 of its theoretical RTP, and the MEAN simulated RTP over the 98 targets
- * at each of SIM_TARGET_MARKS (Duel's marks) is the convergence series the chart draws.
+ * at each of SIM_TARGET_MARKS is the convergence series the chart draws.
  *
- * Everything above is unchanged from v1.0.0 and runs first, on the same seeds: the targets are
+ * Everything above runs first, on the same seeds: the targets are
  * APPENDED, after the nine bands, on the continuation of the same pinned seed stream (see
  * SIM_TARGET_SEED_COUNTER_BASE).
  */
@@ -131,9 +131,9 @@ export const ALPHA_SCREEN = ALPHA / ALPHA_SCREENS;
  * SHA-256 of the pinned capture. Single-sourced here so the producer (`src/simulate.ts`) and the
  * verifier (`tests/verify.ts`) cannot pin different datasets.
  */
-export const DATASET_SHA256 = 'b5357d37d4c65b26e04915ddc8d59d2b8d144f81a51242f278080a1a2d8b8697';
+export const DATASET_SHA256 = '41ea55fcadd903768be3a92725f2100fe2e794ab300d6842ce946124ea7d5042';
 /** The scored dataset's path, single-sourced for the verifier, the producer and the release manifest. */
-export const DATASET_FILE = 'data/dice-prod-5935bets.json';
+export const DATASET_FILE = 'data/dice-prod-5936bets.json';
 
 /**
  * ProvablyFair.org audit identifier. Single-sourced here so the emitted
@@ -170,11 +170,12 @@ export const EXPECTED_STEPS = 22;
  * the same commit as the dataset, which is exactly the property a header field lacks.
  * Counterexample registered as `coherent population shrink` in `tests/mutations.json`.
  *
- * THE PRODUCTION PLAN (liqd.com, 7 to 10 November 2026), three capture files, four phases:
+ * THE PRODUCTION PLAN (liqd.com, 7 to 10 November 2026), four capture files, five phases:
  *   A   7 Nov   25 epochs of 200   0.10 USDT   10 win chances (2% … 98%) × 5 band types
  *   D   10 Nov   5 epochs of 100   0.10 USDT   the Phase A settings, each epoch under a player-set client seed
  *   A+  10 Nov   1 epoch of 200    0.10 USDT   1% win chance (99×) in the four modes, 50 each (the Phase A top-up)
  *   C   10 Nov   2 epochs, 118+117 10.00 USDT  over 50 (50% win chance, 1.98×)
+ *   X   10 Nov   1 epoch of 1      0.10 USDT   under 0.01 (0.01% win chance, 9900×), the narrowest band of the price grid
  * The values are the plans the capture runner executed (each file's meta); they are typed here, in
  * code, and the dataset header is reconciled AGAINST them (Steps 11-12), never used as the plan.
  * There is no separate tail phase: the 99× setting is the A+ top-up and the 49.5× setting is the 2%
@@ -202,23 +203,24 @@ export const EXPECTED_PHASES: readonly PhasePlan[] = [
   { id: 'D', phase: 'D', capture: 1, epochSizes: [100, 100, 100, 100, 100], stake: '0.10000000', playerSeeds: true, winChances: PLAN_WIN_CHANCES },
   { id: 'A+', phase: 'A', capture: 1, epochSizes: [200], stake: '0.10000000', playerSeeds: false, winChances: [1] },
   { id: 'C', phase: 'C', capture: 2, epochSizes: [118, 117], stake: '10.00000000', playerSeeds: false, winChances: [50] },
+  { id: 'X', phase: 'X', capture: 3, epochSizes: [1], stake: '0.10000000', playerSeeds: false, winChances: [0.01] },
 ];
 /** One row per epoch, in dataset order (epoch 0 … EXPECTED_SEEDS − 1). */
 export interface EpochPlan { epoch: number; phaseId: string; phase: string; capture: number; bets: number; stake: string; playerSeeds: boolean }
 export const EXPECTED_EPOCHS: readonly EpochPlan[] = EXPECTED_PHASES.flatMap((ph) =>
   ph.epochSizes.map((bets) => ({ phaseId: ph.id, phase: ph.phase, capture: ph.capture, bets, stake: ph.stake, playerSeeds: ph.playerSeeds })),
 ).map((e, epoch) => ({ epoch, ...e }));
-export const EXPECTED_SEEDS = EXPECTED_EPOCHS.length;                                  // 33
-export const EXPECTED_BETS = EXPECTED_EPOCHS.reduce((a, e) => a + e.bets, 0);          // 5,935
-export const EXPECTED_CAPTURES = new Set(EXPECTED_PHASES.map((ph) => ph.capture)).size; // 3
+export const EXPECTED_SEEDS = EXPECTED_EPOCHS.length;                                  // 34
+export const EXPECTED_BETS = EXPECTED_EPOCHS.reduce((a, e) => a + e.bets, 0);          // 5,936
+export const EXPECTED_CAPTURES = new Set(EXPECTED_PHASES.map((ph) => ph.capture)).size; // 4
 /** Rounds per phase id. The plan, in code, not `meta.phases`, which is inside the evidence. */
 export const EXPECTED_PHASE_BETS: Readonly<Record<string, number>> = Object.fromEntries(
   EXPECTED_PHASES.map((ph) => [ph.id, ph.epochSizes.reduce((a, n) => a + n, 0)]),
 );
-/** The base stake (phases A, A+ and D) and the elevated stake (Phase C), as served. */
+/** The base stake (phases A, A+, D and X) and the elevated stake (Phase C), as served. */
 export const BASE_STAKE = '0.10000000';
 export const ELEVATED_STAKE = '10.00000000';
-/** Every win chance (percent) the plan plays, ascending: Phase A's ten plus the A+ top-up's 1%. */
+/** Every win chance (percent) the plan plays, ascending: Phase X's 0.01%, the A+ top-up's 1% and Phase A's ten. */
 export const EXPECTED_WIN_CHANCES: readonly number[] =
   [...new Set(EXPECTED_PHASES.flatMap((ph) => ph.winChances))].sort((a, z) => a - z);
 /** The audited size of one epoch (throws on an epoch outside the plan). */
@@ -242,6 +244,13 @@ export const PHASE_A_MIN_BETS_PER_CLASS = 50;
 export const E17_FILE = 'evidence/E17-prod-verify-boundary-probes-2026-11-09.json';
 export const E17_SHA256 = '3cf8d772f60f62793579db7f0041ef81e77aff490b95e03717fd96c23f82de98';
 export const E17_PROBES = 23;
+/**
+ * The 9900x probe record (evidence E20): LIQD's production verify endpoint asked, on 10 November 2026, for 0.01 % bands (one
+ * basis point) placed on, just below and just above four known rolls. Pinned here; Step 15 re-derives every probe with E17's.
+ */
+export const E20_FILE = 'evidence/E20-prod-verify-9900x-probes-2026-11-10.json';
+export const E20_SHA256 = '78e57a33211b1d0ad4ce97fa1426c2c6e3db9bed8c04c60503b1d731d799c9b2';
+export const E20_PROBES = 10;
 
 /**
  * Pass-2 served-band return scan (DICE-21): the level IS the suite's single ALPHA, single-sourced
@@ -281,7 +290,7 @@ export const SIM_PASS2_ALPHA = ALPHA;                        // the suite's sing
  * a forged statistic and a Full Pass. Scored inside Step 19 (with the dataset pin), never allowed to
  * abort before the scored steps.
  */
-export const SIMULATION_SHA256 = '9e479965badc9bb646b0a6302837291c0704451df6e699e96a855883e70b0828';
+export const SIMULATION_SHA256 = 'c6698388eb242683180135e687ec1f2074596eb87a19390dfe35176371913308';
 export const SIMULATION_HTML_SHA256 = '6b7b6bb7c474a49b48effbd31dd69ca952e4af5ee451902dbaff4a745743e02c';
 
 /**
@@ -601,7 +610,7 @@ function decimalFraction(x: number | string): [bigint, bigint] {
  *   credit = floor8( stake × 9900 / basisPoints )        computed exactly, on the decimal stake
  *
  * The exact product is rounded DOWN to the 1e-8 grid; a loss pays 0. Measured on the production
- * capture (data/dice-prod-5935bets.json): the rule reproduces the served winningAmount on every
+ * capture (data/dice-prod-5936bets.json): the rule reproduces the served winningAmount on every
  * win, at both stakes (Step 8 prints the counts), and it is the rule LIQD stated on 30 September
  * 2026 ("exact decimal maths and are then rounded down to 8 decimals"). A floor has no tie case and
  * no rounding mode to assume. What it means for the player: a credit is never above the exact

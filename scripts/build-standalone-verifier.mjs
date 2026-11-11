@@ -194,8 +194,7 @@ if (!modules.has(entryJs)) {
 // ── 4a. test-mode prelude ────────────────────────────────────────────────────────────────────────
 // The unit suite is written for mocha: bare `describe` / `it` globals. Node has shipped an
 // equivalent runner as `node:test` since 18, so the suite needs a shim, not a rewrite — rewriting
-// 108 assertions to a different API the night before publication is how a green suite acquires a
-// silent hole. The shim is six lines and the assertions are untouched.
+// the assertions to a different API is how a green suite acquires a silent hole. The shim is six lines and the assertions are untouched.
 // The one place the two runners genuinely differ is mocha's test CONTEXT: `this.timeout(ms)` inside
 // a test body. Node's runner calls the body with a TestContext that has no such method, so those
 // tests throw `this.timeout is not a function` — measured on blackjack's Wizard-of-Odds anchor

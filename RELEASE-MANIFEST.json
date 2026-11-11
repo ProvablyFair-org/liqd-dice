@@ -3,20 +3,22 @@
   "auditIdStatus": "confirmed by ProvablyFair.org",
   "game": "dice",
   "casino": "liqd",
-  "release": "v1.2.0",
+  "release": "v1.3.0",
   "framework": "1.1",
-  "datasetSha256": "b5357d37d4c65b26e04915ddc8d59d2b8d144f81a51242f278080a1a2d8b8697",
+  "datasetSha256": "41ea55fcadd903768be3a92725f2100fe2e794ab300d6842ce946124ea7d5042",
   "artifacts": {
-    "outputs/report-figures.json": "419faf5bd443499012d7c4a6d245c2d7a7ff60c5ab14cf97b25ad1e8cf79d9ca",
+    "outputs/report-figures.json": "ea8804784263395d2824aadea758bcef9478972880e6093135d235267052deb2",
     "outputs/rtp-convergence.html": "6b7b6bb7c474a49b48effbd31dd69ca952e4af5ee451902dbaff4a745743e02c",
-    "outputs/simulation-results.json": "9e479965badc9bb646b0a6302837291c0704451df6e699e96a855883e70b0828",
-    "outputs/verification-results.json": "2d127f38d91319ad01aa6c35c51ef2df51a1fa15ffad69cb5a8e4e2396c98c23",
+    "outputs/simulation-results.json": "c6698388eb242683180135e687ec1f2074596eb87a19390dfe35176371913308",
+    "outputs/verification-results.json": "1c467ff2670569ea81743ee7a54c623c981cf9f5dc220b4fde0ce534cb226181",
     "outputs/rtp-claim-table.json": "4c1c589c87cc3351209005e145311f400bc07d994519d4e940e19ed6e3c17707",
-    "data/dice-prod-5935bets.json": "b5357d37d4c65b26e04915ddc8d59d2b8d144f81a51242f278080a1a2d8b8697",
+    "data/dice-prod-5936bets.json": "41ea55fcadd903768be3a92725f2100fe2e794ab300d6842ce946124ea7d5042",
     "evidence/E16-prod-capture-check-2026-11-07.txt": "64357cb9e1e810c576323c709f556fdafb8dedcbef68aaac7669daa046a21a2c",
     "evidence/E18-prod-capture-check-2026-11-10-phases-D-A.txt": "33e5a5ebc943d71312b46e72d6f71392ac431b54a284dfe98f4c9fe3f7bbc5d4",
     "evidence/E19-prod-capture-check-2026-11-10-phase-C.txt": "607dd7cbde5f1f25a4dcadc6d8ea5a5c3c4b3d0709dd1a003ff589d7dcf44eef",
+    "evidence/E21-prod-capture-check-2026-11-10-phase-X.txt": "a35b8d155f542b97bc4a10287c7f0713a929209381559ef7b94957076c58554d",
     "evidence/E17-prod-verify-boundary-probes-2026-11-09.json": "3cf8d772f60f62793579db7f0041ef81e77aff490b95e03717fd96c23f82de98",
+    "evidence/E20-prod-verify-9900x-probes-2026-11-10.json": "78e57a33211b1d0ad4ce97fa1426c2c6e3db9bed8c04c60503b1d731d799c9b2",
     "evidence/rtp-page-labels-2026-10-01.json": "e159a3c173a1887c6c5dd2728caf9378ade2c6b2fbd6ce8f410a3bca3e13b0e2"
   },
   "verdict": "PROVABLY FAIR — Full Pass",
@@ -28,7 +30,7 @@
   },
   "capturedAt": {
     "from": "2026-11-07T09:45:52.088Z",
-    "to": "2026-11-10T10:37:36.813Z"
+    "to": "2026-11-10T19:00:14.901Z"
   },
   "environment": {
     "host": "liqd.com",
@@ -38,9 +40,9 @@
   "reproduction": {
     "workflow": ".github/workflows/reproduce.yml",
     "runner": "ubuntu-latest",
-    "node": "22",
+    "node": "22.23.1",
     "command": "npm ci && npm test"
   },
-  "supersedes": "v1.1.0",
+  "supersedes": "v1.2.0",
   "signature": "SHA256:gEujiJm2pRyq7lQsfYQfQ1r97H/J7GdaKHbOW8GtikY"
 }

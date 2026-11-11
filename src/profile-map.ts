@@ -52,7 +52,7 @@ export const STEP_CLAIMS: Record<number, StepClaims> = {
   2: {
     claims: [{
       id: 'DICE-02', coverage: 'full',
-      note: 'the dataset holds three capture files: every in-file rotation is checked (next hash == the '
+      note: 'the dataset holds four capture files: every in-file rotation is checked (next hash == the '
         + 'next epoch\'s commitment) and each file is anchored by its own pre-capture pair (revealed, '
         + 'hashing to its commitment, naming the file\'s first epoch). The links between the files run '
         + 'through rotations outside this dataset and are not checked',
@@ -156,9 +156,9 @@ export const STEP_CLAIMS: Record<number, StepClaims> = {
         note: 'asserted against the plan in code: Phase A (the 7 November rounds and the A+ top-up) holds '
           + 'every planned win chance, 1% to 98%, in each of the four band modes with at least '
           + 'PHASE_A_MIN_BETS_PER_CLASS rounds per (mode × win chance) class; both ends of the planned '
-          + 'range are played (1%, 99×, and 98%); both stake tiers are present (0.10 USDT and the 10.00 '
-          + 'USDT of Phase C). There is no separate tail phase: 99× is the A+ top-up and 49.5× is the 2% '
-          + 'setting of Phase A. Band widths outside 1%–98% were not played (L7)',
+          + 'range are played (0.01 %, 9900×, in Phase X, and 98%); both stake tiers are present (0.10 USDT and the 10.00 '
+          + 'USDT of Phase C). There is no separate tail phase: 99× is the A+ top-up, 49.5× is the 2% '
+          + 'setting of Phase A and 9900× is the one round of Phase X, priced by LIQD\'s verifier in E20. Band widths between 0.02% and 0.99% and above 98% were not played (L7)',
       },
     ],
   },
@@ -210,21 +210,20 @@ export const STEP_CLAIMS: Record<number, StepClaims> = {
         note: 'scored against the pinned simulation artifact with every DERIVED field re-derived '
           + '(multiplier, theoretical RTP, SE, deltaSE), a two-sided uniformity screen over 2,000,000 '
           + 'draws, a serial screen, edge convergence on 98 over-mode targets (over 2.00 … over 99.00) '
-          + '× 1,000,000 bets each with the 98-target mean RTP as the convergence series (the Duel dice '
-          + 'design, standardized 22 October 2026; the targets continue the same pinned seed stream '
-          + 'after the v1.0.0 blocks, at fixed counters re-derived in verify), 9 effective-edge bands × '
-          + '2,000,000 across all four modes, and the v1.0.0 20,000,000-bet under-50 convergence series, '
-          + 'all with standard errors and integer win counts recomputed from the artifact rows. The Pass-1 experiment is now DETERMINISTIC '
+          + '× 1,000,000 bets each with the 98-target mean RTP as the convergence series (the targets continue the same pinned '
+          + 'seed stream after the Pass-1 blocks, at fixed counters re-derived in verify), 9 effective-edge bands × '
+          + '2,000,000 across all four modes, and the 20,000,000-bet under-50 convergence series, '
+          + 'all with standard errors and integer win counts recomputed from the artifact rows. The Pass-1 experiment is DETERMINISTIC '
           + 'and BYTE-REPLAYABLE (DICE-20): the seed stream is HMAC(SIM_MASTER_SEED, counter) rather '
           + 'than crypto.randomBytes, the artifact carries no run metadata, so `npm run simulate` '
           + 'writes identical bytes every time and `npm run test:full` regenerates it with an empty '
           + 'field diff — the raw Pass-1 statistics (uniformity.chi2, serial.lag1/runsZ, each band\'s '
           + 'simulatedRTP, each target\'s win counts, the convergence paths) are re-derivable by replaying the pinned producer, '
-          + 'not merely attested by an unreproducible regeneration. Former limitation L10 (a stale '
-          + 'zCritical field) is resolved by the regeneration — the artifact is now schema 2 and '
-          + 'stores the correct zCritical, re-derived; L1 (a subtly forged statistic was invisible '
-          + 'because a re-run produced different numbers) is NARROWED to the fast-verify path only: '
-          + 'the producer is now a pure function of pinned source, so test:full reproduces the exact '
+          + 'not merely attested by an unreproducible regeneration. Limitation L10 (a stale '
+          + 'zCritical field) is resolved: the artifact is schema 2 and '
+          + 'stores the correct zCritical, re-derived; L1 (a subtly forged statistic) '
+          + 'is NARROWED to the fast-verify path only: '
+          + 'the producer is a pure function of pinned source, so test:full reproduces the exact '
           + 'committed figures and exposes any forgery, though the ~1s verify still does not recompute '
           + 'the 138M-draw statistics. simulation.pass1.replayable = true',
       },
@@ -294,7 +293,7 @@ export const STEP_CLAIMS: Record<number, StepClaims> = {
         note: 'the artifacts of record are pinned in src/config.ts, un-ignored by name in .gitignore, '
           + 'carry no run metadata on any path (no generatedAt/runtime/pin-mode field — absent, not excluded; the field diff has no ignore list), and verify writes only to outputs/run/ (report-'
           + 'figures.json is reconciled field-for-field by recomputation, L16). The value-domain half '
-          + 'the profile requires is now implemented (ported from liqd-plinko): src/domains.ts declares '
+          + 'the profile requires is implemented: src/domains.ts declares '
           + 'a physically-derived domain for every numeric leaf of the committed simulation-results.json '
           + 'and report-figures.json — every bound taken from src/config.ts (the audited population, the '
           + 'sample depths, the price grid, the roll grid), never from the file being checked — and '
@@ -377,7 +376,7 @@ export const PACKAGE_CHECKS: Array<{ id: string; artifact: string; coverage: Cov
   },
   {
     id: 'DICE-23', artifact: 'MANIFEST.md#verification-results', coverage: 'full',
-    note: 'the S5 fairness-integrity matrix now carries the full standardized framework set S5-1 … '
+    note: 'the S5 fairness-integrity matrix carries the full standardized framework set S5-1 … '
       + 'S5-8 between the <!-- S5-MATRIX:START/END --> markers, each row exactly one verdict '
       + '(Pass / Flag / Hard Fail / Not tested — disclosed) tied to a scored step or the capture: '
       + 'S5-1 seed substitution [Step 1,2], S5-2 client-seed [Step 14], S5-3 stake-conditional '
@@ -401,13 +400,13 @@ export const PACKAGE_CHECKS: Array<{ id: string; artifact: string; coverage: Cov
   {
     id: 'DICE-28', artifact: 'package.json (test) + .nvmrc + tests/ + src/config.ts (AUDIT_ID)', coverage: 'full',
     note: 'a fresh clone runs npm test to 22/22 Full Pass in ~8 s (standalone verify.js ~1 s) with '
-      + 'the runtime pinned (engines 22.x, .nvmrc) and pinned artifacts untouched; the audit ID is '
+      + 'the runtime pinned (engines >=22.23.1 <23, .nvmrc 22.23.1) and pinned artifacts untouched; the audit ID is '
       + 'SET — AUDIT_ID = PF-2026-LQ04 in src/config.ts, emitted into '
       + 'verification-results.json and printed in README.md / MANIFEST.md, with verdictQualifier '
       + '"production": the scored capture is the liqd.com production capture of 7 to 10 November 2026. '
       + 'The remaining release-gate sub-requirements hold: npm run test:full regenerates the '
       + 'simulation and diffs it field-by-field into outputs/run/diff.json with nothing beyond '
-      + 'tolerance (the Pass-1 experiment is now deterministic — DICE-20 — so regeneration reproduces '
+      + 'tolerance (the Pass-1 experiment is deterministic — DICE-20 — so regeneration reproduces '
       + 'byte-for-byte), the scored-step count in README/MANIFEST/verify equals the suite, and the '
       + 'runtime is pinned',
   },

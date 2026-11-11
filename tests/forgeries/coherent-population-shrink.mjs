@@ -11,7 +11,7 @@ import crypto from 'node:crypto';
 
 const repo = process.argv[2];
 const KEEP = 30;
-const dsPath = path.join(repo, 'data/dice-prod-5935bets.json');
+const dsPath = path.join(repo, 'data/dice-prod-5936bets.json');
 const ds = JSON.parse(fs.readFileSync(dsPath, 'utf8'));
 const before = ds.bets.length;
 

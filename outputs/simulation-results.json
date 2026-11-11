@@ -5707,7 +5707,7 @@
   },
   "pass2": {
     "available": true,
-    "seedsTested": 33,
+    "seedsTested": 34,
     "nullMethod": "exact-discrete-tail",
     "nullPartitions": 181274,
     "nullSupportValues": 832,
@@ -5717,15 +5717,15 @@
     "cherrySeedAlphaAchieved": 0.04592376013558378,
     "cherryPickFlags": 2,
     "cherryPickP0": 0.04381476839059315,
-    "cherryPickExpected": 1.445887356889574,
-    "cherryPickBinomialP": 0.4272947805776356,
+    "cherryPickExpected": 1.4897021252801672,
+    "cherryPickBinomialP": 0.4423990594118157,
     "cherryPickAlpha": 0.01,
     "cherryPickConsistent": true,
     "pooledRealRollUniformity": {
-      "n": 5935,
-      "chi2": 104.44397641112047,
+      "n": 5936,
+      "chi2": 104.49865229110515,
       "df": 99,
-      "pValue": 0.3346161599442177,
+      "pValue": 0.33325279681963416,
       "pass": true
     },
     "perSeed": [
@@ -6058,21 +6058,31 @@
         "earlyP": 0.1366201598851268,
         "lateP": 0.1366201598851268,
         "flag": false
+      },
+      {
+        "epoch": 33,
+        "earlySq": 178,
+        "lateSq": 158,
+        "earlyChi2": 21.2,
+        "lateChi2": 13.2,
+        "earlyP": 0.34166012601462303,
+        "lateP": 0.8562015459315426,
+        "flag": false
       }
     ],
     "servedBand": {
       "nonces": 10000,
-      "earlyBets": 5935,
+      "earlyBets": 5936,
       "alpha": 0.01,
-      "epochs": 33,
+      "epochs": 34,
       "totalEarlyReturn": 5921.537354788068,
-      "totalEarlyExpected": 5875.650000000007,
-      "totalEarlyVar": 65335.835899921476,
-      "directionBelow": 16,
+      "totalEarlyExpected": 5876.640000000007,
+      "totalEarlyVar": 75135.85579992151,
+      "directionBelow": 17,
       "directionAbove": 16,
-      "aggEarlyZ": 0.17952184264660553,
-      "aggEarlyP": 0.5712360075402216,
-      "minDetectablePerBetPct": 13.643818721682733,
+      "aggEarlyZ": 0.16379367824307003,
+      "aggEarlyP": 0.5650532208034322,
+      "minDetectablePerBetPct": 14.628866085929987,
       "perEpoch": [
         {
           "serverSeedHashed": "03904137250669b991479d440fac8638b2e019663e902d4dab61ec845f99a90c",
@@ -6172,6 +6182,17 @@
           "refReturn": 9847.98735478807,
           "refExpected": 9701.99999999833,
           "refVar": 81428.25773076824
+        },
+        {
+          "serverSeedHashed": "363c489d7d32861c114b6ccaa9102f31767f18513eb5f332d0e99418a85de501",
+          "earlyN": 1,
+          "earlyReturn": 0,
+          "earlyExpected": 0.9900000000000001,
+          "earlyVar": 9800.019900000001,
+          "refN": 9999,
+          "refReturn": 29700,
+          "refExpected": 9899.009999998287,
+          "refVar": 97990398.98008934
         },
         {
           "serverSeedHashed": "3984f3a344315e409ae24b2251673a97d2fe98d6d82b01241fcf2a877b130c47",

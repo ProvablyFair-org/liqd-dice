@@ -81,17 +81,17 @@
     "replace": "  return sha256Buffer(Buffer.from(serverSeedHexString, \"hex\"));",
     "runner": "verify",
     "expect": "NOT PROVABLY FAIR",
-    "guard": "Step 1 (Seed Hash Integrity) must reject the wrong commitment convention — LIQD commits SHA-256 of the seed's HEX STRING, not of its bytes, and all 33 commitments would stop matching"
+    "guard": "Step 1 (Seed Hash Integrity) must reject the wrong commitment convention — LIQD commits SHA-256 of the seed's HEX STRING, not of its bytes, and all 34 commitments would stop matching"
   },
   {
-    "name": "plan span shrunk below the captured top: the 1% win chance dropped from the plan",
+    "name": "plan span shrunk below the captured top: the 0.01% win chance dropped from the plan",
     "file": "src/config.ts",
-    "find": "  { id: 'A+', phase: 'A', capture: 1, epochSizes: [200], stake: '0.10000000', playerSeeds: false, winChances: [1] },",
-    "replace": "  { id: 'A+', phase: 'A', capture: 1, epochSizes: [200], stake: '0.10000000', playerSeeds: false, winChances: [2] },",
+    "find": "  { id: 'X', phase: 'X', capture: 3, epochSizes: [1], stake: '0.10000000', playerSeeds: false, winChances: [0.01] },",
+    "replace": "  { id: 'X', phase: 'X', capture: 3, epochSizes: [1], stake: '0.10000000', playerSeeds: false, winChances: [1] },",
     "runner": "verify",
     "expect": "NOT PROVABLY FAIR",
     "expectStep": 10,
-    "guard": "Step 10 (Wallet Credit & Odds Bounds) must reject a captured band priced outside the span of the plan's win chances: with the 1% win chance removed from the plan in src/config.ts, the 200 rounds of the A+ top-up (99x) lie outside the remaining span. Step 12 fails as well (the A+ phase no longer plays the plan's win chance), which is correct; Step 10 is the bound this entry names."
+    "guard": "Step 10 (Wallet Credit & Odds Bounds) must reject a captured band priced outside the span of the plan's win chances: with the 0.01% win chance removed from the plan in src/config.ts, the one round of Phase X (9900x) lies outside the remaining span. Step 12 fails as well (Phase X no longer plays the plan's win chance), which is correct; Step 10 is the bound this entry names."
   },
   {
     "name": "effective-edge simulation depth pin loosened",
@@ -222,8 +222,8 @@
   {
     "name": "pooled real-roll uniformity forged in the artifact",
     "file": "outputs/simulation-results.json",
-    "find": "\"chi2\": 104.44397641112047",
-    "replace": "\"chi2\": 94.44397641112047",
+    "find": "\"chi2\": 104.49865229110515",
+    "replace": "\"chi2\": 94.49865229110515",
     "runner": "verify",
     "expect": "NOT PROVABLY FAIR",
     "guard": "Step 17 (Simulation Pass 2) must recompute the pooled statistic from the dataset's own rolls rather than reading it — a forged pooled chi2 is a claim about data the verifier holds"
@@ -333,10 +333,10 @@
     "guard": "Step 16 compares the recomputed schema-2 zCritical (inverseCriticalZ at ALPHA_SCREEN) to the shipped value at the reproduction bound, 1e-14 absolute + 1e-12 relative (src/diff.ts numbersAgree), not bit equality, so 1-ulp libm drift across platforms passes (1-ulp drift of exactly that kind was measured on Linux, 2026-09-28). A shipped value moved just beyond the bound is a different result and must still FAIL Step 16; nothing else in the artifact changes, so only the recomputation can catch it (the runner re-pins SIMULATION_SHA256, as a forger would)."
   },
   {
-    "name": "Pass-2 pooled real-roll p-value forged just beyond the reproduction bound (+1e-12; bound 3.4e-13 at p = 0.3346)",
+    "name": "Pass-2 pooled real-roll p-value forged just beyond the reproduction bound (+1e-12; bound 3.4e-13 at p = 0.3333)",
     "file": "outputs/simulation-results.json",
-    "find": "\"pValue\": 0.3346161599442177",
-    "replace": "\"pValue\": 0.3346161599452177",
+    "find": "\"pValue\": 0.33325279681963416",
+    "replace": "\"pValue\": 0.33325279682063416",
     "runner": "verify",
     "expect": "NOT PROVABLY FAIR",
     "guard": "Step 17 compares the recomputed pooled real-roll uniformity p (chiSquaredTest over the dataset's own rolls) to the shipped value at the reproduction bound, 1e-14 absolute + 1e-12 relative (src/diff.ts numbersAgree), not bit equality, so 1-ulp libm drift across platforms passes (1-ulp drift of exactly that kind was measured on Linux, 2026-09-28). A shipped value moved just beyond the bound is a different result and must still FAIL Step 17; nothing else in the artifact changes, so only the recomputation can catch it (the runner re-pins SIMULATION_SHA256, as a forger would)."

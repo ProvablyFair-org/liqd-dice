@@ -16,7 +16,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
-import { DATASET_SHA256, DATASET_FILE, SIMULATION_SHA256, SIMULATION_HTML_SHA256, EXPECTED_BETS, EXPECTED_SEEDS, EXPECTED_EPOCHS, EXPECTED_PHASE_BETS, EXPECTED_CAPTURES, E17_FILE, E17_SHA256 } from '../../src/config';
+import { DATASET_SHA256, DATASET_FILE, SIMULATION_SHA256, SIMULATION_HTML_SHA256, EXPECTED_BETS, EXPECTED_SEEDS, EXPECTED_EPOCHS, EXPECTED_PHASE_BETS, EXPECTED_CAPTURES, E17_FILE, E17_SHA256, E20_FILE, E20_SHA256 } from '../../src/config';
 import { renderConvergenceChart } from '../../src/chart';
 
 const REPO = path.join(__dirname, '../..');
@@ -67,5 +67,9 @@ describe('LIQD Dice artifacts of record', () => {
 
   it(`${E17_FILE} hash matches E17_SHA256`, () => {
     assert.strictEqual(sha(path.join(REPO, E17_FILE)), E17_SHA256);
+  });
+
+  it(`${E20_FILE} hash matches E20_SHA256`, () => {
+    assert.strictEqual(sha(path.join(REPO, E20_FILE)), E20_SHA256);
   });
 });

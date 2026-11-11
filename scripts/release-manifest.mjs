@@ -32,9 +32,8 @@ const CHECK = process.argv.includes('--check');
 
 /**
  * The facts no file in this package can supply. `auditIdStatus` records that ProvablyFair.org has
- * confirmed the audit ID. `v1.2.0` is the re-certification on the liqd.com production capture of
- * 7 to 10 November 2026; it supersedes `v1.1.0`, the latest release of the public repository, and
- * carries the documentation errata prepared as `v1.1.1`, which was not published. `signature` is the
+ * confirmed the audit ID. `v1.3.0` scores the liqd.com production capture of 7 to 10 November 2026, including one round at
+ * the 9900x setting and LIQD's verifier replies at that setting; it supersedes `v1.2.0`. `signature` is the
  * fingerprint of the SSH key that signs the release commit and tag.
  */
 const DECLARED = {
@@ -42,16 +41,16 @@ const DECLARED = {
   auditIdStatus: 'confirmed by ProvablyFair.org',
   game: 'dice',
   casino: 'liqd',
-  release: 'v1.2.0',
+  release: 'v1.3.0',
   framework: '1.1',
   environmentStage: 'production',
   environmentQualifier: 'production',
-  supersedes: 'v1.1.0',
+  supersedes: 'v1.2.0',
   signature: 'SHA256:gEujiJm2pRyq7lQsfYQfQ1r97H/J7GdaKHbOW8GtikY',
 };
 
 /** The dataset the audit scores. */
-const DATASET = 'data/dice-prod-5935bets.json';
+const DATASET = 'data/dice-prod-5936bets.json';
 
 /** Every file whose bytes the release is a claim about. Order is the manifest's order. */
 const ARTIFACTS = [
@@ -60,13 +59,16 @@ const ARTIFACTS = [
   'outputs/simulation-results.json',
   'outputs/verification-results.json',
   'outputs/rtp-claim-table.json',   // RTP-CLAIM per-setting table (src/rtp-settings.ts pins it)
-  'data/dice-prod-5935bets.json',
-  // The capture checker's printouts of the three raw production capture files.
+  'data/dice-prod-5936bets.json',
+  // The capture checker's printouts of the four raw production capture files.
   'evidence/E16-prod-capture-check-2026-11-07.txt',
   'evidence/E18-prod-capture-check-2026-11-10-phases-D-A.txt',
   'evidence/E19-prod-capture-check-2026-11-10-phase-C.txt',
+  'evidence/E21-prod-capture-check-2026-11-10-phase-X.txt',
   // LIQD's production verify endpoint on rolls that land on a band bound (Step 15 re-derives it).
   'evidence/E17-prod-verify-boundary-probes-2026-11-09.json',
+  // LIQD's production verify endpoint on 0.01 % bands, the 9900x setting (Step 15 re-derives it).
+  'evidence/E20-prod-verify-9900x-probes-2026-11-10.json',
   // The live liqd.com page figures the RTP claim is read from.
   'evidence/rtp-page-labels-2026-10-01.json',
 ];

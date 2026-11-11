@@ -260,7 +260,7 @@ const verificationBody = {
   steps: labelled,
   profileCoverage: profileCoverageBlock(),
   info: infoItems,
-  // The one summary shape of every LIQD package (scripts/release-bar.mjs, review of 2026-09-28 F20):
+  // The one summary shape of every LIQD package (scripts/release-bar.mjs):
   // captureFlags counts the capture-origin FLAGs; an INFO step is not a flag and is not counted.
   summary: { passed, flags, operatorFlags, captureFlags, hardFail, verdict },
 };

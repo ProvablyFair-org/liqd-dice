@@ -125,7 +125,7 @@ export function run(ctx: VerifyContext): StepResult[] {
     + `per phase: ${phaseNotes.join('; ')}; `
     + `both stake tiers present, ${BASE_STAKE} and ${ELEVATED_STAKE} USDT, and no other (${tiersOk}); `
     + `Phase A (A and the A+ top-up, ${aBets.length} rounds): ${cellsPresent}/${wantCells.length} (mode × win chance) classes hold at least ${PHASE_A_MIN_BETS_PER_CLASS} rounds (fewest ${cellMin}), all 4 modes [${[...modesAll].join(',')}] at each of the ${aPlanBps.length} planned win chances (${cellsOk}); `
-    + `both ends of the planned range played, ${Math.min(...planAll) / 100}% (${PAYOUT_NUMERATOR_OVER(Math.min(...planAll))}×) and ${Math.max(...planAll) / 100}% (${PAYOUT_NUMERATOR_OVER(Math.max(...planAll))}×) (${endsOk}). There is no separate tail phase: the 99× setting is the A+ top-up and the 49.5× setting is the 2% win chance of Phase A`,
+    + `both ends of the planned range played, ${Math.min(...planAll) / 100}% (${PAYOUT_NUMERATOR_OVER(Math.min(...planAll))}×) and ${Math.max(...planAll) / 100}% (${PAYOUT_NUMERATOR_OVER(Math.max(...planAll))}×) (${endsOk}). There is no separate tail phase: the 9900× setting is the one round of Phase X, the 99× setting is the A+ top-up and the 49.5× setting is the 2% win chance of Phase A`,
   );
 
   return [s11, s12];

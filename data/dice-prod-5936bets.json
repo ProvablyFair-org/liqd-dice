@@ -6,8 +6,8 @@
     "schema": "liqd-dice-prod-capture-v1",
     "houseEdge": 0.01,
     "currency": "USDT",
-    "plannedTotal": 5935,
-    "epochs": 33,
+    "plannedTotal": 5936,
+    "epochs": 34,
     "phases": {
       "A": {
         "phase": "A",
@@ -36,10 +36,17 @@
         "epochs": 2,
         "bets": 235,
         "stake": "10.00000000"
+      },
+      "X": {
+        "phase": "X",
+        "capture": 3,
+        "epochs": 1,
+        "bets": 1,
+        "stake": "0.10000000"
       }
     },
     "startedAt": "2026-11-07T09:45:52.088Z",
-    "finishedAt": "2026-11-10T10:37:36.813Z",
+    "finishedAt": "2026-11-10T19:00:14.901Z",
     "captures": [
       {
         "index": 0,
@@ -318,6 +325,94 @@
           "nonce": 0,
           "nextHashedServerSeed": "c63616b206513a87c6f6a41464be633cb3685c79d9b283bf3d7f030543468d59",
           "revealedServerSeed": "f4212889310741c55384a41736fd5307",
+          "commitVerified": true
+        }
+      },
+      {
+        "index": 3,
+        "source": {
+          "file": "liqd-dice-prod-capture-2026-11-10T19-00-14-904Z.ndjson",
+          "sha256": "14875832127573aa56f418104822b49a147332d1089c75cadef75467a485cfd0",
+          "bytes": 9350,
+          "lines": 11,
+          "schema": "liqd-dice-prod-capture-v1",
+          "runner": "dice-prod-capture-runner 2026-11-03 build 52329e597a6b",
+          "planVersion": "phases-2026-11-09",
+          "origin": "https://liqd.com"
+        },
+        "startedAt": "2026-11-10T19:00:11.711Z",
+        "finishedAt": "2026-11-10T19:00:14.901Z",
+        "exportedAt": "2026-11-10T19:00:14.903Z",
+        "status": "completed",
+        "epochs": {
+          "first": 33,
+          "last": 33,
+          "count": 1
+        },
+        "bets": 1,
+        "verifierReplies": 1,
+        "phases": {
+          "X": {
+            "phase": "X",
+            "epochs": 1,
+            "bets": 1,
+            "stake": "0.10000000"
+          }
+        },
+        "stakeCurrency": "USDT",
+        "currencyId": 3,
+        "runner": {
+          "clientSeedGenerator": {
+            "A": "\"audit\" + 6 bytes of crypto.getRandomValues as hex (browser CSPRNG)"
+          },
+          "endpoints": {
+            "placeBet": "/api/v1/originals/dice/place-bet",
+            "verify": "/api/v1/originals/dice/verify"
+          },
+          "winChances": [
+            2,
+            5,
+            10,
+            20,
+            35,
+            50,
+            65,
+            80,
+            90,
+            98
+          ],
+          "bands": [
+            "under",
+            "over",
+            "inside",
+            "outside-low",
+            "outside-high"
+          ],
+          "bandGenerator": "inside / outside positions from crypto.getRandomValues (rejection-sampled), on the 0.01 grid",
+          "pacing": {
+            "betDelayMs": 1000,
+            "stepDelayMs": 300,
+            "verifyDelayMs": 500
+          },
+          "plan": [
+            {
+              "phase": "X",
+              "rounds": 1,
+              "epochs": 1,
+              "stake": "0.10000000",
+              "config": "under 0.01 (0.01 % win chance, 9900x) at 0.10, one round",
+              "seedRule": "\"audit\" + 12 hex of the browser CSPRNG, a fresh one per epoch",
+              "floor": "one round at the 9900x setting (the top of the price grid; the auditor 10 Nov)"
+            }
+          ]
+        },
+        "preCapture": {
+          "at": "2026-11-10T19:00:12.062Z",
+          "hashedServerSeed": "966e4f53c3c6ae39155b128a09a29d7e151f4966d542dadf53c302f96014d459",
+          "clientSeed": "audit40effc722790",
+          "nonce": 0,
+          "nextHashedServerSeed": "363c489d7d32861c114b6ccaa9102f31767f18513eb5f332d0e99418a85de501",
+          "revealedServerSeed": "51182e7abfdd35e30e871b40edcf04da",
           "commitVerified": true
         }
       }
@@ -1037,6 +1132,27 @@
       "playerSet": false,
       "drawnAfter": "07d6128c2fb5d20cdaf27ddf3acacecdb8f7e55f2f7a4a012ce8d80deba5c148",
       "revealedAt": "2026-11-10T10:33:48.653Z",
+      "commitVerified": true,
+      "chainLinkOk": true
+    },
+    {
+      "epoch": 33,
+      "capture": 3,
+      "captureEpoch": 0,
+      "phase": "X",
+      "phaseId": "X",
+      "at": "2026-11-10T19:00:12.353Z",
+      "clientSeed": "auditd79f1ff52fcf",
+      "hashedServerSeed": "363c489d7d32861c114b6ccaa9102f31767f18513eb5f332d0e99418a85de501",
+      "nextHashedServerSeed": "62a07d034beb6491f7f32890646e6f2a087173097e9345daf8b3f4af9954a5c8",
+      "serverSeed": "2861ff1dcce8feee411c8293ceb3896a",
+      "nonceStart": 0,
+      "nonceEnd": 0,
+      "plannedBets": 1,
+      "submittedClientSeed": "auditd79f1ff52fcf",
+      "playerSet": false,
+      "drawnAfter": "363c489d7d32861c114b6ccaa9102f31767f18513eb5f332d0e99418a85de501",
+      "revealedAt": "2026-11-10T19:00:14.156Z",
       "commitVerified": true,
       "chainLinkOk": true
     }
@@ -285920,6 +286036,54 @@
       },
       "localRoll": 96.44,
       "localWin": true,
+      "verified": true
+    },
+    {
+      "at": "2026-11-10T19:00:12.697Z",
+      "epoch": 33,
+      "capture": 3,
+      "captureEpoch": 0,
+      "phase": "X",
+      "phaseId": "X",
+      "id": "KlZKQS3tgfyTQ-wPnuZfz",
+      "params": {
+        "lower": 0,
+        "upper": 0.01,
+        "inverted": false
+      },
+      "nonce": 0,
+      "clientSeed": "auditd79f1ff52fcf",
+      "serverSeedId": "6f8d0870-2966-48cd-8883-066b1bb404d8",
+      "hashedServerSeed": "363c489d7d32861c114b6ccaa9102f31767f18513eb5f332d0e99418a85de501",
+      "roll": 63.94,
+      "win": false,
+      "multiplier": 0,
+      "result": "lost",
+      "betAmount": "0.10000000",
+      "winningAmount": "0",
+      "stakeWallet": "0.10000000",
+      "winningAmountWallet": "0",
+      "verifier": {
+        "at": "2026-11-10T19:00:14.398Z",
+        "status": 200,
+        "request": {
+          "serverSeed": "2861ff1dcce8feee411c8293ceb3896a",
+          "clientSeed": "auditd79f1ff52fcf",
+          "nonce": 0,
+          "params": {
+            "lower": 0,
+            "upper": 0.01,
+            "inverted": false
+          }
+        },
+        "outcome": {
+          "roll": 63.94,
+          "win": false,
+          "multiplier": 0
+        }
+      },
+      "localRoll": 63.94,
+      "localWin": false,
       "verified": true
     }
   ]

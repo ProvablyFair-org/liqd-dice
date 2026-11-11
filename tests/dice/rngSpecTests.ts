@@ -2,7 +2,7 @@
  * Spec self-test: docs/ALGORITHM.md vectors and properties, run against src/rng.ts.
  *
  * The vectors are the specification's §5: nine rounds of the liqd.com production capture of 7 to 10
- * November 2026 (copied from data/dice-prod-5935bets.json by bet id, every phase) and the boundary
+ * November 2026 (copied from data/dice-prod-5936bets.json by bet id, every phase) and the boundary
  * probes LIQD's production verify endpoint answered on 9 November 2026 (evidence E17). The checks
  * read only src/rng.ts; the win rule and the payout (§3) are re-derived here so each vector is
  * checked input to every output.

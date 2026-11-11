@@ -1,7 +1,7 @@
 /**
  * Settlement arithmetic: credit = floor8(stake × 9900/basisPoints), exact.
  *
- * The rule is measured on the production capture (data/dice-prod-5935bets.json): every winning
+ * The rule is measured on the production capture (data/dice-prod-5936bets.json): every winning
  * credit, at 0.10 USDT and at 10.00 USDT, is the exact product of the decimal stake and the rational
  * 9900/basisPoints, rounded DOWN to the 1e-8 grid. It is evaluated in exact integer (BigInt) units
  * from the decimal text of the served amounts, because the question is about a single 1e-8 unit and

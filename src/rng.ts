@@ -1,5 +1,5 @@
 /**
- * PROVENANCE (header rewritten for release v1.2.0, 10 Nov 2026; everything below this comment is the
+ * PROVENANCE (header rewritten on 10 Nov 2026; everything below this comment is the
  * module byte for byte as integrated on 20 Oct 2026).
  *
  * This module was BUILT FROM A WRITTEN SPECIFICATION, not ported from LIQD's code: the implementer

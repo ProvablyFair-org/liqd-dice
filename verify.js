@@ -95,8 +95,8 @@ function drawBiasBound() {
   "src/config.js": function (module, exports, require, __filename, __dirname) {
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SIM_TARGET_SEEDS_EACH = exports.SIM_TARGET_SEED_COUNTER_BASE = exports.SIM_TARGETS = exports.SIM_RTP_STRATEGY = exports.SIM_EDGE_BANDS = exports.SIM_MASTER_SEED = exports.SIMULATION_HTML_SHA256 = exports.SIMULATION_SHA256 = exports.SIM_PASS2_ALPHA = exports.E17_PROBES = exports.E17_SHA256 = exports.E17_FILE = exports.PHASE_A_MIN_BETS_PER_CLASS = exports.PHASE_D_MIN_DISTINCT_SEEDS = exports.PHASE_C_MIN_WINS = exports.PHASE_C_MIN_BETS = exports.EXPECTED_WIN_CHANCES = exports.ELEVATED_STAKE = exports.BASE_STAKE = exports.EXPECTED_PHASE_BETS = exports.EXPECTED_CAPTURES = exports.EXPECTED_BETS = exports.EXPECTED_SEEDS = exports.EXPECTED_EPOCHS = exports.EXPECTED_PHASES = exports.EXPECTED_STEPS = exports.VERDICT_QUALIFIER = exports.AUDIT_ID = exports.DATASET_FILE = exports.DATASET_SHA256 = exports.ALPHA_SCREEN = exports.ALPHA_SCREENS = exports.ALPHA = exports.SIM_PASS2_NONCES = exports.SIM_CHERRY_SEED_ALPHA = exports.SIM_CHERRY_WINDOW = exports.SIM_CHERRY_BINS = exports.SIM_TARGET_MARKS = exports.SIM_TARGET_BETS = exports.SIM_RTP_MARKS = exports.SIM_RTP_BETS = exports.SIM_EDGE_BETS = exports.SIM_SERIAL_DRAWS = exports.SIM_UNIFORMITY_DRAWS = exports.PRICE_GRID_MAX_BPS = exports.PRICE_GRID_MIN_BPS = exports.HOUSE_EDGE = exports.SCALE = exports.CURSOR = exports.RANGE = void 0;
-exports.PAYOUT_NUMERATOR = void 0;
+exports.SIM_RTP_STRATEGY = exports.SIM_EDGE_BANDS = exports.SIM_MASTER_SEED = exports.SIMULATION_HTML_SHA256 = exports.SIMULATION_SHA256 = exports.SIM_PASS2_ALPHA = exports.E20_PROBES = exports.E20_SHA256 = exports.E20_FILE = exports.E17_PROBES = exports.E17_SHA256 = exports.E17_FILE = exports.PHASE_A_MIN_BETS_PER_CLASS = exports.PHASE_D_MIN_DISTINCT_SEEDS = exports.PHASE_C_MIN_WINS = exports.PHASE_C_MIN_BETS = exports.EXPECTED_WIN_CHANCES = exports.ELEVATED_STAKE = exports.BASE_STAKE = exports.EXPECTED_PHASE_BETS = exports.EXPECTED_CAPTURES = exports.EXPECTED_BETS = exports.EXPECTED_SEEDS = exports.EXPECTED_EPOCHS = exports.EXPECTED_PHASES = exports.EXPECTED_STEPS = exports.VERDICT_QUALIFIER = exports.AUDIT_ID = exports.DATASET_FILE = exports.DATASET_SHA256 = exports.ALPHA_SCREEN = exports.ALPHA_SCREENS = exports.ALPHA = exports.SIM_PASS2_NONCES = exports.SIM_CHERRY_SEED_ALPHA = exports.SIM_CHERRY_WINDOW = exports.SIM_CHERRY_BINS = exports.SIM_TARGET_MARKS = exports.SIM_TARGET_BETS = exports.SIM_RTP_MARKS = exports.SIM_RTP_BETS = exports.SIM_EDGE_BETS = exports.SIM_SERIAL_DRAWS = exports.SIM_UNIFORMITY_DRAWS = exports.PRICE_GRID_MAX_BPS = exports.PRICE_GRID_MIN_BPS = exports.HOUSE_EDGE = exports.SCALE = exports.CURSOR = exports.RANGE = void 0;
+exports.PAYOUT_NUMERATOR = exports.SIM_TARGET_SEEDS_EACH = exports.SIM_TARGET_SEED_COUNTER_BASE = exports.SIM_TARGETS = void 0;
 exports.expectedEpochSize = expectedEpochSize;
 exports.bandKey = bandKey;
 exports.continuousWinChancePct = continuousWinChancePct;
@@ -138,9 +138,10 @@ exports.bandMode = bandMode;
  *
  * LIMITS. No odds or bet-limit configuration is served in the production dice replies, and none was
  * read from the site. What is audited is what was played: win chances 1% to 98% (99× down to
- * 9900/9800 = 1.0102…×). The price grid the model covers is every band width that has a win chance
- * and a multiplier above 1× (PRICE_GRID_MIN_BPS … PRICE_GRID_MAX_BPS); which of those widths outside
- * 1%–98% production accepts was not measured (limitation L7).
+ * 9900/9800 = 1.0102…×) and one round at 0.01% (9900×, Phase X), whose pricing LIQD's verifier also
+ * returns (evidence E20). The price grid the model covers is every band width that has a win chance
+ * and a multiplier above 1× (PRICE_GRID_MIN_BPS … PRICE_GRID_MAX_BPS); which of the widths between
+ * 0.02% and 0.99% and above 98% production accepts was not measured (limitation L7).
  */
 exports.RANGE = 10000; // integer draw domain 0..9999
 exports.CURSOR = 0; // fixed HMAC cursor for the single dice draw
@@ -166,14 +167,13 @@ exports.SIM_RTP_BETS = 20000000;
 /** The sample sizes the convergence series must contain, in order. */
 exports.SIM_RTP_MARKS = [1000, 10000, 100000, 1000000, 5000000, 10000000, exports.SIM_RTP_BETS];
 /**
- * EDGE CONVERGENCE ON 98 TARGETS (DICE-20), added 22 October 2026 to standardize on the design of
- * the Duel dice audit (`v1.0.0`): 98 targets × 1,000,000 bets each. Duel's targets are "roll over
- * 2.00 … over 99.00"; on LIQD the same targets are the over-mode bands [X, 100) for X = 2, 3, …, 99
+ * EDGE CONVERGENCE ON 98 TARGETS (DICE-20): 98 targets × 1,000,000 bets each, "roll over
+ * 2.00 … over 99.00"; on LIQD these are the over-mode bands [X, 100) for X = 2, 3, …, 99
  * (win chance 98% … 1%, 1.0102× … 99×: the span of win chances the production capture played). Each target
  * is scored within 5·SE + 1e-4 of its theoretical RTP, and the MEAN simulated RTP over the 98 targets
- * at each of SIM_TARGET_MARKS (Duel's marks) is the convergence series the chart draws.
+ * at each of SIM_TARGET_MARKS is the convergence series the chart draws.
  *
- * Everything above is unchanged from v1.0.0 and runs first, on the same seeds: the targets are
+ * Everything above runs first, on the same seeds: the targets are
  * APPENDED, after the nine bands, on the continuation of the same pinned seed stream (see
  * SIM_TARGET_SEED_COUNTER_BASE).
  */
@@ -245,9 +245,9 @@ exports.ALPHA_SCREEN = exports.ALPHA / exports.ALPHA_SCREENS;
  * SHA-256 of the pinned capture. Single-sourced here so the producer (`src/simulate.ts`) and the
  * verifier (`tests/verify.ts`) cannot pin different datasets.
  */
-exports.DATASET_SHA256 = 'b5357d37d4c65b26e04915ddc8d59d2b8d144f81a51242f278080a1a2d8b8697';
+exports.DATASET_SHA256 = '41ea55fcadd903768be3a92725f2100fe2e794ab300d6842ce946124ea7d5042';
 /** The scored dataset's path, single-sourced for the verifier, the producer and the release manifest. */
-exports.DATASET_FILE = 'data/dice-prod-5935bets.json';
+exports.DATASET_FILE = 'data/dice-prod-5936bets.json';
 /**
  * ProvablyFair.org audit identifier. Single-sourced here so the emitted
  * `outputs/verification-results.json` carries the same ID the report chapters print (README.md,
@@ -271,17 +271,18 @@ exports.EXPECTED_PHASES = [
     { id: 'D', phase: 'D', capture: 1, epochSizes: [100, 100, 100, 100, 100], stake: '0.10000000', playerSeeds: true, winChances: PLAN_WIN_CHANCES },
     { id: 'A+', phase: 'A', capture: 1, epochSizes: [200], stake: '0.10000000', playerSeeds: false, winChances: [1] },
     { id: 'C', phase: 'C', capture: 2, epochSizes: [118, 117], stake: '10.00000000', playerSeeds: false, winChances: [50] },
+    { id: 'X', phase: 'X', capture: 3, epochSizes: [1], stake: '0.10000000', playerSeeds: false, winChances: [0.01] },
 ];
 exports.EXPECTED_EPOCHS = exports.EXPECTED_PHASES.flatMap((ph) => ph.epochSizes.map((bets) => ({ phaseId: ph.id, phase: ph.phase, capture: ph.capture, bets, stake: ph.stake, playerSeeds: ph.playerSeeds }))).map((e, epoch) => ({ epoch, ...e }));
-exports.EXPECTED_SEEDS = exports.EXPECTED_EPOCHS.length; // 33
-exports.EXPECTED_BETS = exports.EXPECTED_EPOCHS.reduce((a, e) => a + e.bets, 0); // 5,935
-exports.EXPECTED_CAPTURES = new Set(exports.EXPECTED_PHASES.map((ph) => ph.capture)).size; // 3
+exports.EXPECTED_SEEDS = exports.EXPECTED_EPOCHS.length; // 34
+exports.EXPECTED_BETS = exports.EXPECTED_EPOCHS.reduce((a, e) => a + e.bets, 0); // 5,936
+exports.EXPECTED_CAPTURES = new Set(exports.EXPECTED_PHASES.map((ph) => ph.capture)).size; // 4
 /** Rounds per phase id. The plan, in code, not `meta.phases`, which is inside the evidence. */
 exports.EXPECTED_PHASE_BETS = Object.fromEntries(exports.EXPECTED_PHASES.map((ph) => [ph.id, ph.epochSizes.reduce((a, n) => a + n, 0)]));
-/** The base stake (phases A, A+ and D) and the elevated stake (Phase C), as served. */
+/** The base stake (phases A, A+, D and X) and the elevated stake (Phase C), as served. */
 exports.BASE_STAKE = '0.10000000';
 exports.ELEVATED_STAKE = '10.00000000';
-/** Every win chance (percent) the plan plays, ascending: Phase A's ten plus the A+ top-up's 1%. */
+/** Every win chance (percent) the plan plays, ascending: Phase X's 0.01%, the A+ top-up's 1% and Phase A's ten. */
 exports.EXPECTED_WIN_CHANCES = [...new Set(exports.EXPECTED_PHASES.flatMap((ph) => ph.winChances))].sort((a, z) => a - z);
 /** The audited size of one epoch (throws on an epoch outside the plan). */
 function expectedEpochSize(epoch) {
@@ -304,6 +305,13 @@ exports.PHASE_A_MIN_BETS_PER_CLASS = 50;
 exports.E17_FILE = 'evidence/E17-prod-verify-boundary-probes-2026-11-09.json';
 exports.E17_SHA256 = '3cf8d772f60f62793579db7f0041ef81e77aff490b95e03717fd96c23f82de98';
 exports.E17_PROBES = 23;
+/**
+ * The 9900x probe record (evidence E20): LIQD's production verify endpoint asked, on 10 November 2026, for 0.01 % bands (one
+ * basis point) placed on, just below and just above four known rolls. Pinned here; Step 15 re-derives every probe with E17's.
+ */
+exports.E20_FILE = 'evidence/E20-prod-verify-9900x-probes-2026-11-10.json';
+exports.E20_SHA256 = '78e57a33211b1d0ad4ce97fa1426c2c6e3db9bed8c04c60503b1d731d799c9b2';
+exports.E20_PROBES = 10;
 /**
  * Pass-2 served-band return scan (DICE-21): the level IS the suite's single ALPHA, single-sourced
  * here so the producer (src/simulate.ts) and the verifier (tests/steps/simulation.ts) cannot drift.
@@ -341,7 +349,7 @@ exports.SIM_PASS2_ALPHA = exports.ALPHA; // the suite's single significance leve
  * a forged statistic and a Full Pass. Scored inside Step 19 (with the dataset pin), never allowed to
  * abort before the scored steps.
  */
-exports.SIMULATION_SHA256 = '9e479965badc9bb646b0a6302837291c0704451df6e699e96a855883e70b0828';
+exports.SIMULATION_SHA256 = 'c6698388eb242683180135e687ec1f2074596eb87a19390dfe35176371913308';
 exports.SIMULATION_HTML_SHA256 = '6b7b6bb7c474a49b48effbd31dd69ca952e4af5ee451902dbaff4a745743e02c';
 /**
  * The auditor's pinned entropy source for the Pass-1 simulation (DICE-20). Every "fresh" seed the
@@ -648,7 +656,7 @@ function decimalFraction(x) {
  *   credit = floor8( stake × 9900 / basisPoints )        computed exactly, on the decimal stake
  *
  * The exact product is rounded DOWN to the 1e-8 grid; a loss pays 0. Measured on the production
- * capture (data/dice-prod-5935bets.json): the rule reproduces the served winningAmount on every
+ * capture (data/dice-prod-5936bets.json): the rule reproduces the served winningAmount on every
  * win, at both stakes (Step 8 prints the counts), and it is the rule LIQD stated on 30 September
  * 2026 ("exact decimal maths and are then rounded down to 8 decimals"). A floor has no tie case and
  * no rounding mode to assume. What it means for the player: a credit is never above the exact
@@ -1414,7 +1422,7 @@ exports.STEP_CLAIMS = {
     2: {
         claims: [{
                 id: 'DICE-02', coverage: 'full',
-                note: 'the dataset holds three capture files: every in-file rotation is checked (next hash == the '
+                note: 'the dataset holds four capture files: every in-file rotation is checked (next hash == the '
                     + 'next epoch\'s commitment) and each file is anchored by its own pre-capture pair (revealed, '
                     + 'hashing to its commitment, naming the file\'s first epoch). The links between the files run '
                     + 'through rotations outside this dataset and are not checked',
@@ -1518,9 +1526,9 @@ exports.STEP_CLAIMS = {
                 note: 'asserted against the plan in code: Phase A (the 7 November rounds and the A+ top-up) holds '
                     + 'every planned win chance, 1% to 98%, in each of the four band modes with at least '
                     + 'PHASE_A_MIN_BETS_PER_CLASS rounds per (mode × win chance) class; both ends of the planned '
-                    + 'range are played (1%, 99×, and 98%); both stake tiers are present (0.10 USDT and the 10.00 '
-                    + 'USDT of Phase C). There is no separate tail phase: 99× is the A+ top-up and 49.5× is the 2% '
-                    + 'setting of Phase A. Band widths outside 1%–98% were not played (L7)',
+                    + 'range are played (0.01 %, 9900×, in Phase X, and 98%); both stake tiers are present (0.10 USDT and the 10.00 '
+                    + 'USDT of Phase C). There is no separate tail phase: 99× is the A+ top-up, 49.5× is the 2% '
+                    + 'setting of Phase A and 9900× is the one round of Phase X, priced by LIQD\'s verifier in E20. Band widths between 0.02% and 0.99% and above 98% were not played (L7)',
             },
         ],
     },
@@ -1572,21 +1580,20 @@ exports.STEP_CLAIMS = {
                 note: 'scored against the pinned simulation artifact with every DERIVED field re-derived '
                     + '(multiplier, theoretical RTP, SE, deltaSE), a two-sided uniformity screen over 2,000,000 '
                     + 'draws, a serial screen, edge convergence on 98 over-mode targets (over 2.00 … over 99.00) '
-                    + '× 1,000,000 bets each with the 98-target mean RTP as the convergence series (the Duel dice '
-                    + 'design, standardized 22 October 2026; the targets continue the same pinned seed stream '
-                    + 'after the v1.0.0 blocks, at fixed counters re-derived in verify), 9 effective-edge bands × '
-                    + '2,000,000 across all four modes, and the v1.0.0 20,000,000-bet under-50 convergence series, '
-                    + 'all with standard errors and integer win counts recomputed from the artifact rows. The Pass-1 experiment is now DETERMINISTIC '
+                    + '× 1,000,000 bets each with the 98-target mean RTP as the convergence series (the targets continue the same pinned '
+                    + 'seed stream after the Pass-1 blocks, at fixed counters re-derived in verify), 9 effective-edge bands × '
+                    + '2,000,000 across all four modes, and the 20,000,000-bet under-50 convergence series, '
+                    + 'all with standard errors and integer win counts recomputed from the artifact rows. The Pass-1 experiment is DETERMINISTIC '
                     + 'and BYTE-REPLAYABLE (DICE-20): the seed stream is HMAC(SIM_MASTER_SEED, counter) rather '
                     + 'than crypto.randomBytes, the artifact carries no run metadata, so `npm run simulate` '
                     + 'writes identical bytes every time and `npm run test:full` regenerates it with an empty '
                     + 'field diff — the raw Pass-1 statistics (uniformity.chi2, serial.lag1/runsZ, each band\'s '
                     + 'simulatedRTP, each target\'s win counts, the convergence paths) are re-derivable by replaying the pinned producer, '
-                    + 'not merely attested by an unreproducible regeneration. Former limitation L10 (a stale '
-                    + 'zCritical field) is resolved by the regeneration — the artifact is now schema 2 and '
-                    + 'stores the correct zCritical, re-derived; L1 (a subtly forged statistic was invisible '
-                    + 'because a re-run produced different numbers) is NARROWED to the fast-verify path only: '
-                    + 'the producer is now a pure function of pinned source, so test:full reproduces the exact '
+                    + 'not merely attested by an unreproducible regeneration. Limitation L10 (a stale '
+                    + 'zCritical field) is resolved: the artifact is schema 2 and '
+                    + 'stores the correct zCritical, re-derived; L1 (a subtly forged statistic) '
+                    + 'is NARROWED to the fast-verify path only: '
+                    + 'the producer is a pure function of pinned source, so test:full reproduces the exact '
                     + 'committed figures and exposes any forgery, though the ~1s verify still does not recompute '
                     + 'the 138M-draw statistics. simulation.pass1.replayable = true',
             },
@@ -1656,7 +1663,7 @@ exports.STEP_CLAIMS = {
                 note: 'the artifacts of record are pinned in src/config.ts, un-ignored by name in .gitignore, '
                     + 'carry no run metadata on any path (no generatedAt/runtime/pin-mode field — absent, not excluded; the field diff has no ignore list), and verify writes only to outputs/run/ (report-'
                     + 'figures.json is reconciled field-for-field by recomputation, L16). The value-domain half '
-                    + 'the profile requires is now implemented (ported from liqd-plinko): src/domains.ts declares '
+                    + 'the profile requires is implemented: src/domains.ts declares '
                     + 'a physically-derived domain for every numeric leaf of the committed simulation-results.json '
                     + 'and report-figures.json — every bound taken from src/config.ts (the audited population, the '
                     + 'sample depths, the price grid, the roll grid), never from the file being checked — and '
@@ -1737,7 +1744,7 @@ exports.PACKAGE_CHECKS = [
     },
     {
         id: 'DICE-23', artifact: 'MANIFEST.md#verification-results', coverage: 'full',
-        note: 'the S5 fairness-integrity matrix now carries the full standardized framework set S5-1 … '
+        note: 'the S5 fairness-integrity matrix carries the full standardized framework set S5-1 … '
             + 'S5-8 between the <!-- S5-MATRIX:START/END --> markers, each row exactly one verdict '
             + '(Pass / Flag / Hard Fail / Not tested — disclosed) tied to a scored step or the capture: '
             + 'S5-1 seed substitution [Step 1,2], S5-2 client-seed [Step 14], S5-3 stake-conditional '
@@ -1761,13 +1768,13 @@ exports.PACKAGE_CHECKS = [
     {
         id: 'DICE-28', artifact: 'package.json (test) + .nvmrc + tests/ + src/config.ts (AUDIT_ID)', coverage: 'full',
         note: 'a fresh clone runs npm test to 22/22 Full Pass in ~8 s (standalone verify.js ~1 s) with '
-            + 'the runtime pinned (engines 22.x, .nvmrc) and pinned artifacts untouched; the audit ID is '
+            + 'the runtime pinned (engines >=22.23.1 <23, .nvmrc 22.23.1) and pinned artifacts untouched; the audit ID is '
             + 'SET — AUDIT_ID = PF-2026-LQ04 in src/config.ts, emitted into '
             + 'verification-results.json and printed in README.md / MANIFEST.md, with verdictQualifier '
             + '"production": the scored capture is the liqd.com production capture of 7 to 10 November 2026. '
             + 'The remaining release-gate sub-requirements hold: npm run test:full regenerates the '
             + 'simulation and diffs it field-by-field into outputs/run/diff.json with nothing beyond '
-            + 'tolerance (the Pass-1 experiment is now deterministic — DICE-20 — so regeneration reproduces '
+            + 'tolerance (the Pass-1 experiment is deterministic — DICE-20 — so regeneration reproduces '
             + 'byte-for-byte), the scored-step count in README/MANIFEST/verify equals the suite, and the '
             + 'runtime is pinned',
     },
@@ -1982,7 +1989,7 @@ function computeReportFigures(bets, seeds) {
   "src/rng.js": function (module, exports, require, __filename, __dirname) {
 "use strict";
 /**
- * PROVENANCE (header rewritten for release v1.2.0, 10 Nov 2026; everything below this comment is the
+ * PROVENANCE (header rewritten on 10 Nov 2026; everything below this comment is the
  * module byte for byte as integrated on 20 Oct 2026).
  *
  * This module was BUILT FROM A WRITTEN SPECIFICATION, not ported from LIQD's code: the implementer
@@ -2191,10 +2198,9 @@ exports.rtpClaimGate = rtpClaimGate;
  * house-side failure, because there is no figure to fall short of. flat and range are unchanged
  * from 1.0.0.
  *
- * 1.2.0 — Methodology v1.1. Agreed 2026-10-14 (decisions D2, D3; Mike, DM 14 Oct 14:32 UTC:
- * "D2: as written. The edge in Duel's game settings counts, no screenshot needed." / "D3: rule 1.2.0
- * switched on for all three casinos. A miss is a fail until fixed, but reported as 'RTP Figure
- * Overstated', not 'Not Provably Fair', since the draws themselves pass."). What changes:
+ * 1.2.0 — Methodology v1.1, 2026-10-14: an edge stated in the game's own settings counts as the published
+ * figure; the rule is enforced, and a miss is reported as RTP FIGURE OVERSTATED, not NOT PROVABLY FAIR,
+ * since the draws themselves pass. What changes:
  *
  *   - PLACES. A figure can be shown on the game page, the fairness page, the help page, the bet
  *     panel, the rules, or in the game settings the casino's site loads (a stated edge or RTP there
@@ -2717,7 +2723,7 @@ function evaluateRtpClaim(input, claim, opts = {}) {
 const NEVER_A_MISS = ['NO_CLAIM', 'NOTED', 'PUBLISHED'];
 /**
  * The status a package's -19 step takes from this rule. Not enforced → 'INFO' (printed, never
- * counted, verdict unchanged). Enforced → 'PASS', or 'OVERSTATED' for a miss (1.2.0, D3: the
+ * counted, verdict unchanged). Enforced → 'PASS', or 'OVERSTATED' for a miss (1.2.0: the
  * package verdict is RTP FIGURE OVERSTATED, see rtpClaimVerdict — never NOT PROVABLY FAIR).
  * NO_CLAIM, NOTED and PUBLISHED → 'INFO' either way.
  */
@@ -3437,9 +3443,6 @@ function runsStatistic(runs, n1, n) {
  * the true tail at the extremes. The cherry-pick binomial is EXACT and, being discrete, is
  * conservative — its achieved size is strictly below α. A repeated-simulation study could calibrate
  * the rest empirically; nothing here proves the finite-sample sizes, and this list does not claim to.
- * The one figure in this repo that IS a measured frequency is the 1-trip-in-20 observed under the
- * UNCORRECTED configuration of the previous release, and it is reported as a measurement of that
- * configuration, not as a prediction for this one.
  */
 exports.SCORED_STATISTICAL_PREDICATES = [
     { id: 'S1', step: 16, screen: 'Pass-1 draw uniformity χ², two-sided (upper: non-uniform; lower: too uniform)', size: 'α/3 = 3.333e-3' },
@@ -3753,8 +3756,8 @@ function erf(x) {
   },
   "src/types.js": function (module, exports, require, __filename, __dirname) {
 "use strict";
-// Types mirror the scored dataset data/dice-prod-5935bets.json: the liqd.com production capture of
-// 7 to 10 November 2026 (three capture files, phases A, D, A+ and C), converted to the package shape
+// Types mirror the scored dataset data/dice-prod-5936bets.json: the liqd.com production capture of
+// 7 to 10 November 2026 (four capture files, phases A, D, A+, C and X), converted to the package shape
 // { meta, seeds[], bets[] }. Field names match the dataset verbatim.
 Object.defineProperty(exports, "__esModule", { value: true });
 
@@ -3835,7 +3838,7 @@ function run(ctx) {
  *
  * THREE THINGS, kept apart because they have different evidentiary weight.
  *
- * 1. THE BOUNDARY RULE, WITNESSED ON LIQD'S PRODUCTION VERIFIER (evidence E17). No settled round of
+ * 1. THE BOUNDARY RULE AND THE 9900× PRICE, WITNESSED ON LIQD'S PRODUCTION VERIFIER (evidence E17, E20). No settled round of
  *    the capture has its roll on a band bound (counted below), so the settled data cannot choose
  *    between a half-open band [lower, upper) and one that is inclusive on both ends: both rules
  *    reproduce every captured win flag. The rule is therefore read off LIQD's own verify endpoint on
@@ -3904,15 +3907,23 @@ function run(ctx) {
     // ── (1) the boundary probes of record ────────────────────────────────────────
     const epochOfSeed = new Map(seeds.filter((s) => s.serverSeed).map((s) => [s.serverSeed, s]));
     const settled = new Set(bets.map((b) => `${b.epoch}|${b.nonce}`));
-    const file = path.join(ctx.outputsDir, '..', config_1.E17_FILE);
+    const records = [
+        { name: 'E17', file: config_1.E17_FILE, sha: config_1.E17_SHA256, n: config_1.E17_PROBES },
+        { name: 'E20', file: config_1.E20_FILE, sha: config_1.E20_SHA256, n: config_1.E20_PROBES },
+    ];
     let probeNote = '';
-    let probesOk = false;
+    let probesOk = true;
     let nProbes = 0, replyOk = 0, onLower = 0, onUpper = 0, discriminating = 0, discriminatingHalfOpen = 0, unsettledProbes = 0, controls = 0;
+    let oneBp = 0, oneBpWins = 0, oneBpPriced = 0;
     const discModes = new Set(), lowerModes = new Set();
-    if (!fs.existsSync(file)) {
-        probeNote = `${config_1.E17_FILE} ABSENT: the boundary rule has no witness`;
-    }
-    else {
+    const notes = [];
+    for (const rec of records) {
+        const file = path.join(ctx.outputsDir, '..', rec.file);
+        if (!fs.existsSync(file)) {
+            probesOk = false;
+            notes.push(`${rec.file} ABSENT`);
+            continue;
+        }
         const raw = fs.readFileSync(file);
         const sha = (0, node_crypto_1.createHash)('sha256').update(raw).digest('hex');
         let probes = [];
@@ -3922,8 +3933,9 @@ function run(ctx) {
         catch {
             probes = [];
         }
-        nProbes = probes.length;
+        nProbes += probes.length;
         const bad = [];
+        let ok = 0;
         for (const pr of probes) {
             let rq;
             let rp;
@@ -3943,12 +3955,21 @@ function run(ctx) {
                 && pr.request.method === 'POST' && pr.request.url === 'https://liqd.com/api/v1/originals/dice/verify';
             const roll = (0, rng_1.diceRoll)(rq.serverSeed, rq.clientSeed, rq.nonce) / config_1.SCALE;
             const win = (0, config_1.diceWin)(roll, rq.params);
-            const mult = win ? config_1.PAYOUT_NUMERATOR / (0, config_1.payoutBasisPoints)(rq.params) : 0;
+            const bps = (0, config_1.payoutBasisPoints)(rq.params);
+            const mult = win ? config_1.PAYOUT_NUMERATOR / bps : 0;
             const agrees = rp.outcome.roll === roll && rp.outcome.win === win && rp.outcome.multiplier === mult;
             if (provenanceOk && agrees)
-                replyOk++;
+                ok++;
             else
                 bad.push(`${pr.id}: ${provenanceOk ? 'reply differs from the package rule' : 'provenance'}`);
+            if (bps === 1) {
+                oneBp++;
+                if (rp.outcome.win) {
+                    oneBpWins++;
+                    if (rp.outcome.multiplier === config_1.PAYOUT_NUMERATOR)
+                        oneBpPriced++;
+                }
+            }
             const lowerHit = roll === rq.params.lower, upperHit = roll === rq.params.upper;
             if (lowerHit) {
                 onLower++;
@@ -3968,13 +3989,16 @@ function run(ctx) {
                     discriminatingHalfOpen++;
             }
         }
-        probesOk = sha === config_1.E17_SHA256 && nProbes === config_1.E17_PROBES && replyOk === nProbes
-            && discriminating > 0 && discriminatingHalfOpen === discriminating && onLower > 0;
-        probeNote = `${config_1.E17_FILE} sha256 ${sha.slice(0, 16)}… ${sha === config_1.E17_SHA256 ? 'matches its pin' : '≠ PIN'}; ${nProbes}/${config_1.E17_PROBES} answered probes, each on a seed revealed in this capture: LIQD's reply equals the package's roll, half-open win and 9900/basisPoints multiplier on ${replyOk}/${nProbes}`
-            + (bad.length ? ` (${bad.slice(0, 3).join('; ')})` : '')
-            + `; roll == lower bound on ${onLower} (wins the band; modes ${[...lowerModes].sort().join(', ')}), roll == upper bound on ${onUpper}, ${controls} with no bound hit (controls 0.01 off a bound, the range-edge roll inside its band, and one re-sent verify call of the capture); `
-            + `${discriminating} probes separate half-open from inclusive-both-ends (the roll is on a reachable upper bound; modes ${[...discModes].sort().join(', ')}; an over band's upper bound is 100, which no roll reaches) and ${discriminatingHalfOpen}/${discriminating} follow half-open; ${unsettledProbes} probes use nonces never settled in the capture`;
+        replyOk += ok;
+        if (!(sha === rec.sha && probes.length === rec.n && ok === probes.length))
+            probesOk = false;
+        notes.push(`${rec.file} sha256 ${sha.slice(0, 16)}… ${sha === rec.sha ? 'matches its pin' : '≠ PIN'}, ${ok}/${probes.length} replies equal the package rule (pinned count ${rec.n})${bad.length ? ` (${bad.slice(0, 3).join('; ')})` : ''}`);
     }
+    probesOk = probesOk && discriminating > 0 && discriminatingHalfOpen === discriminating && onLower > 0 && oneBpWins > 0 && oneBpPriced === oneBpWins;
+    probeNote = `${notes.join('; ')}; in all ${replyOk}/${nProbes} answered probes, each on a seed revealed in this capture, LIQD's reply equals the package's roll, half-open win and 9900/basisPoints multiplier; `
+        + `roll == lower bound on ${onLower} (wins the band; modes ${[...lowerModes].sort().join(', ')}), roll == upper bound on ${onUpper}, ${controls} with no bound hit (controls 0.01 off a bound, range-edge rolls inside their band, and one re-sent verify call of the capture); `
+        + `${discriminating} probes separate half-open from inclusive-both-ends (the roll is on a reachable upper bound; modes ${[...discModes].sort().join(', ')}; an over band's upper bound is 100, which no roll reaches) and ${discriminatingHalfOpen}/${discriminating} follow half-open; ${unsettledProbes} probes use nonces never settled in the capture; `
+        + `the 9900× setting (one basis point, E20): ${oneBp} probes on a 0.01 % band, ${oneBpWins} of them winning, priced ${config_1.PAYOUT_NUMERATOR}× on ${oneBpPriced}/${oneBpWins}`;
     // ── (2) roll range ───────────────────────────────────────────────────────────
     const rolls = bets.map((b) => Math.round(Number(b.roll) * config_1.SCALE));
     const maxRoll = Math.max(...rolls), minRoll = Math.min(...rolls);
@@ -3992,15 +4016,20 @@ function run(ctx) {
     }
     // ── (3) top of the captured range, and the per-bet edge identity ─────────────
     // The highest-multiplier setting the plan played (its smallest win chance) must be priced at
-    // exactly PAYOUT_NUMERATOR/basisPoints and carry the 1.0000% edge.
+    // exactly PAYOUT_NUMERATOR/basisPoints and carry the 1.0000% edge on every round, and every win
+    // there must have been served at that multiplier. The highest setting with a captured WIN is
+    // reported separately: a 0.01 % round wins once in 10,000, so its pricing is witnessed by E20.
     const planMinBps = Math.round(Math.min(...config_1.EXPECTED_WIN_CHANCES) * 100);
     const minBps = Math.min(...bets.map(b => (0, config_1.payoutBasisPoints)(b.params)));
     const topBets = bets.filter(b => (0, config_1.payoutBasisPoints)(b.params) === minBps);
     const topExpected = config_1.PAYOUT_NUMERATOR / minBps;
     const topMultOk = minBps === planMinBps
-        && topBets.every(b => !b.win || Number(b.multiplier) === topExpected)
+        && topBets.every(b => (b.win ? Number(b.multiplier) === topExpected : Number(b.multiplier) === 0))
         && topBets.every(b => (0, config_1.effectiveEdgeIsExact)(b.params));
     const topEdge = topBets.length ? (0, config_1.effectiveEdge)(topBets[0].params) : NaN;
+    const winBps = Math.min(...bets.filter(b => b.win).map(b => (0, config_1.payoutBasisPoints)(b.params)));
+    const topWinBets = bets.filter(b => (0, config_1.payoutBasisPoints)(b.params) === winBps);
+    const topWinOk = topWinBets.filter(b => b.win).every(b => Number(b.multiplier) === config_1.PAYOUT_NUMERATOR / winBps);
     let minEdge = Infinity, maxEdge = -Infinity, favorable = 0, edgeRuleViolations = 0, maxFloatDeparture = 0;
     const modeAgg = {};
     for (const b of bets) {
@@ -4034,12 +4063,12 @@ function run(ctx) {
         .map(([m, g]) => `${m} ${(g.sum / g.n * 100).toFixed(3)}% [${(g.min * 100).toFixed(3)}–${(g.max * 100).toFixed(3)}]`)
         .join('; ');
     // Coverage guard: a non-empty set that reaches the top setting with at least one win there.
-    const coverOk = bets.length > 0 && topBets.length > 0 && topBets.some(b => b.win) && Number.isFinite(topEdge) && extremeOk;
-    const pass = coverOk && probesOk && rangeOk && topMultOk && favorable === 0 && edgeRuleViolations === 0;
-    const s15 = (0, context_1.step)(15, 'Boundary Rule, Roll Range & Effective Edge', pass ? 'PASS' : ((favorable > 0 || edgeRuleViolations > 0 || !probesOk || !rangeOk) ? 'FAIL' : 'FLAG'), `BOUNDARY RULE (LIQD's production verify endpoint, 9 November 2026): ${probeNote}. `
+    const coverOk = bets.length > 0 && topBets.length > 0 && topWinBets.some(b => b.win) && Number.isFinite(topEdge) && extremeOk;
+    const pass = coverOk && probesOk && rangeOk && topMultOk && topWinOk && favorable === 0 && edgeRuleViolations === 0;
+    const s15 = (0, context_1.step)(15, 'Boundary Rule, Roll Range & Effective Edge', pass ? 'PASS' : ((favorable > 0 || edgeRuleViolations > 0 || !probesOk || !rangeOk) ? 'FAIL' : 'FLAG'), `BOUNDARY RULE AND 9900× PRICE (LIQD's production verify endpoint, 9 and 10 November 2026): ${probeNote}. `
         + `Settled data: ${lowerHits} of ${bets.length} rolls on their band's lower bound and ${upperHits} on its upper bound; the two rules disagree about ${rulesDisagree} captured win flags, so the settled rounds have no power over the rule and it rests on these verifier replies; that settlement treats a roll on a bound the same way is not witnessed (declared limitation L2). `
         + `ROLL RANGE: ${bets.length} served rolls on the 0.01 grid, min ${(minRoll / config_1.SCALE).toFixed(2)}, max ${(maxRoll / config_1.SCALE).toFixed(2)} (ceiling ${((config_1.RANGE - 1) / config_1.SCALE).toFixed(2)}, ${rangeOk ? 'ok' : 'OUT OF RANGE'}). `
-        + `TOP OF THE CAPTURED RANGE: win chance ${(minBps / 100).toFixed(2)}% pays exactly ${config_1.PAYOUT_NUMERATOR}/${minBps} = ${topExpected}× at edge ${(topEdge * 100).toFixed(4)}% (${topBets.length} bets, ${topBets.filter(b => b.win).length} wins, ${topMultOk ? 'ok' : 'MISPRICED'}); narrower bands (above ${topExpected}×) were not played: declared limitation L7. `
+        + `TOP OF THE CAPTURED RANGE: win chance ${(minBps / 100).toFixed(2)}% is priced ${config_1.PAYOUT_NUMERATOR}/${minBps} = ${topExpected}× at edge ${(topEdge * 100).toFixed(4)}% (${topBets.length} round(s), ${topBets.filter(b => b.win).length} won, every loss served multiplier 0: ${topMultOk ? 'ok' : 'MISPRICED'}); the highest setting with a captured win, ${(winBps / 100).toFixed(2)}%, pays exactly ${config_1.PAYOUT_NUMERATOR / winBps}× on ${topWinBets.filter(b => b.win).length} win(s) (${topWinOk ? 'ok' : 'MISPRICED'}). `
         + `EFFECTIVE EDGE: per-bet edge == 1.0000% asserted in EXACT INTEGERS (100·winCount·${config_1.PAYOUT_NUMERATOR} === ${config_1.PAYOUT_NUMERATOR / 100}·${config_1.RANGE}·basisPoints, no tolerance) on ${bets.length - edgeRuleViolations}/${bets.length} bets (${edgeRuleViolations} rule violations; coverage ${coverOk ? 'ok' : 'FAIL'}); `
         + `the float form of the same quantity departs from 0.01 by up to ${maxFloatDeparture.toExponential(2)} across the capture and ${extremeFloatDeparture.toExponential(2)} at an over 99.99 band, which is why the assertion is integral; `
         + `MODEL IDENTITY, not a measurement of the operator: it holds by algebra for every 2-dp band, so no dataset can falsify it; it enforces OUR rule set (declared limitation L3); `
@@ -4426,7 +4455,7 @@ function run(ctx) {
         + `per phase: ${phaseNotes.join('; ')}; `
         + `both stake tiers present, ${config_1.BASE_STAKE} and ${config_1.ELEVATED_STAKE} USDT, and no other (${tiersOk}); `
         + `Phase A (A and the A+ top-up, ${aBets.length} rounds): ${cellsPresent}/${wantCells.length} (mode × win chance) classes hold at least ${config_1.PHASE_A_MIN_BETS_PER_CLASS} rounds (fewest ${cellMin}), all 4 modes [${[...modesAll].join(',')}] at each of the ${aPlanBps.length} planned win chances (${cellsOk}); `
-        + `both ends of the planned range played, ${Math.min(...planAll) / 100}% (${PAYOUT_NUMERATOR_OVER(Math.min(...planAll))}×) and ${Math.max(...planAll) / 100}% (${PAYOUT_NUMERATOR_OVER(Math.max(...planAll))}×) (${endsOk}). There is no separate tail phase: the 99× setting is the A+ top-up and the 49.5× setting is the 2% win chance of Phase A`);
+        + `both ends of the planned range played, ${Math.min(...planAll) / 100}% (${PAYOUT_NUMERATOR_OVER(Math.min(...planAll))}×) and ${Math.max(...planAll) / 100}% (${PAYOUT_NUMERATOR_OVER(Math.max(...planAll))}×) (${endsOk}). There is no separate tail phase: the 9900× setting is the one round of Phase X, the 99× setting is the A+ top-up and the 49.5× setting is the 2% win chance of Phase A`);
     return [s11, s12];
 }
 
@@ -4896,7 +4925,7 @@ function run(ctx) {
  * Steps 16–17: Simulation Cross-Check
  * Scores the frozen outputs/simulation-results.json (produced by `npm run simulate`):
  *   16 — Pass 1 (fresh seeds): draw uniformity + serial independence + effective-edge table +
- *        the RTP-convergence series + (since 22 October 2026, the Duel dice standard) edge
+ *        the RTP-convergence series + edge
  *        convergence on 98 over-mode targets × 1,000,000 bets and their cross-target mean RTP, all
  *        within tolerance at the pinned sample depths.
  *   17 — Pass 2 (casino seeds): the DICE-21 load-bearing served-band PAYOUT-WEIGHTED RETURN scan —
@@ -5225,7 +5254,7 @@ function run(ctx) {
     // Reported so the chapters can cite Δ/SE from a producing artifact instead of typing it
     // (an earlier RTP chapter's verdict table said "≈0.7·SE" against an artifact that gives 1.04).
     const convDeltaSE = Number.isFinite(convRtp) && convSe > 0 ? Math.abs(convRtp - convTheo) / convSe : NaN;
-    // (e) EDGE CONVERGENCE ON 98 TARGETS (added 22 October 2026, the Duel dice standard). The rows
+    // (e) EDGE CONVERGENCE ON 98 TARGETS. The rows
     // must BE the 98 canonical SIM_TARGETS in order; each sits at its fixed position in the pinned
     // seed stream (SIM_TARGET_SEED_COUNTER_BASE + t·SIM_TARGET_SEEDS_EACH), and its client seed and
     // first server seed are RE-DERIVED from that position (simSeedAt), so a row cannot have been run
@@ -5323,7 +5352,7 @@ function run(ctx) {
         + `serial at n=${ser.n} (pinned ${config_1.SIM_SERIAL_DRAWS}): lag1Z=${fmt(lag1Z, 3)} == lag1·√n (${lag1Z === lag1ZDerived ? 'reconciled' : 'MISMATCH'}) < zCrit ${zCrit.toFixed(4)} (the two-sided normal quantile at α_screen, AS 241), runsP=${runsPDerived.toFixed(4)} (derived from runsZ=${fmt(runsZ, 3)}) ≥ α_screen; ${runsNote}; ${zCriticalNote} (${serialPass ? 'ok' : 'FAIL'}); `
         + `effective-edge ${edgeWithin}/${edgeRows.length} bands within 5·SE+1e-4 of theory at n=${config_1.SIM_EDGE_BETS} (recomputed), band set ${bandsIdentical ? `identical to the ${config_1.SIM_EDGE_BANDS.length} canonical bands` : 'NOT the canonical band set'}, ${edgeFieldMismatches} row(s) whose derived fields disagree with re-derivation, ${edgeCountExact}/${edgeRows.length} row(s) whose simulatedRTP IS bit-for-bit the return their integer win count reconstructs to (the producer's own per-win accumulation, replayed) and ${edgeCountBad} row(s) whose simulatedRTP is the return of NO integer win count${edgeCountNotes.length ? ` (e.g. ${edgeCountNotes.join('; ')})` : ''}; `
         + `RTP convergence ${convPts.length} points at the pinned marks (${marksOk ? 'ok' : 'MARKS MISMATCH'}), ends at n=${convN} (pinned ${config_1.SIM_RTP_BETS}), finalRTP=${Number.isFinite(convRtp) ? (convRtp * 100).toFixed(3) : 'NaN'}% == last plotted point (${convIdentity ? 'reconciled' : 'MISMATCH'}) vs ${(convTheo * 100).toFixed(2)}%, Δ=${Number.isFinite(convDeltaSE) ? convDeltaSE.toFixed(4) : 'NaN'}·SE within the 5·SE band; ALL ${convPts.length} plotted standard errors RECOMPUTED from (n, rtp, wins, m) and compared exactly, win counts ${series.points.map((p) => p.wins).join('/')} (${series.points[0]?.winSource ?? 'n/a'}) cumulatively consistent and ${series.exactReconstructions}/${convPts.length} of them reconstructing bit-for-bit to the published RTP — ${series.ok ? 'reconciled' : `MISMATCH: ${series.failures.slice(0, 3).join('; ')}`} (${convPass ? 'ok' : 'FAIL'}); `
-        + `98-target edge convergence (the Duel dice standard): ${tgtWithin}/${tgtRows.length} targets (over ${config_1.SIM_TARGETS[0].params.lower}.00 … over ${config_1.SIM_TARGETS[config_1.SIM_TARGETS.length - 1].params.lower}.00) within 5·SE+1e-4 of theory at n=${config_1.SIM_TARGET_BETS} each (recomputed), target set ${targetsIdentical ? `identical to the ${config_1.SIM_TARGETS.length} canonical targets in order` : 'NOT the canonical target set'}, seed-stream positions ${config_1.SIM_TARGET_SEED_COUNTER_BASE} + t×${config_1.SIM_TARGET_SEEDS_EACH} with client seed and first server seed RE-DERIVED from SIM_MASTER_SEED (${tgtSeedBad} row(s) off position), ${tgtFieldBad} row(s) whose derived fields disagree with re-derivation, ${tgtCountExact}/${tgtRows.length} row(s) whose simulatedRTP IS bit-for-bit the return of its integer win count and ${tgtCountBad} the return of NO integer win count, ${tgtMarksBad} per-target mark series failing validation (${tgtMarkExact}/${tgtRows.length * config_1.SIM_TARGET_MARKS.length} marks reconstructing bit-for-bit, every mark SE recomputed exactly)${tgtNotes.length ? ` (e.g. ${tgtNotes.join('; ')})` : ''} (${targetsPass ? 'ok' : 'FAIL'}); `
+        + `98-target edge convergence: ${tgtWithin}/${tgtRows.length} targets (over ${config_1.SIM_TARGETS[0].params.lower}.00 … over ${config_1.SIM_TARGETS[config_1.SIM_TARGETS.length - 1].params.lower}.00) within 5·SE+1e-4 of theory at n=${config_1.SIM_TARGET_BETS} each (recomputed), target set ${targetsIdentical ? `identical to the ${config_1.SIM_TARGETS.length} canonical targets in order` : 'NOT the canonical target set'}, seed-stream positions ${config_1.SIM_TARGET_SEED_COUNTER_BASE} + t×${config_1.SIM_TARGET_SEEDS_EACH} with client seed and first server seed RE-DERIVED from SIM_MASTER_SEED (${tgtSeedBad} row(s) off position), ${tgtFieldBad} row(s) whose derived fields disagree with re-derivation, ${tgtCountExact}/${tgtRows.length} row(s) whose simulatedRTP IS bit-for-bit the return of its integer win count and ${tgtCountBad} the return of NO integer win count, ${tgtMarksBad} per-target mark series failing validation (${tgtMarkExact}/${tgtRows.length * config_1.SIM_TARGET_MARKS.length} marks reconstructing bit-for-bit, every mark SE recomputed exactly)${tgtNotes.length ? ` (e.g. ${tgtNotes.join('; ')})` : ''} (${targetsPass ? 'ok' : 'FAIL'}); `
         + `98-target mean RTP (the convergence chart): ${tcPts.length} points at ${config_1.SIM_TARGET_MARKS.map((x) => x.toLocaleString('en-US')).join('/')} bets per target, every plotted mean and SE RECOMPUTED from the targets' marks and compared exactly (${tcPointsMatch ? 'reconciled' : 'MISMATCH'}), mean simulated RTP=${Number.isFinite(tcRtp) ? (tcRtp * 100).toFixed(4) : 'NaN'}% over ${(config_1.SIM_TARGETS.length * config_1.SIM_TARGET_BETS).toLocaleString('en-US')} bets == last plotted point (${tcIdentity ? 'reconciled' : 'MISMATCH'}) vs ${(tcTheo * 100).toFixed(4)}%, SE=${Number.isFinite(tcSe) ? (tcSe * 100).toFixed(4) : 'NaN'} pp, Δ=${Number.isFinite(tcDeltaSE) ? tcDeltaSE.toFixed(4) : 'NaN'}·SE within the 5·SE band (${tcPass ? 'ok' : 'FAIL'}); `
         + `model range/cursor/scale/edge ${modelOk ? 'ok' : 'FAIL'}; artifact self-report ${selfReport16 ? 'pass' : 'fail'}`
         + (agree16 ? '' : ' — DISAGREES with recomputation (artifact self-report tampered?)')
@@ -5331,8 +5360,8 @@ function run(ctx) {
         // with positive probability under the null — 0.0020149586 for exactly 40,000 wins in 2,000,000
         // `over 98` bets. It is recorded because it is worth a reader's attention, and it moves nothing.
         + `; OBSERVED (not scored): ${tgtOnTheory} target row(s), ${edgeOnTheory} effective-edge row(s) and ${series.exactlyOnTheory} convergence point(s) sit exactly on theory, and runsZ is ${runsZ === 0 ? 'exactly 0' : 'nonzero'} — all legitimate outcomes under the null, reported rather than rejected`
-        // DECLARED LIMITATION L1 (now NARROWED by the deterministic producer), and the error budget.
-        + `; SCOPE — the raw Pass-1 statistics (uniformity.chi2, serial.lag1, serial.runsZ, each band's and target's simulatedRTP, and the convergence series' own RTP path) are not recomputed inside THIS fast verify (that would re-run 138M draws), but the Pass-1 producer is now DETERMINISTIC — seeded from the pinned SIM_MASTER_SEED — so they are re-derivable by replaying it: npm run test:full regenerates the artifact byte-for-byte and the field diff is empty (DICE-20). A statistic forged SUBTLY is therefore no longer invisible the way it was under fresh entropy (former L1): a re-run reproduces the EXACT committed figures, so test:full exposes any figure that is not what the declared experiment outputs; changing SIM_MASTER_SEED to hand-pick one is a visible source edit that re-rolls every Pass-1 figure at once. What the FAST path still relies on for a reader who does not re-run the producer — that the statistics are STRUCTURALLY possible (integer win counts, cumulative consistency, exact standard errors) and fall inside their screens — is unchanged; that residual is declared limitation L1`
+        // DECLARED LIMITATION L1 (NARROWED by the deterministic producer), and the error budget.
+        + `; SCOPE — the raw Pass-1 statistics (uniformity.chi2, serial.lag1, serial.runsZ, each band's and target's simulatedRTP, and the convergence series' own RTP path) are not recomputed inside THIS fast verify (that would re-run 138M draws), but the Pass-1 producer is DETERMINISTIC — seeded from the pinned SIM_MASTER_SEED — so they are re-derivable by replaying it: npm run test:full regenerates the artifact byte-for-byte and the field diff is empty (DICE-20). A statistic forged SUBTLY is therefore not invisible (L1): a re-run reproduces the EXACT committed figures, so test:full exposes any figure that is not what the declared experiment outputs; changing SIM_MASTER_SEED to hand-pick one is a visible source edit that re-rolls every Pass-1 figure at once. What the FAST path still relies on for a reader who does not re-run the producer — that the statistics are STRUCTURALLY possible (integer win counts, cumulative consistency, exact standard errors) and fall inside their screens — is unchanged; that residual is declared limitation L1`
         + `; ERROR BUDGET — ${sim_checks_1.SCORED_STATISTICAL_PREDICATES.length} scored statistical screens across Steps 16-17: ${sim_checks_1.SCORED_STATISTICAL_PREDICATES.map((s) => `${s.id} ${s.screen} [${s.size}]`).join('; ')}. The α=${config_1.ALPHA} claim describes S1-S3 (family-wise, Bonferroni) ONLY — it is NOT this step's level: Step 16 also scores S4 and S5, so THIS STEP's own union bound is ≈${sim_checks_1.STEP_16_BOUND.toFixed(7)}, and over all ${sim_checks_1.SCORED_STATISTICAL_PREDICATES.length} screens across Steps 16-17 it is ≈${sim_checks_1.FAMILY_WISE_BOUND.toFixed(4)}. Everything else this step rejects on — derived-field reconciliation, population identity, sample-depth pins, integer win counts and their RECONSTRUCTION, cumulative consistency, exact standard errors — is a deterministic identity an honest artifact satisfies with probability 1, so it adds nothing to the budget (unlike 'perfection' rules, which reject honest outcomes and are unpriced). These sizes are NOMINAL UPPER BOUNDS from asymptotic reference distributions (χ² and normal), not measured failure frequencies, and no honest-run trip rate is claimed from them; the exact binomial S6 is conservative. Repeated fresh simulations could calibrate them and would not prove them`);
     // ── Step 17: Pass 2 — RE-DERIVE the cherry-pick scan from the dataset ──────────
     const p2 = sim.pass2;
@@ -5548,7 +5577,7 @@ function run(ctx) {
             + (agree17 ? '' : ' — DISAGREES with recomputation (artifact self-report tampered?)')
             // DECLARED LIMITATION L4. The supplementary draw-uniformity screen's resolution and blind spot,
             // recomputed here rather than asserted in prose.
-            + `; SCOPE — the served-band return is now the load-bearing return-based DICE-21 statistic; the draw-uniformity screen is retained as a supplementary exact-discrete check needing ${minRejectableFlags} flag(s) to reject at α=${config_1.ALPHA} (P(X≥${minRejectableFlags})=${(0, stats_1.binomialTailP)(n, minRejectableFlags, CHERRY_P0).toFixed(4)}). The served-band tail is asymptotic (CLT) on exact moments, not an exact-lattice CDF — declared L4/load-bearing premise in MANIFEST.md. The load-bearing cherry-pick defence remains structural (client-seed-after-commitment)`);
+            + `; SCOPE — the served-band return is the load-bearing return-based DICE-21 statistic; the draw-uniformity screen is retained as a supplementary exact-discrete check needing ${minRejectableFlags} flag(s) to reject at α=${config_1.ALPHA} (P(X≥${minRejectableFlags})=${(0, stats_1.binomialTailP)(n, minRejectableFlags, CHERRY_P0).toFixed(4)}). The served-band tail is asymptotic (CLT) on exact moments, not an exact-lattice CDF — declared L4/load-bearing premise in MANIFEST.md. The load-bearing cherry-pick defence remains structural (client-seed-after-commitment)`);
     }
     return [s16, s17];
 }
@@ -6315,7 +6344,7 @@ const verificationBody = {
     steps: labelled,
     profileCoverage: (0, profile_map_1.profileCoverageBlock)(),
     info: infoItems,
-    // The one summary shape of every LIQD package (scripts/release-bar.mjs, review of 2026-09-28 F20):
+    // The one summary shape of every LIQD package (scripts/release-bar.mjs):
     // captureFlags counts the capture-origin FLAGs; an INFO step is not a flag and is not counted.
     summary: { passed, flags, operatorFlags, captureFlags, hardFail, verdict },
 };

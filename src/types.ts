@@ -1,5 +1,5 @@
-// Types mirror the scored dataset data/dice-prod-5935bets.json: the liqd.com production capture of
-// 7 to 10 November 2026 (three capture files, phases A, D, A+ and C), converted to the package shape
+// Types mirror the scored dataset data/dice-prod-5936bets.json: the liqd.com production capture of
+// 7 to 10 November 2026 (four capture files, phases A, D, A+, C and X), converted to the package shape
 // { meta, seeds[], bets[] }. Field names match the dataset verbatim.
 
 export interface DiceParams {

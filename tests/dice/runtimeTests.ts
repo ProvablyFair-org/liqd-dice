@@ -28,9 +28,11 @@ describe('supported runtime', () => {
 
   it('the declared runtime and package.json engines agree', () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8'));
-    assert.strictEqual(pkg.engines?.node, `${SUPPORTED_NODE_MAJOR}.x`);
-    assert.ok(VALIDATED_RUNTIME.includes(`v${SUPPORTED_NODE_MAJOR}.`),
+    const validated = /v(\d+\.\d+\.\d+)/.exec(VALIDATED_RUNTIME)?.[1];
+    assert.ok(validated?.startsWith(`${SUPPORTED_NODE_MAJOR}.`),
       `VALIDATED_RUNTIME "${VALIDATED_RUNTIME}" is not a ${SUPPORTED_NODE_MAJOR}.x version`);
+    assert.strictEqual(pkg.engines?.node, `>=${validated} <${SUPPORTED_NODE_MAJOR + 1}`);
+    assert.strictEqual(fs.readFileSync(path.join(__dirname, '../../.nvmrc'), 'utf8').trim(), validated);
   });
 
   it('rejects the runtimes the package was NOT validated on', () => {

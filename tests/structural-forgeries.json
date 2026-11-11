@@ -19,7 +19,7 @@
     "script": "tests/forgeries/coherent-population-shrink.mjs",
     "runner": "verify",
     "expect": "NOT PROVABLY FAIR",
-    "guard": "Step 11 (Dataset Integrity) must reject a dataset that is not the audited population (G-BIND). EXECUTED COUNTEREXAMPLE: delete every nonce from 30 up in every epoch (5,935 -> 990 bets), set meta.plannedTotal, meta.phases, each capture record's counts and every seed record's nonceEnd and plannedBets to match, then re-pin DATASET_SHA256. A suite whose counts all come from INSIDE the file being scored is self-referential and passes the shrunken file; the SHA pin proves only that the file has not changed since WE pinned it. The expected cardinality comes from EXPECTED_BETS / EXPECTED_SEEDS / EXPECTED_EPOCHS / EXPECTED_PHASES in src/config.ts, and Step 11 fails (Steps 4 and 12 fire as well)."
+    "guard": "Step 11 (Dataset Integrity) must reject a dataset that is not the audited population (G-BIND). EXECUTED COUNTEREXAMPLE: delete every nonce from 30 up in every epoch (5,936 -> 991 bets), set meta.plannedTotal, meta.phases, each capture record's counts and every seed record's nonceEnd and plannedBets to match, then re-pin DATASET_SHA256. A suite whose counts all come from INSIDE the file being scored is self-referential and passes the shrunken file; the SHA pin proves only that the file has not changed since WE pinned it. The expected cardinality comes from EXPECTED_BETS / EXPECTED_SEEDS / EXPECTED_EPOCHS / EXPECTED_PHASES in src/config.ts, and Step 11 fails (Steps 4 and 12 fire as well)."
   },
   {
     "name": "absent artifact of record — outputs/report-figures.json deleted",
@@ -53,7 +53,7 @@
     "guard": "Step 3 (Hash Consistency Within Epoch) must reject an epoch whose bets do not all carry the same hashedServerSeed. The script relabels one epoch-0 bet with another period's commitment hash and re-pins DATASET_SHA256, so the rejection cannot come from the dataset pin. Step 3 groups the bets by epoch and finds two distinct hashes in epoch 0. Other steps that read the relabelled row (the nonce audit, the roll recomputation, the report-figures dataset hash in Step 19) fail as well; the entry asserts that Step 3 is among them. Added 2026-10-02: before it, no registry entry failed Step 3. What Step 3 checks is a consistency property of the file — the capture writes the period's hash onto each bet row (F3) — not a server-returned field."
   },
   {
-    "name": "credited loss — one losing bet credited 0.00000001, dataset re-pinned",
+    "name": "paid loss — one losing bet given a payout of 0.00000001, dataset re-pinned",
     "script": "tests/forgeries/credited-loss.mjs",
     "runner": "verify",
     "expect": "NOT PROVABLY FAIR",

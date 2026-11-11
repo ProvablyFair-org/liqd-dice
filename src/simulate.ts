@@ -20,8 +20,8 @@
  *   4. Effective-edge table (scored): for representative bands across all four modes, the
  *      simulated return converges to theoreticalRTP(band) = 1 − effectiveEdge(band); the max
  *      |simRTP − theoRTP| must fall inside a 5·SE + buffer tolerance.
- *   5. Edge convergence on 98 targets (scored + chart; added 22 October 2026, the Duel dice
- *      standard): `over 2.00` … `over 99.00` × 1,000,000 bets each, every target within 5·SE +
+ *   5. Edge convergence on 98 targets (scored + chart):
+ *      `over 2.00` … `over 99.00` × 1,000,000 bets each, every target within 5·SE +
  *      buffer, and the MEAN simulated RTP over the 98 targets at 10k/50k/100k/500k/1M bets per
  *      target, SE = sqrt(Σ SEₜ²)/98, as the convergence chart. Blocks 1–4 run first and unchanged,
  *      so they consume the same seeds as in v1.0.0; the targets continue the same seed stream

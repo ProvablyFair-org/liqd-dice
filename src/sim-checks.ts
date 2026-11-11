@@ -461,9 +461,6 @@ export function runsStatistic(runs: number, n1: number, n: number): { expected: 
  * the true tail at the extremes. The cherry-pick binomial is EXACT and, being discrete, is
  * conservative — its achieved size is strictly below α. A repeated-simulation study could calibrate
  * the rest empirically; nothing here proves the finite-sample sizes, and this list does not claim to.
- * The one figure in this repo that IS a measured frequency is the 1-trip-in-20 observed under the
- * UNCORRECTED configuration of the previous release, and it is reported as a measurement of that
- * configuration, not as a prediction for this one.
  */
 export const SCORED_STATISTICAL_PREDICATES: readonly { id: string; step: number; screen: string; size: string }[] = [
   { id: 'S1', step: 16, screen: 'Pass-1 draw uniformity χ², two-sided (upper: non-uniform; lower: too uniform)', size: 'α/3 = 3.333e-3' },

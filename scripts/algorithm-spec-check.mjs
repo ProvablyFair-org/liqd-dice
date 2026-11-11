@@ -12,7 +12,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const ds = JSON.parse(readFileSync(join(ROOT, 'data/dice-prod-5935bets.json'), 'utf8'));
+const ds = JSON.parse(readFileSync(join(ROOT, 'data/dice-prod-5936bets.json'), 'utf8'));
 const e17 = JSON.parse(readFileSync(join(ROOT, 'evidence/E17-prod-verify-boundary-probes-2026-11-09.json'), 'utf8'));
 const seedOf = new Map(ds.seeds.map((s) => [s.epoch, s]));
 const N = 10000, LIMIT = Math.floor(2 ** 32 / N) * N;
@@ -90,7 +90,7 @@ const modes = { down: (n, d) => n / d, 'half-up': (n, d) => (2n * n + d) / (2n *
 const cnt = {}; for (const [k, f] of Object.entries(modes)) cnt[k] = wins.filter((b) => f(units(b.betAmount) * 9900n, BigInt(width(b.params))) === units(b.winningAmount)).length;
 out(`winningAmount == round(amount x 9900 / width, 8 dp) on ${wins.length} wins, by mode: ${Object.entries(cnt).map(([k, n]) => `${k} ${n}`).join(', ')}`);
 const offGrid = wins.filter((b) => (units(b.betAmount) * 9900n) % BigInt(width(b.params)) !== 0n).length;
-out(`wins whose exact product is not on the 1e-8 grid: ${offGrid} (all credited the rounded-down amount: ${wins.filter((b) => (units(b.betAmount) * 9900n) % BigInt(width(b.params)) !== 0n && units(b.winningAmount) === units(b.betAmount) * 9900n / BigInt(width(b.params))).length}); on the grid: ${wins.length - offGrid}`);
+out(`wins whose exact product is not on the 1e-8 grid: ${offGrid} (all settled at the rounded-down amount: ${wins.filter((b) => (units(b.betAmount) * 9900n) % BigInt(width(b.params)) !== 0n && units(b.winningAmount) === units(b.betAmount) * 9900n / BigInt(width(b.params))).length}); on the grid: ${wins.length - offGrid}`);
 out(`losses paying 0: ${losses.filter((b) => units(b.winningAmount) === 0n).length}/${losses.length}`);
 out(`stakeWallet == betAmount and winningAmountWallet == winningAmount: ${ds.bets.filter((b) => units(b.stakeWallet) === units(b.betAmount) && units(b.winningAmountWallet) === units(b.winningAmount)).length}/${ds.bets.length}`);
 out(`stakes captured: ${[...new Set(ds.bets.map((b) => b.betAmount))].join(', ')} ${ds.meta.currency}`);

@@ -1,11 +1,11 @@
 {
-  "datasetSha256": "b5357d37d4c65b26e04915ddc8d59d2b8d144f81a51242f278080a1a2d8b8697",
-  "bets": 5935,
+  "datasetSha256": "41ea55fcadd903768be3a92725f2100fe2e794ab300d6842ce946124ea7d5042",
+  "bets": 5936,
   "wins": 2622,
   "settledRtp": {
     "belowNominal": 1650,
     "aboveNominal": 0,
-    "exactlyNominal": 4285,
+    "exactlyNominal": 4286,
     "minPct": 98.999992,
     "maxPct": 99.00000000000001,
     "nominalPct": 99,
@@ -20,29 +20,29 @@
     "floatClosedFormMisses": 29
   },
   "boundary": {
-    "betsWithReachableUpperBound": 4546,
+    "betsWithReachableUpperBound": 4547,
     "betsWithUnreachableUpperBound": 1389,
-    "expectedUpperBoundHits": 0.4546,
+    "expectedUpperBoundHits": 0.4547,
     "observedUpperBoundHits": 0,
     "observedLowerBoundHits": 0,
     "betsWhereBoundaryModelsDisagree": 0,
-    "winFlagsReproducedHalfOpen": 5935,
-    "winFlagsReproducedInclusiveBothEnds": 5935
+    "winFlagsReproducedHalfOpen": 5936,
+    "winFlagsReproducedInclusiveBothEnds": 5936
   },
   "cherryPickPower": {
-    "seeds": 33,
+    "seeds": 34,
     "nullFlagRate": 0.04381476839059315,
-    "expectedFlags": 1.445887356889574,
+    "expectedFlags": 1.4897021252801672,
     "minRejectableFlags": 6,
-    "pAtMinRejectable": 0.002820796077846398,
+    "pAtMinRejectable": 0.0032997167987908116,
     "alpha": 0.01,
     "seedAlphaNominal": 0.05
   },
   "live": {
-    "wageredUsdt": 2920,
+    "wageredUsdt": 2920.1,
     "returnedUsdt": 3062.00572969,
-    "realizedRtpPct": 104.8632099208904,
-    "meanRoll": 50.17001010951973
+    "realizedRtpPct": 104.8596188380535,
+    "meanRoll": 50.172329851751954
   },
   "phases": {
     "A": {
@@ -92,17 +92,29 @@
       "classes": 1,
       "fewestPerClass": 235,
       "mostPerClass": 235
+    },
+    "X": {
+      "bets": 1,
+      "epochs": 1,
+      "wins": 0,
+      "stakeUsdt": 0.1,
+      "wageredUsdt": 0.1,
+      "returnedUsdt": 0,
+      "realizedRtpPct": 0,
+      "classes": 1,
+      "fewestPerClass": 1,
+      "mostPerClass": 1
     }
   },
   "modes": {
-    "under": 1150,
+    "under": 1151,
     "over": 1387,
     "inside": 1148,
     "outside": 2250
   },
   "verifier": {
-    "replies": 5935,
-    "equalServedRound": 5935
+    "replies": 5936,
+    "equalServedRound": 5936
   },
   "playerSeeds": {
     "epochs": 5,
